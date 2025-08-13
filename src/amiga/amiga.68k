@@ -972,7 +972,7 @@ platform_init:
 	* screen with XEVIOUS bg/fg tiles
     move.w #2<<4,bplcon1(a5)    | foreground tiles shifted by 2 pixels
 	* 2nd (foreground tiles & sprites) playfield has priority
-	* solvalou sprites (0-1) have priority on sprites, others (andor/bragza) don't
+	* solvalou sprites (0-1) have priority on BOBs, others (andor/bragza) don't
     move.w #0x004f,bplcon2(a5)
     move.w #BASE_BPLCON3_VALUE,bplcon3(a5)	| color bank offset for playfield 2
 	move.w	#0x32,bplcon4(a5)	| odd sprites palette start at color 48, even at 32

@@ -13,9 +13,11 @@ SOURCE = $(AMIGASRC)/$(PROGNAME)HD.s
 
 ifdef RELEASE_BUILD
 OPT_RELEASE = --defsym RELEASE=1
+OPT_RELEASE_LINK = -s
+else
+OPT_RELEASE = 
+OPT_RELEASE_LINK = 
 endif
-
-
 
 # those 2 are defined for my PC, should include whdload.i
 # and system includes.
@@ -38,7 +40,7 @@ $(AMIGASRC)/sounds.68k: $(ASSETS)/convert_sounds.py
 	cmd /c $(ASSETS)\convert_sounds.py
 	
 $(MAIN): $(OBJS)
-	$(GCC_BIN)/m68k-amigaos-ld -o $(MAIN) $(OBJS)
+	$(GCC_BIN)/m68k-amigaos-ld $(OPT_RELEASE_LINK) -o $(MAIN) $(OBJS)
 
 xevious_main.o: xevious_main.68k xevious.inc
 	$(ASM) xevious_main.68k -o xevious_main.o
