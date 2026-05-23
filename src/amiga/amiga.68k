@@ -601,28 +601,39 @@ _player_start:
 _demo_end:
 * we're not doing things the NeoGeo way
 		rts
-	
+
+	.macro	JOY_KEY_SET	offset,func
+	tst.b	(\offset,a0)		| "up" key
+	jeq	0f
+	bset	#JPB_BTN_\func,d0
+0:
+	.endm	JOY_KEY_SET	0x4c,UP	| "up" key
 				
 _vblank:
     movem.l d0-d7/a0-a6,-(a7)
 	lea		_custom,a5
 	move.w	(intreqr,a5),d0
 	btst	#5,d0
-	beq.b		2f
+	jeq		2f
 
 	move.l	_joypad_state(pc),d1
 	moveq	#1,d0
 	jsr	_read_joystick
 
+
+	* simulate joy presses using keyboard table
+	
 	lea keyboard_table(pc),a0
-	tst.b	(0x40,a0)		| space
-	beq.b	1f
-	bset	#JPB_BTN_BLU,d0
-1:
-	tst.b	(0x60,a0)		| shift
-	beq.b	1f
-	bset	#JPB_BTN_BLU,d0
-1:
+	
+	JOY_KEY_SET	0x4c,UP	| "up" key
+	JOY_KEY_SET	0x4d,DOWN	| "down" key
+	JOY_KEY_SET	0x4F,LEFT	| "<-" key
+	JOY_KEY_SET	0x4E,RIGHT	| "->" key
+	JOY_KEY_SET	0x63,RED	| "ctrl" key	
+	JOY_KEY_SET	0x64,BLU	| "alt" key	
+	JOY_KEY_SET	0x40,BLU	| "space" key	
+
+
 	move.l	d0,_joypad_state
 	btst	#JPB_BTN_PLAY,d0
 	beq.b	0f
@@ -2796,21 +2807,26 @@ flag_DOWN = 1<<bit_DOWN
 flag_LEFT = 1<<bit_LEFT
 flag_RIGHT = 1<<bit_RIGHT
 
-.macro	JOY_BIT_SET	dir
+	.macro	JOY_BIT_SET	dir
 	btst	#JPB_BTN_\dir,d1
 	beq.b	1f
 	bset	#bit_\dir,d0
 1:
 	.endm
 	
-		
+
+	
 osd_read_p1_inputs:
 	move.l	_joypad_state(pc),d1
+
 	moveq.l	#0,d0
 	JOY_BIT_SET	UP
 	JOY_BIT_SET	DOWN
 	JOY_BIT_SET	LEFT
 	JOY_BIT_SET	RIGHT
+
+
+
 	lea		direction_table(pc),a0
 	move.b	(a0,d0.w),d0
 	or.b	#0xF0,d0	| sets 0xF0 (bits 4 & 5 inactive high)

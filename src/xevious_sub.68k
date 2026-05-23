@@ -44,10 +44,10 @@ xevious_sub_irq:
     *** - calls these from the MAIN IRQ instead
     *** - try swapping the order to reduce 'shaking'
     ***   of ground objects
-    ****bsr       sub_fn_0__update_32_sprite_hw
+    ****jbsr       sub_fn_0__update_32_sprite_hw
     move.w    #32,d0                            | start at sprite 32
     jsr       osd_update_32_sprite_hw
-    ***bsr       sub_fn_1__update_scroll_hw
+    ***jbsr       sub_fn_1__update_scroll_hw
     move.w    (bg_scroll_x_shadow),d6
     jsr       osd_update_scroll_hw
     rts
@@ -234,7 +234,7 @@ colour_lut_pulsing_2:
 sub_fn_30__handle_scroll: | $02A6
     tst.b     (scroll_disabled)
     bne.b     9f
-    bsr.b     get_map_row
+    jbsr     get_map_row
     move.w    #0x40,d0
     move.w    (scroll_cntr),d1
     add.w     d0,d0
@@ -345,7 +345,7 @@ sub_2_fn_23__adjust_AI_level_based_on_score: | $040C
     move.l    a0,(area_obj_ptr)
     move.w    (curr_player_score_msb),d1        | thousands, BCD
     move.b    (solvalou_number),d0
-    bsr.b     avg_score_per_solvalou
+    jbsr     avg_score_per_solvalou
     cmp.w     #16,d1                            | less than 16K/solvalou?
     ble.b     1f                                | yes, skip
     move.w    #16,d1                            | limit
@@ -746,7 +746,7 @@ sub_fn_6__display_1UP_2UP: | $07CD
     move.b    (curr_player),d6                  | d6=player(0/1) (Z80 C)
     beq.b     1f                                | P1? yes, skip
     exg       d0,d1                             | swap cols
-1:  bsr.b     flash_1up_2up
+1:  jbsr     flash_1up_2up
     exg       d0,d1                             | swap cols
     tst.b     (two_player_game)                 | 2P?
     bne.b     2f                                | yes, go
@@ -771,7 +771,7 @@ flash_1up_2up:
     and.b     (is_real_game),d3                 | timer for flashing
     beq.b     1f
     move.b    #2,d6                             | 3rd string in table ("   ")
-1:  bsr       display_1up_2up   
+1:  jbsr       display_1up_2up   
     movem.l   (a7)+,d0/d1/d6
     rts
 
@@ -785,7 +785,7 @@ up_string_tbl:
 * col is updated
 display_char: | $0828
     movem.l   d0/d2/a0,-(a7)
-    bsr       calc_screen_addr
+    jbsr       calc_screen_addr
     *** lookup osd routine based on bank
     *** - can this be optimised?
     movea.l   (osd_w_video_bank_tbl,pc,d2.w),a0

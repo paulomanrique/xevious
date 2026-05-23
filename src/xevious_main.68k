@@ -42,7 +42,7 @@ _start_of_xevious_main_rom:
 
 xevious_reset: | $0000
 	move.b	#1,vb_ticks_count
-    bsr     xevious_sub_reset                 | obviously 68K only
+    jbsr     xevious_sub_reset                 | obviously 68K only
 	tst.b	is_super_xevious
 	bne.b	0f
 	lea		flying_enemy_type_tbl_normal,a0
@@ -54,7 +54,7 @@ xevious_reset: | $0000
 1:
 	move.l	a0,flying_enemy_type_tbl_pointer
 	move.l	a1,ROM_high_score_tbl_pointer
-    bra       start
+    jra       start
 
 exit_caller: | $001D
     addq.l    #4,a7    
@@ -73,13 +73,13 @@ add_to_score_cont: | $0054
     subq.l    #1,a1                             | byte-swapped
     dbf       d7,add_to_score_cont              | all bytes
     bcc.b     1f                                | no overflow
-    bsr       set_score_to_9999990
-1:  bsr.b     check_1_2_for_new_high_score_and_update
+    jbsr       set_score_to_9999990
+1:  jbsr     check_1_2_for_new_high_score_and_update
     bra       check_for_extra_solvalou
     
 check_1_2_for_new_high_score_and_update: | $1311
     lea       curr_player_score_msb,a1
-    bsr.b     check_for_new_high_score_and_update
+    jbsr     check_for_new_high_score_and_update
     lea       other_player_score_msb,a1
     
 check_for_new_high_score_and_update: | $131A
@@ -107,7 +107,7 @@ update_high_score: | $1329
     jmp       display_high_score
          
 check_for_extra_solvalou: | $133A
-    bsr       display_player_scores
+    jbsr       display_player_scores
     *** There is a call to a protection check routine here
     tst.b     (bonus_life_none)
     bne.w     9f
@@ -190,15 +190,15 @@ xevious_im1_irq: | $0038
     movem.l   d0-d7/a0-a6,-(a7)
     move.w    #0x4F00,d0                        | red
     jsr       osd_debug_hook
-    bsr       update_sprite_hw_and_other_things
+    jbsr       update_sprite_hw_and_other_things
 .ifne OPT_SUB_HAS_IRQ
-    bsr       xevious_sub_irq
+    jbsr       xevious_sub_irq
 .endif    
     move.w    #0x8000,d0                        | black
     jsr       osd_debug_hook
     movem.l   (a7)+,d0-d7/a0-a6
     *** hack
-    bsr.b     xevious_nmi
+    jbsr     xevious_nmi
     rts
 
 xevious_nmi: | $0066
@@ -221,7 +221,7 @@ update_sprite_hw_and_other_things: | $0096
     * copy sprites from shadow to OSD
     move.w    #0,d0                             | start at sprite 0
     jsr       osd_update_32_sprite_hw
-    bsr.b     read_dipswitches
+    jbsr     read_dipswitches
     move.b    vb_ticks_count,(vb_semaphore_main)
     rts
     
@@ -268,7 +268,7 @@ restart_main_loop: | $0437
     *** as vb_sempahore_main above.
     *** Since we only have 1 processor, handle it sequentially here
     ***
-    bsr       xevious_sub_cpu
+    jbsr       xevious_sub_cpu
     ***
 
     move.w    #0x20F0,d0                        | green
@@ -331,10 +331,10 @@ main_fn_tbl_ROM: | $045B
     .long     main_fn_31__handle_bombing
 
 main_fn_0__main_thread: | $049B
-    bsr       zero_share1
-    bsr       clear_fg_to_transparent
-    bsr       clear_bg_to_black
-    bsr       init_high_score_table
+    jbsr       zero_share1
+    jbsr       clear_fg_to_transparent
+    jbsr       clear_bg_to_black
+    jbsr       init_high_score_table
 .ifne OPT_ENABLE_HIGH_SCORE_IO    
     * added for 68K transcode
     lea       high_score_1st_msb,a0
@@ -370,27 +370,27 @@ attract_mode_main_loop: | $04D6
     .endif
 
 flash_insert_coin_and_check_credits: | $04E3
-    bsr       display_insert_coin_flashing
+    jbsr       display_insert_coin_flashing
 check_credits: | $04E6
     tst.b     (num_credits)                     | zero?
     beq       9f                                | yes, exit
 coined_up:    
-    bsr       zero_obj_state_tbl
+    jbsr       zero_obj_state_tbl
     clr.w     (attract_mode_stage)
     jsr       osd_sound_unmute
     move.b    #1,(scroll_disabled)              | disable
-    bsr       clear_fg_to_transparent
-    bsr       clear_bg_to_black
-    bsr       display_push_start_button
-    bsr       display_all_scores
-    bsr       display_copyright_msgs
-    bsr       display_xevious_logo_flashing
+    jbsr       clear_fg_to_transparent
+    jbsr       clear_bg_to_black
+    jbsr       display_push_start_button
+    jbsr       display_all_scores
+    jbsr       display_copyright_msgs
+    jbsr       display_xevious_logo_flashing
     jbsr       save_PC_to_fn_tbl_and_ret
 *
 * loop here waiting for 1P or 2P start button
 *
-    bsr       display_credits   
-    bsr       display_1_only_or_1_2_players
+    jbsr       display_credits   
+    jbsr       display_1_only_or_1_2_players
     tst.b     (start_pressed)                   | set in SUB CPU
     .ifeq OPT_SKIP_ATTRACT
     beq.w     9f
@@ -486,10 +486,10 @@ main_gameplay_loop: | $0593
     clr.b     (num_bacura)
     clr.b     (bacura_inc_cnt)
     clr.b     (solvalou_exploding)
-    bsr       clear_fg_to_transparent
-    bsr       fill_bg_with_forest
-    bsr       display_all_scores
-    bsr       display_solvalou_left
+    jbsr       clear_fg_to_transparent
+    jbsr       fill_bg_with_forest
+    jbsr       display_all_scores
+    jbsr       display_solvalou_left
     lea       main_fn_31__handle_bombing,a0
     move.l    a0,(main_fn_tbl_RAM+4*31)         | reset entry point
     lea       main_fn_1__handle_solvalou,a0
@@ -498,16 +498,16 @@ main_gameplay_loop: | $0593
     moveq     #MAIN_THEME_SND,d0
     jsr       osd_sound_start
     move.b    #0xa0,(countdown_timer_1)
-    bsr       display_player_start_msgs
+    jbsr       display_player_start_msgs
     jbsr       save_PC_to_fn_tbl_and_ret
     subq.b    #1,(countdown_timer_1)            | time to wipe start msgs?
     beq.b     1f                                | yes, skip
     rts
-1:  bsr       wipe_player_start_msgs
+1:  jbsr       wipe_player_start_msgs
     jbsr       save_PC_to_fn_tbl_and_ret
     tst.b     (scroll_disabled)                 | disabled?
     beq.w     9f                                | no, return
-    bsr       fill_bg_with_forest
+    jbsr       fill_bg_with_forest
     move.b    #64,(countdown_timer_1)
     * this is handled in the SUB CPU...
     * so not quite sure why this needs to be done here (as well)?
@@ -549,22 +549,22 @@ main_gameplay_loop: | $0593
 game_over: | $064E
     tst.b     (two_player_game)                 | two players?
     beq.b     2f                                | no, skip
-    bsr       clear_fg_to_transparent
-    bsr       fill_bg_with_forest
-    bsr       display_all_scores
-    bsr       display_game_over_player_1_2
+    jbsr       clear_fg_to_transparent
+    jbsr       fill_bg_with_forest
+    jbsr       display_all_scores
+    jbsr       display_game_over_player_1_2
     move.b    #128,(countdown_timer_1)          | init timer
     jbsr       save_PC_to_fn_tbl_and_ret
     subq.b    #1,(countdown_timer_1)
     beq.b     1f
     rts
-1:  bsr       wipe_game_over_player_1_2
+1:  jbsr       wipe_game_over_player_1_2
     
 2:  tst.b     (other_player_solvalou_left)      | other player still playing?
     beq.b     game_over_1_player                | no, go
 
 next_player: | $0674
-    bsr       swap_curr_other_player
+    jbsr       swap_curr_other_player
     eor.b     #1,(curr_player)                  | switch player
     bra       main_gameplay_loop
     
@@ -574,19 +574,19 @@ main_gameplay_loop_cont: | $0682
     bra       main_gameplay_loop
 
 game_over_1_player: | $068B
-    bsr       clear_fg_to_transparent
-    bsr       fill_bg_with_forest
-    bsr       display_all_scores
-    bsr       display_game_over
+    jbsr       clear_fg_to_transparent
+    jbsr       fill_bg_with_forest
+    jbsr       display_all_scores
+    jbsr       display_game_over
     move.b    #128,(countdown_timer_1)          | init timer
     jbsr       save_PC_to_fn_tbl_and_ret
     subq.b    #1,(countdown_timer_1)
     beq.b     1f
     rts
-1:  bsr       wipe_game_over_player_1_2
+1:  jbsr       wipe_game_over_player_1_2
     tst.b     (curr_player)                     | player 1?
     beq       main_thread_main_loop             | yes, go
-    bsr       swap_curr_other_player
+    jbsr       swap_curr_other_player
     clr.b     (curr_player)                     | set player=1
     bra       main_thread_main_loop
 
@@ -693,17 +693,17 @@ display_player_start_msgs: | $077F
     move.w    #0x1217,d0                        | screen col,row
     moveq     #10,d7                            | 10 bytes to display
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1019,d0                        | screen col,row
     movea.l   #strREADY,a0
     moveq     #6,d7
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     movea.l   #strSOLVALOU_LEFT,a0
     move.w    #0x131B,d0                        | screen col,row
     moveq     #13,d7
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x151B,d0                        | screen col,row
     move.b    (curr_player_solvalou_left),d1
     jra       display_char                      | this was a jsr
@@ -714,12 +714,12 @@ wipe_player_start_msgs: | $07B7
     moveq     #10,d7                            | length
     moveq     #0x24,d1                          | tile
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x1019,d0                        | screen col,row
     moveq     #6,d7                             | length
     moveq     #0x24,d1                          | tile
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #16,d7                            | length
     move.w    #0x151B,d0                        | screen col,row
     moveq     #0x24,d1                          | tile
@@ -734,11 +734,11 @@ display_copyright_msgs: | $07DC
     lea       strCOPYRIGHT,a0
     moveq     #19,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1021,d0                        | screen col,row
     lea       strNAMCO,a0
     moveq     #7,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1021,d0                        | screen col,row
 	bra.b	1f
 0:
@@ -746,22 +746,22 @@ display_copyright_msgs: | $07DC
     lea       strCOPYRIGHTII,a0
     moveq     #17,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x151B,d0                        | screen col,row
     lea       strCOPYRIGHTIV,a0
     moveq     #17,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x161D,d0                        | screen col,row
     lea       strALLRIGHTSRESERVED,a0
     moveq     #19,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1020,d0                        | screen col,row
     lea       strNAMCO,a0
     moveq     #7,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1020,d0                        | screen col,row
 1:
 	* color "namco" logo
@@ -776,7 +776,7 @@ display_credits: | $0801
     lea       strCREDIT,a0
     moveq     #6,d7                             | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     sub.w     #0x0100,d0                        | skip column
     move.b    (num_credits),d1                  | BCD
     lsr.b     #4,d1
@@ -830,10 +830,10 @@ wipe_game_over_player_1_2: | $0849
     moveq     #9,d7
     moveq     #BANK_FG_VIDEORAM,d2
     move.b    #0x24,d1                          | space
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x121A,d0                        | screen col,row
     moveq     #10,d7
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
 
 display_game_over: | $085D
     move.w    #0x1118,d0                        | screen col,row
@@ -843,7 +843,7 @@ display_game_over: | $085D
     bra       display_string
 
 display_game_over_player_1_2: | $086A
-    bsr       display_game_over
+    jbsr       display_game_over
     moveq     #0,d0
     move.b    (curr_player),d0
     lea       player_1_2_str_tbl,a0
@@ -891,38 +891,38 @@ wipe_insert_coin: | $089E
 display_xevious_logo_flashing: | $08AA
 	tst.b	is_super_xevious
 	beq.b	0f
-    bsr       display_SUPER
+    jbsr       display_SUPER
 0:
     move.w    #4,(bg_scroll_x_shadow)
     moveq     #BANK_BG_VIDEORAM,d2
     move.w    #0x1509,d0                        | screen col,row
     lea       xevious_logo_flashing_pt1,a0
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x160A,d0                        | screen col,row
     lea       xevious_logo_flashing_pt2,a0
     moveq     #19,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x150B,d0                        | screen col,row
     lea       xevious_logo_flashing_pt3,a0
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x160C,d0                        | screen col,row
     lea       xevious_logo_flashing_pt4,a0
     moveq     #19,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x170D,d0                        | screen col,row
     lea       xevious_logo_flashing_pt5,a0
     moveq     #20,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x170E,d0                        | screen col,row
     lea       xevious_logo_flashing_pt6,a0
     moveq     #19,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x170F,d0                        | screen col,row
     lea       xevious_logo_flashing_pt7,a0
     moveq     #17,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1510,d0                        | screen col,row
     move.w    #0xf9,d1                          | tile
     jbsr       display_char
@@ -930,36 +930,36 @@ display_xevious_logo_flashing: | $08AA
     move.w    #0x1509,d0                        | screen col,row
     moveq     #0x0D,d1                          | attr
     moveq     #18,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x160A,d0                        | screen col,row
     moveq     #0x0d,d1                          | attr
     moveq     #19,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x150B,d0                        | screen col,row
     moveq     #0x11,d1                          | attr
     moveq     #2,d7                             | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x15,d1                          | attr
     moveq     #15,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x11,d1                          | attr
     jbsr       display_char
     move.w    #0x160C,d0                        | screen col,row
     moveq     #0x13,d1                          | attr
     moveq     #2,d7                             | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x17,d1                          | attr
     moveq     #16,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x13,d1                          | attr
     jbsr       display_char
     move.w    #0x170D,d0                        | screen col,row
     moveq     #0x13,d1                          | attr
     moveq     #2,d7                             | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x17,d1                          | attr
     moveq     #16,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x0f,d1                          | attr
     jbsr       display_char
     moveq     #0x13,d1                          | attr
@@ -969,18 +969,18 @@ display_xevious_logo_flashing: | $08AA
     jbsr       display_char
     moveq     #0x19,d1                          | attr
     moveq     #17,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x18,d1                          | attr
     jbsr       display_char
     move.w    #0x170F,d0                        | screen col,row
     moveq     #0x18,d1                          | attr
     moveq     #2,d7                             | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     moveq     #0x19,d1                          | attr
     jbsr       display_char
     moveq     #0x18,d1                          | attr
     moveq     #14,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x1510,d0                        | screen col,row
     moveq     #0x18,d1                          | attr
     jbsr       display_char
@@ -988,32 +988,32 @@ display_xevious_logo_flashing: | $08AA
     move.w    #0x150B,d0                        | screen col,row
     lea       xevious_logo_flashing_pt8,a0
     moveq     #17,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x130C,d0                        | screen col,row
     lea       xevious_logo_flashing_pt9,a0
     moveq     #14,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x140D,d0                        | screen col,row
     lea       xevious_logo_flashing_pt10,a0
     moveq     #16,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x150E,d0                        | screen col,row
     lea       xevious_logo_flashing_pt11,a0
     moveq     #16,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     moveq     #0x1A,d1                          | red
     
 set_colour_xevious_flashing_logo:
     moveq     #BANK_FG_COLORRAM,d2
     move.w    #0x150B,d0                        | screen col,row
     moveq     #17,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x130C,d0                        | screen col,row
     moveq     #14,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x140D,d0                        | screen col,row
     moveq     #16,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x150E,d0                        | screen col,row
     moveq     #16,d7                            | string length
     bra       display_char_B_times
@@ -1024,7 +1024,7 @@ display_SUPER:
     lea       strSUPER,a0
     moveq     #BANK_FG_VIDEORAM,d2
     moveq     #5,d7
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1609,d0                        | screen col,row
     moveq     #BANK_FG_COLORRAM,d2
     moveq     #5,d7
@@ -1036,50 +1036,50 @@ strSUPER:
 display_xevious_logo_yellow: | $09E8
 	tst.b	is_super_xevious
 	beq.b	0f
-    bsr       display_SUPER
+    jbsr       display_SUPER
 0:
     moveq     #BANK_FG_VIDEORAM,d2
     move.w    #0x160A,d0                        | screen col,row
     lea       xevious_logo_yellow_pt1,a0
     moveq     #19,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x150B,d0                        | screen col,row
     lea       xevious_logo_yellow_pt2,a0
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x150C,d0                        | screen col,row
     lea       xevious_logo_yellow_pt3,a0
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x160D,d0                        | screen col,row
     lea       xevious_logo_yellow_pt4,a0
     moveq     #19,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x170E,d0                        | screen col,row
     lea       xevious_logo_yellow_pt5,a0
     moveq     #20,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x170F,d0                        | screen col,row
     lea       xevious_logo_yellow_pt6,a0
     moveq     #13,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     moveq     #0x1B,d1                          | yellow
     move.w    #0x160A,d0                        | screen col,row
     moveq     #BANK_FG_COLORRAM,d2
     moveq     #19,d7                            | string length
-    bsr       display_char_B_times    
+    jbsr       display_char_B_times    
     move.w    #0x150B,d0                        | screen col,row
     moveq     #18,d7                            | string length
-    bsr       display_char_B_times    
+    jbsr       display_char_B_times    
     move.w    #0x150C,d0                        | screen col,row
     moveq     #18,d7                            | string length
-    bsr       display_char_B_times    
+    jbsr       display_char_B_times    
     move.w    #0x160D,d0                        | screen col,row
     moveq     #19,d7                            | string length
-    bsr       display_char_B_times    
+    jbsr       display_char_B_times    
     move.w    #0x170E,d0                        | screen col,row
     move.q    #20,d7                            | string length
-    bsr       display_char_B_times    
+    jbsr       display_char_B_times    
     move.w    #0x170F,d0                        | screen col,row
     move.q    #13,d7                            | string length
     bra       display_char_B_times    
@@ -1215,11 +1215,11 @@ attract_mode_jump_tbl: | $0C40
     .long     attract_mode_high_score_table
 
 attract_mode_title_screen: | $0C48
-    bsr       clear_bg_to_black
-    bsr       clear_fg_to_transparent
-    bsr       display_copyright_msgs
-    bsr       display_all_scores
-    bsr       display_xevious_logo_flashing
+    jbsr       clear_bg_to_black
+    jbsr       clear_fg_to_transparent
+    jbsr       display_copyright_msgs
+    jbsr       display_all_scores
+    jbsr       display_xevious_logo_flashing
     move.b    #0x40,(countdown_timer_1)
     SET_REENTRY_ADDR_HERE
     subq.b    #1,(countdown_timer_1)            | timer expired?
@@ -1286,11 +1286,11 @@ animate_flashing_logo: | $0CF5
     and.w     #7,d0                             | use timer for colour index
     lea       xevious_flashing_logo_colour_tbl,a0
     move.b    (d0.w,a0),d1                      | get colour
-    bsr       set_colour_xevious_flashing_logo
+    jbsr       set_colour_xevious_flashing_logo
     bra       flash_insert_coin_and_check_credits
 
 exit_attract_mode_title_screen: | $0D21
-    bsr       zero_obj_state_tbl
+    jbsr       zero_obj_state_tbl
     move.w    #3,(attract_mode_stage)
     SET_REENTRY_ADDR attract_mode_main_loop
     bra       flash_insert_coin_and_check_credits
@@ -1312,11 +1312,11 @@ attract_mode_gameplay: | $0D35
     .else
     move.l    (a0,d0.w*4),(area_obj_ptr)          | init area object ptr
     .endif
-    bsr       clear_fg_to_transparent
-    bsr       fill_bg_with_forest
-    bsr       display_all_scores
-    bsr       display_copyright_msgs
-    bsr       display_xevious_logo_yellow
+    jbsr       clear_fg_to_transparent
+    jbsr       fill_bg_with_forest
+    jbsr       display_all_scores
+    jbsr       display_copyright_msgs
+    jbsr       display_xevious_logo_yellow
     clr.b     (num_flying_enemies)
     clr.b     (flying_enemy_type_tbl_offset)
     clr.b     (num_bacura)
@@ -1328,13 +1328,13 @@ attract_mode_gameplay: | $0D35
     bra       flash_insert_coin_and_check_credits
 
 exit_attract_mode_gameplay: | $0D8C
-    bsr       zero_obj_state_tbl
+    jbsr       zero_obj_state_tbl
     addq.w    #1,(attract_mode_stage)           | next stage
     SET_REENTRY_ADDR attract_mode_main_loop
     bra       flash_insert_coin_and_check_credits
     
 attract_mode_high_score_table: | $0DA2
-    bsr       flash_logo_and_high_score_table
+    jbsr       flash_logo_and_high_score_table
     move.b    #0x40,(countdown_timer_1)         | init timer
     SET_REENTRY_ADDR_HERE
     move.b    (countup_timer_1),d0
@@ -1350,8 +1350,8 @@ exit_attract_mode_high_score_table: | $0DC4
     bra       flash_insert_coin_and_check_credits
 
 display_all_scores: | $0DD5
-    bsr       display_high_score
-    bsr       display_player_scores
+    jbsr       display_high_score
+    jbsr       display_player_scores
     bra       display_high_score_text
 
 * *** UNUSED CODE $0DDE-$E22
@@ -1379,7 +1379,7 @@ calc_dX_dY_ratio: | $0E23
 * d0=xdiff, d1=ydiff, ret: d2=index
 get_index_for_angle: | $0EB2
     movem.l   d0-d1,-(a7)
-    bsr       get_index_for_quadrant_angle
+    jbsr       get_index_for_quadrant_angle
     movem.l   (a7)+,d0-d1
     btst.b    #7,d0                             | xdiff -ve?
     beq.b     1f                                | no, skip
@@ -1402,7 +1402,7 @@ get_index_for_quadrant_angle: | $0CE4
     bcs.b     swap_for_large_small
     
 get_index_for_abs_angle: | $0ECD
-    bsr       calc_dX_dY_ratio
+    jbsr       calc_dX_dY_ratio
     lsr.w     #3,d1
     lea       octant_angle_tbl,a3               | base address
     move.b    (a3,d1.w),d2                      | get_entry
@@ -1410,7 +1410,7 @@ get_index_for_abs_angle: | $0ECD
 
 swap_for_large_small: | $0EDE
     exg       d0,d1
-    bsr       get_index_for_abs_angle
+    jbsr       get_index_for_abs_angle
     not.b     d2
     add.b     #0x41,d2
     rts
@@ -1452,7 +1452,7 @@ display_solvalou_left: | $0F68
     move.w    #0x1B23,d0                        | screen col,row
     movem.w   d0/d7,-(a7)
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     movem.w   (a7)+,d0/d7
     moveq     #BANK_FG_COLORRAM,d2
     moveq     #0x2A,d1                          | colour
@@ -1463,19 +1463,19 @@ display_solvalou_left: | $0F68
 * *** padding for ROM device #1 (xvi_1.3p)
   
 flash_logo_and_high_score_table: | $1000
-    bsr       clear_fg_to_transparent
-    bsr       clear_bg_to_black
-    bsr       display_xevious_logo_flashing
+    jbsr       clear_fg_to_transparent
+    jbsr       clear_bg_to_black
+    jbsr       display_xevious_logo_flashing
     bra.s     display_high_score_table
 
 cls_display_high_score_table: | $100B
-    bsr       clear_fg_to_transparent
-    bsr       fill_bg_with_forest
+    jbsr       clear_fg_to_transparent
+    jbsr       fill_bg_with_forest
 
 display_high_score_table: | $1011
-    bsr       display_player_scores
-    bsr       display_high_score_text
-    bsr       display_high_score
+    jbsr       display_player_scores
+    jbsr       display_high_score_text
+    jbsr       display_high_score
     move.w    #0x1615,d0                        | screen col,row
     lea       strBest_Five_WARRIORS,a0
 	tst.b	is_super_xevious
@@ -1484,58 +1484,58 @@ display_high_score_table: | $1011
 0:
     moveq     #BANK_FG_VIDEORAM,d2
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1918,d0                        | screen col,row
     lea       str1st,a0
     moveq     #3,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1418,d0                        | screen col,row
     lea       high_score_1st_msb,a0
-    bsr       display_score
+    jbsr       display_score
     move.w    #0x0B18,d0                        | screen col,row
     lea       high_score_1st_name,a0
     moveq     #10,d7
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x191A,d0                        | screen col,row
     lea       str2nd,a0
     moveq     #3,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x141A,d0                        | screen col,row
     lea       high_score_2nd_msb,a0
-    bsr       display_score
+    jbsr       display_score
     move.w    #0x0B1A,d0                        | screen col,row
     lea       high_score_2nd_name,a0
     moveq     #10,d7
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x191C,d0                        | screen col,row
     lea       str3rd,a0
     moveq     #3,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x141C,d0                        | screen col,row
     lea       high_score_3rd_msb,a0
-    bsr       display_score
+    jbsr       display_score
     move.w    #0x0B1C,d0                        | screen col,row
     lea       high_score_3rd_name,a0
     moveq     #10,d7
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x191E,d0                        | screen col,row
     lea       str4th,a0
     moveq     #3,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x141E,d0                        | screen col,row
     lea       high_score_4th_msb,a0
-    bsr       display_score
+    jbsr       display_score
     move.w    #0x0B1E,d0                        | screen col,row
     lea       high_score_4th_name,a0
     moveq     #10,d7
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1920,d0                        | screen col,row
     lea       str5th,a0
     moveq     #3,d7                             | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1420,d0                        | screen col,row
     lea       high_score_5th_msb,a0
-    bsr       display_score
+    jbsr       display_score
     move.w    #0x0B20,d0                        | screen col,row
     lea       high_score_5th_name,a0
     moveq     #10,d7
@@ -1677,8 +1677,8 @@ score_lower_than_entry: | $1191
     moveq     #16-1,d7                          | 16 bytes to copy
 4:  move.b    (a0)+,(a1)+                       | copy new entry to table
     dbf       d7,4b
-    bsr       cls_display_high_score_table
-    bsr       display_high_score_entry_screen
+    jbsr       cls_display_high_score_table
+    jbsr       display_high_score_entry_screen
     move.w    #0x1900,d0                        | screen col
     moveq     #0,d1
     move.b    (new_high_score_entry_index),d1
@@ -1688,7 +1688,7 @@ score_lower_than_entry: | $1191
     moveq     #24,d7                            | 24 chars to fill
     moveq     #BANK_FG_COLORRAM,d2
     moveq     #0x1B,d1                          | attrib
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     and.w     #0x00ff,d0                        | screen row
     or.w      #0x0b00,d0                        | screen col
     move.w    d0,d1                             | save a copy of offset
@@ -1714,7 +1714,7 @@ score_lower_than_entry: | $1191
     * = at least that's the way to get input to work
     btst.b    #4,(a0)                           | Button 1?        
     beq.b     name_entry_append_char            | yes, go
-    bsr       check_lowercase
+    jbsr       check_lowercase
     move.w    (name_entry_curr_char_screen_offset),d0
     moveq     #BANK_FG_VIDEORAM,d2
     jbsr       display_char
@@ -1744,7 +1744,7 @@ name_entry_dec_char: | $123D
 9:  rts
 
 name_entry_append_char: | $124A
-    bsr.b     check_lowercase
+    jbsr     check_lowercase
     move.b    d1,(a0)+                          | store new char
     move.l    a0,(name_entry_ptr_curr_char)     | save ptr
     move.w    (name_entry_curr_char_screen_offset),d0
@@ -1797,16 +1797,16 @@ display_high_score_entry_screen: | $12A1
     lea       strCONGRATULATIONS,a0
     moveq     #BANK_FG_VIDEORAM,d2
     moveq     #16,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x160C,d0                        | screen col,row
     lea       strENTER_YOUR_INITIAL,a0
     moveq     #18,d7                            | string length
-    bsr       display_string
+    jbsr       display_string
     moveq     #BANK_FG_COLORRAM,d2
     move.w    #0x1509,d0                        | screen col,row
     moveq     #0x1a,d1                          | attr
     moveq     #16,d7                            | string length
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x160C,d0                        | screen col,row
     moveq     #18,d7                            | string length
     bra       display_char_B_times
@@ -1823,7 +1823,7 @@ display_high_score_text: | $12EF
     lea       strHIGH_SCORE,a0
     moveq     #10,d7                            | string length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1200,d0                        | screen col,row
     moveq     #10,d7                            | string length
     moveq     #0x1f,d1                          | attr
@@ -1894,7 +1894,7 @@ display_player_scores: | $1427
     exg       d0,d3                             | use P2 offset
 1:  move.w    d3,-(a7)                          | save other offset
     lea       curr_player_score_msb,a0
-    bsr.b     display_score
+    jbsr     display_score
     move.w    (a7)+,d0                          | restore other offset
     tst.b     (two_player_game)                 | 2P game?
     beq       display_7_spaces                  | no, skip
@@ -1905,7 +1905,7 @@ display_player_scores: | $1427
 display_score: | $1447
     moveq     #3-1,d7                           | bytes in score
     moveq     #5,d6                             | pad bytes
-    bsr.b     display_bcd_value
+    jbsr     display_bcd_value
     clr.b     d1
 * fall thru to display a trailing zero
         
@@ -1913,7 +1913,7 @@ display_score: | $1447
 * col is updated
 display_char: | $144F
     movem.l   d0/d2/a0,-(a7)
-    bsr       calc_screen_addr
+    jbsr       calc_screen_addr
     *** lookup osd routine based on bank
     *** - can this be optimised?
     movea.l   (osd_w_video_bank_tbl,pc,d2.w),a0
@@ -2010,10 +2010,10 @@ main_fn_1__handle_solvalou: | $14BB
     jsr       osd_sound_start
 
 update_solvalou: | $14F7
-    bsr       handle_solvalou_inputs
-    bsr       update_solvalou_sprite_XY
-    bsr       handle_crosshairs                 | colour and position
-    bsr       check_solvalou_hit
+    jbsr       handle_solvalou_inputs
+    jbsr       update_solvalou_sprite_XY
+    jbsr       handle_crosshairs                 | colour and position
+    jbsr       check_solvalou_hit
     * player hit
 .ifeq OPT_INVINCIBLE
     bcc       9f
@@ -2054,13 +2054,13 @@ explode_solvalou: | $151C
     beq.b     finish_solvalou_exploding         | yes, go
     cmp.b     #2,d0                             | time to adjust sprite size?
     bne.b     1f                                | no, skip
-    bsr.w     adj_for_small_explosion_frame
+    jbsr     adj_for_small_explosion_frame
 1:  cmp.b     #4,d0
     bne.b     2f
-    bsr.w     adj_for_big_explosion_frame
+    jbsr     adj_for_big_explosion_frame
 2:  cmp.b     #6,d0
     bne.b     3f
-    bsr.w     adj_for_small_explosion_frame
+    jbsr     adj_for_small_explosion_frame
 3:  add.b     #0x30,d0                          | calc colour
     move.b    d0,(_COLOUR,a5)
     
@@ -2158,7 +2158,7 @@ gen_rnd_dir: | $1622
     and.b     #0x0f,d0
     beq.b     1f
     rts
-1:  bsr       pseudo_random_gen
+1:  jbsr       pseudo_random_gen
     and.w     #0x0f,d0
     cmp.b     #9,d0
     bcc.b     1b
@@ -2187,7 +2187,7 @@ check_solvalou_hit: | $1645
     lea       sprite_shadow_msb+2*0x27,a3       | 1st object sprite coords
     moveq     #25-1,d7                          | 19 bullets + 6 flying enemies
 check_bullets_and_flying: | $1655
-    bsr.b     check_bullet_or_flying_hit_solvalou
+    jbsr     check_bullet_or_flying_hit_solvalou
     bcs.b     9f
     lea       (_OBJSIZE,a1),a1                  | next object
     addq.l    #2,a3                             | next sprite coords
@@ -2197,7 +2197,7 @@ check_bullets_and_flying: | $1655
     lea       sprite_shadow_msb+2*0x10,a3       | 1st bacura sprite coords
     moveq     #16-1,d7                          | 16 bacura
 check_bacura: | $1665
-    bsr.b     check_bacura_hit_solvalou
+    jbsr     check_bacura_hit_solvalou
     bcs.b     9f
     lea       (_OBJSIZE,a1),a1                  | next object
     addq.l    #2,a3                             | next sprite coords
@@ -2252,7 +2252,7 @@ handle_crosshairs: | $16B8
     lea       sprite_shadow_msb+2*0x02,a3
     lea       obj_tbl+_OBJSIZE*0x02,a5          | ground_based objects
     moveq     #14-1,d7                          | 14 objects to check
-2:  bsr.b     check_targeted_ground_object
+2:  jbsr     check_targeted_ground_object
     bcs.b     set_active_crosshair_colour
     addq.l    #2,a3
     lea       (_OBJSIZE,a5),a5                  | next object
@@ -2314,7 +2314,7 @@ main_fn_30__handle_shooting: | $1727
     bne.b     main_fn_30__handle_shooting       | yes, exit
     tst.b     (solvalou_exploding)
     bne.b     2f                                | yes, skip shooting
-    bsr.b     handle_shooting
+    jbsr     handle_shooting
 2:  movea.l   #main_30_fn_tbl,a6
     lea       obj_tbl+_OBJSIZE*0x24,a5          | 1st bullet object
     lea       sprite_shadow_msb+2*0x24,a3
@@ -2349,7 +2349,7 @@ process_button_1:
 9:  rts
 
 gen_rnd_shot: | $179B
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.w     #0x0f,d0                          | 1/16 chance of firing
     bra.b     loc_1787                          | continue
         
@@ -2370,7 +2370,7 @@ main_fn_30_shot_fn: | $17A2
     move.w    (_Y,a0),(_Y,a5)                   | copy spriteY to shot
     jbsr       save_PC_to_fn_tbl_and_ret
 * update shot
-    bsr       check_flying_enemies_shot
+    jbsr       check_flying_enemies_shot
     move.b    (countup_timer_1),d0
     move.b    d0,d1                             | save a copy
     and.b     #1,d1
@@ -2388,7 +2388,7 @@ main_fn_30_shot_fn: | $17A2
     move.b    d0,(_CODE,a5)
     cmp.b     #3,(_STATE,a5)                    | destroyed?
     beq.b     shot_destroyed                    | yes, go
-    bsr.b     move_shot
+    jbsr     move_shot
     cmp.w     #0x2800,d0                        | (MSB=40) off-screen?
     bcs.b     9f                                | no, return
 delete_shot:
@@ -2424,7 +2424,7 @@ move_shot: | $184B
     rts
     
 gen_random_bomb_press: | $185B
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     bne.b     9f
     bra.b     init_bombing
 9:  rts
@@ -2494,7 +2494,7 @@ init_bombing: | $188C
     neg.w     d0
     add.w     d0,d0
     add.w     d0,(_X,a0)                        | scroll bomb target
-    bsr.b     check_bomb_finished
+    jbsr     check_bomb_finished
     bcs.b     9f
     bra.w     main_fn_31__handle_bombing
 9:  rts
@@ -2508,7 +2508,7 @@ check_bomb_finished: | $190B
     moveq     #BOMB_SND,d0
     jsr       osd_sound_stop
     * $A020 as well
-    bsr       handle_bombed_obj_and_award_points
+    jbsr       handle_bombed_obj_and_award_points
     clr.b     (_STATE,a1)                       | bomb object
     clr.b     (_STATE,a0)                       | bomb target
 9:  rts
@@ -2520,7 +2520,7 @@ check_flying_enemies_shot: | $1928
     lea       obj_tbl+_OBJSIZE*0x3a,a1          | 1st flying enemy
     lea       sprite_shadow_msb+2*0x3a,a3
     moveq     #6-1,d7                           | 6 enemies to check
-1:  bsr.b     check_shot_hit_flying_enemy
+1:  jbsr     check_shot_hit_flying_enemy
     bcc.b     loc_1972
     move.b    #3,(_STATE,a1)                    | enemy hit
     clr.b     (_EXTRA,a5)                       | flag shot to be destroyed
@@ -2532,7 +2532,7 @@ check_flying_enemies_shot: | $1928
     lea       (a0,d0.w),a0                      | address of points value
     *** do we really need to push a3?
     movem.l   d7/a1/a3,-(a7) 
-    bsr       add_to_score
+    jbsr       add_to_score
     movem.l   (a7)+,d7/a1/a3
     moveq     #FLYING_ENEMY_HIT_SND,d0
     jsr       osd_sound_start
@@ -2547,7 +2547,7 @@ loc_1972: | 1972
     lea       obj_tbl+_OBJSIZE*0x10,a1          | 1st bacura
     lea       sprite_shadow_msb+2*0x10,a3
     moveq     #16-1,d7                          | 16 bacura to check
-2:  bsr.b     check_shot_hit_bacura
+2:  jbsr     check_shot_hit_bacura
     bcs.b     deactivate_shot
     lea       (_OBJSIZE,a1),a1                  | next bacura
     addq.l    #2,a3
@@ -2601,7 +2601,7 @@ handle_bombed_obj_and_award_points: | $19EE
     lea       obj_tbl,a1
     lea       sprite_shadow_msb,a3
     moveq     #16-1,d7                          | 16 objects to check
-1:  bsr.b     check_object_on_target            | on target?
+1:  jbsr     check_object_on_target            | on target?
     bcc.b     loc_1A2C                          | no, skip  
     move.b    #3,(_STATE,a1)                    | state=hit
     tst.w     (attract_mode_stage)              | attract mode?
@@ -2611,7 +2611,7 @@ handle_bombed_obj_and_award_points: | $19EE
     lea       object_value_tbl,a0
     lea       (a0,d0.w),a0                      | get entry for points
     movem.l   d3/d4/d7/a0/a1/a3,-(a7) 
-    bsr       add_to_score
+    jbsr       add_to_score
     moveq     #GROUND_EXPLOSION_SND,d0
     jsr       osd_sound_start
     movem.l   (a7)+,d3/d4/d7/a0/a1/a3
@@ -2650,7 +2650,7 @@ handle_1E_Barra: | $1A60
     jbsr       save_PC_to_fn_tbl_and_ret
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       handle_bomb_explosion
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 * Garu Barra (Big) 300 pts
@@ -2671,14 +2671,14 @@ handle_20_Garu_Barra: | $1A89
     move.l    #garu_barra_handler,(4,a6)        | patch handler for next object
     SET_REENTRY_ADDR_HERE
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 * centre of Garu Barra
 garu_barra_handler: | $1ADD
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       explode_and_remove_object         | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
         
 * Zolbak (Detector Dome / Skylight) 200 pts
@@ -2692,7 +2692,7 @@ handle_1F_Zolbak: | $1AF0
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     reduce_enemy_ai_by_2
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 reduce_enemy_ai_by_2: | $1B1F
@@ -2724,7 +2724,7 @@ handle_logram_init: | $1B49
     clr.b     (_ATTR,a5)                        | size=0
     move.b    #0x2c,(_CODE,a5)
     move.b    #27,(_PTS,a5)                     | 300 pts
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init timer
@@ -2748,7 +2748,7 @@ handle_logram_main: | $1B64
     move.b    (_TIMER,a5),d0
     cmp.b     #0x0c,d0                          | time to fire?
     bne.b     1f                                | no, skip
-    bsr.w     init_new_bullet
+    jbsr     init_new_bullet
     move.b    (_TIMER,a5),d0
 1:  lsr.b     #2,d0
     and.w     #7,d0
@@ -2759,11 +2759,11 @@ handle_logram_main: | $1B64
 
 set_logram_colour: | $1BB9
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 start_logram_shot_timer: | $1BC9
-    bsr       pseudo_random_gen                 | gen shot timer
+    jbsr       pseudo_random_gen                 | gen shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)
@@ -2774,7 +2774,7 @@ handle_logram_exit: | $1BDC
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       handle_bomb_explosion             | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 | sprite codes for when firing
@@ -2801,7 +2801,7 @@ init_derota: | $1C1C
     clr.b     (_ATTR,a5)                        | size=1x1
     move.b    #0x27,(_CODE,a5)
     move.b    #48,(_PTS,a5)                     | 1,000 pts
-    bsr       pseudo_random_gen                 | gen shot timer
+    jbsr       pseudo_random_gen                 | gen shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init timer
@@ -2812,9 +2812,9 @@ init_derota: | $1C1C
     move.b    (gnd_stop_firing_row),d1
     cmp.b     d0,d1                             | stop firing?
     bcs.b     1f                                | yes, skip
-    bsr       chk_timer_fire_bullet_reinit_timer    | no
+    jbsr       chk_timer_fire_bullet_reinit_timer    | no
 1:  move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 * Garu Derota (Daiza) 2,000 pts
@@ -2832,7 +2832,7 @@ handle_21_Garu_Derota: | $1C61
     move.b    #54,(_PTS,a5,d5.w)                | 2,000 pts
     move.b    #0x44,(_CODE,a5)                  | 1st object
     move.b    (ffreq_mask_derota),(_FFREQ,a5,d5.w)
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5,d5.w),d0               | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5,d5.w)               | init timer
@@ -2840,15 +2840,15 @@ handle_21_Garu_Derota: | $1C61
     move.l    a0,(4,a6)                         | patch handler next object
     SET_REENTRY_ADDR_HERE
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler   
 
 garu_derota_handler: | $1CBE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       explode_and_remove_object         | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler   
     
 * Boza Logram (Dome Array) 2,000 pts
@@ -2925,7 +2925,7 @@ handle_boza_logram_centre: | $1D5B
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     destroy_all_outer_lograms         | yes, go
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
     
 destroy_all_outer_lograms: | $1D8A
@@ -2945,7 +2945,7 @@ handle_boza_logram_outer: | $1D9E
     move.b    #0x2c,(_CODE,a5)
     move.b    #27,(_PTS,a5)                     | 300 pts
     move.b    (ffreq_mask_boza_logram),(_FFREQ,a5)
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -2969,7 +2969,7 @@ boza_logram_outer_main: | $1DBB
     move.b    (_TIMER,a5),d0
     cmp.b     #0x0c,d0                          | time to shoot?
     bne.b     1f                                | no, skip
-    bsr       init_new_bullet
+    jbsr       init_new_bullet
     move.b    (_TIMER,a5),d0
 1:  lsr.b     #2,d0
     and.b     #7,d0
@@ -2980,7 +2980,7 @@ boza_logram_outer_main: | $1DBB
 
 pulse_boza_logram_outer: | $1E0E
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 update_centre_points_value: | $1E1E
@@ -2989,7 +2989,7 @@ update_centre_points_value: | $1E1E
     bra       handle_bomb_explosion
 
 boza_logram_init_shot_timer: | $1E2B
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -3000,7 +3000,7 @@ boza_logram_outer_idle: | $1E3E
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     update_centre_points_value
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 boza_logram_outer_sprite_tbl: | $1E5A
@@ -3034,7 +3034,7 @@ handle_1D_Sol_Tower: | $1E61
     jbsr       save_PC_to_fn_tbl_and_ret
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     handle_sol_tower_rising           | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 handle_sol_tower_rising: | $1E85
@@ -3052,7 +3052,7 @@ handle_sol_tower_rising: | $1E85
 1:  lea       sol_tower_animation_tbl,a0
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 sol_tower_risen: | $1EC8
@@ -3061,7 +3061,7 @@ sol_tower_risen: | $1EC8
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       handle_bomb_explosion             | yes, go
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
     
 * these are sprite codes for the Sol Tower as it rises
@@ -3117,7 +3117,7 @@ brag_spario_update_ddX: | $1F23
     and.b     #0x0c,d0                          | flipy,flipx
     add.b     #0x80,d0                          | bank=1
     move.b    d0,(_ATTR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 brag_spario_ddX_sub_2: | $1F54
@@ -3131,7 +3131,7 @@ brag_spario_ddY_sub_2: | $1F58
 handle_54_Bonus_Flag: | $1F5C
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | size=1x1
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     clr.b     (_CODE,a5)                        | invisible
     move.b    #48,(_PTS,a5)                     | 1,000 pts
     SET_REENTRY_ADDR_HERE
@@ -3142,7 +3142,7 @@ handle_54_Bonus_Flag: | $1F5C
 	bne.b	reveal_bonus_flag
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     reveal_bonus_flag                 | yes, go   
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 reveal_bonus_flag: | $1F8D
@@ -3150,9 +3150,9 @@ reveal_bonus_flag: | $1F8D
     move.b    #0x0e,(_COLOUR,a5)
     move.b    #0x1f,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr.b     check_flag_collected
+    jbsr     check_flag_collected
     bcs.b     score_bonus_flag
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 score_bonus_flag: | $1FA8
@@ -3160,12 +3160,12 @@ score_bonus_flag: | $1FA8
     bne       inc_num_solvalou                  | yes, go
 score_10000_for_bonus_flag_tank: | $1ECF (super)
     lea       pts_10000,a0                      | 10,000 pts
-    bsr       add_to_score
+    jbsr       add_to_score
     bra.b     remove_bonus_flag
 
 inc_num_solvalou: | $1FB7
     addq.b    #1,(curr_player_solvalou_left)
-    bsr       display_solvalou_left
+    jbsr       display_solvalou_left
     ** fall thru
     
 remove_bonus_flag: | $1FC3
@@ -3191,14 +3191,14 @@ check_flag_collected: | $1FD6
 * Indestructible. Completely benign. What's the point?
 handle_5A_Jet:
     move.b    #3,(_STATE,a5)                    | indestructible
-    bsr       gen_random_Y_store_obj            | random Y coord
+    jbsr       gen_random_Y_store_obj            | random Y coord
     sub.b     #1,d0
     lsr.b     #2,d0
     and.w     #7,d0
     lea       jet_dydx_tbl,a2
     move.w    d0,d1                             | save for sprite calc
     move.w    d0,d2
-    bsr       cpy_dY_dX_to_obj                  | set dX,dY from table
+    jbsr       cpy_dY_dX_to_obj                  | set dX,dY from table
     lea       jet_sprite_tbl,a0
     add.w     d1,d1                             | table offset
     lea       (a0,d1.w),a0
@@ -3207,7 +3207,7 @@ handle_5A_Jet:
     move.b    #0,(_PTS,a5)                      | irrelevant
     move.b    #2,(_COLOUR,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 jet_sprite_tbl: 
     .byte 0xB, 0xEC
@@ -3249,11 +3249,11 @@ handle_5C_Tank:
     move.b    #0xf8,(_CODE,a5)
     move.b    #0,(_PTS,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       bomb_explode_and_zero_player_score    | yes, go
-    bsr       check_flag_collected
+    jbsr       check_flag_collected
     bcs       score_10000_for_bonus_flag_tank
-    bsr       scroll_sprite_X    
+    jbsr       scroll_sprite_X    
     bra       add_obj_handler
 * Bridge
 * - benign object to 'allow' Domograms to cross a river
@@ -3263,25 +3263,25 @@ handle_5D_Bridge:
     move.b    #2,(_COLOUR,a5)
     move.b    #0xfc,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 * Toroid (Fleet/Coin) 30 pts
 handle_0A_Toroid: | $2000
-    bsr.w     init_toroid
+    jbsr     init_toroid
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       is_close_to_solvalou_Y
+    jbsr       is_close_to_solvalou_Y
     bcs       toroid_toggle_dir                 | yes, go
     
 handle_toroid:
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Toroid (Fleet/Coin) 30 pts
 handle_0B_Toroid_shoots: | $2018
-    bsr.w     init_toroid
+    jbsr     init_toroid
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       is_close_to_solvalou_Y
+    jbsr       is_close_to_solvalou_Y
     bcs.b     init_toroid_shot                  | yes, go
     bra.b     handle_toroid
 
@@ -3302,7 +3302,7 @@ toroid_swing_right:
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     subq.w    #1,(_dY,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 toroid_swing_left: | $205F
@@ -3317,11 +3317,11 @@ toroid_swing_left: | $205F
     move.b    d0,(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     addq.w    #1,(_dY,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
     
 init_toroid_shot: | $2092
-    bsr       init_new_bullet
+    jbsr       init_new_bullet
     subq.b    #2,d0
     bcs.b     toroid_swing_left
     bra.w     toroid_swing_right
@@ -3332,9 +3332,9 @@ toroid_sprite_tbl: | $209F
 init_toroid: | $20A7
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | bank=0, size=1x1
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     lea       angle_dX_dY_toroid_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #6,(_PTS,a5)                      | 30 pts
     move.b    #8,(_CODE,a5)
     clr.b     (_TIMER,a5)                       | init timer
@@ -3357,12 +3357,12 @@ loc_20E2: | $20E2
 handle_0F_Torkan: | $20E7
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | size=1x1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #9,(_PTS,a5)                      | 50 pts
     move.b    #0x10,(_CODE,a5)
-    bsr       pseudo_random_gen                 | rnd shot timer
+    jbsr       pseudo_random_gen                 | rnd shot timer
     and.b     #0x3f,d0
     add.b     #0x40,d0
     move.b    d0,(_TIMER,a5)                    | init timer
@@ -3372,11 +3372,11 @@ handle_0F_Torkan: | $20E7
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     beq.b     torkan_shoot                      | yes, go
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY   
+    jbsr       move_object_dX_dY   
     bra       add_obj_handler
     
 torkan_shoot: | $2131
-    bsr       init_new_bullet
+    jbsr       init_new_bullet
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go
@@ -3389,7 +3389,7 @@ torkan_shoot: | $2131
     add.b     #0x10,d0
     move.b    d0,(_CODE,a5)                     | animate sprite
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       scroll_sprite_X        
+    jbsr       scroll_sprite_X        
     bra       add_obj_handler
 
 torkan_update_dir: | $2169
@@ -3398,15 +3398,15 @@ torkan_update_dir: | $2169
     sub.b     (_X,a5),d0                        | MSB
     move.b    (_Y,a1),d1                        | MSB
     sub.b     (_Y,a5),d1                        | MSB
-    bsr       get_index_for_angle
+    jbsr       get_index_for_angle
     lea       angle_dX_dY_terrazi_torkan_tbl,a2
     add.b     #0x80,d2
-    bsr       get_dX_dY_and_cpy_to_obj
+    jbsr       get_dX_dY_and_cpy_to_obj
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Zoshi (Octopus) 100 pts
@@ -3415,21 +3415,21 @@ handle_0E_Zoshi_bottom: | $21B1
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | bank=0,size=1x1
     move.b    #40,(_X,a5)                       | MSB
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     bra.b     zoshi_0D_init
 
 * Zoshi (Octopus) 100 pts
 handle_0D_Zoshi_top: | $21C4
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | bank=0,size=1x1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     
 zoshi_0D_init: | $21D3
     lea       angle_dX_dY_toroid_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #15,(_PTS,a5)                     | 100 pts
     move.b    (ffreq_mask_zoshi),(_FFREQ,a5)
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     d0,(_FFREQ,a5)                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -3441,13 +3441,13 @@ zoshi_0D_init: | $21D3
     bne.b     zoshi_0D_main                     | no, go
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     bne.b     zoshi_0D_main                     | no, go
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask  
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | re-init shot timer
     lea       angle_dX_dY_toroid_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
-    bsr       init_new_bullet
+    jbsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       init_new_bullet
     
 zoshi_0D_main: | $221E
     move.b    (countup_timer_1),d0
@@ -3455,7 +3455,7 @@ zoshi_0D_main: | $221E
     add.b     #0x28,d0                          | calc sprite code
     move.b    d0,(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Zoshi (Octopus) 70 pts
@@ -3463,12 +3463,12 @@ zoshi_0D_main: | $221E
 handle_0C_Zoshi_rnd: | $2235
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | bank=0, size=1x1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     lea       angle_dX_dY_toroid_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #12,(_PTS,a5)                     | 70 pts
     move.b    (ffreq_mask_zoshi),(_FFREQ,a5)
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -3480,14 +3480,14 @@ handle_0C_Zoshi_rnd: | $2235
     bne       zoshi_0C_main
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     bne       zoshi_0C_main                     | no, go
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask  
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | re-init shot timer
-    bsr       pseudo_random_gen                 | rand shot direction
+    jbsr       pseudo_random_gen                 | rand shot direction
     lea       angle_dX_dY_toroid_tbl,a2
-    bsr       get_dX_dY_and_cpy_to_obj
-    bsr       init_new_bullet
+    jbsr       get_dX_dY_and_cpy_to_obj
+    jbsr       init_new_bullet
     
 zoshi_0C_main: | $2294
     move.b    (countup_timer_1),d0
@@ -3495,19 +3495,19 @@ zoshi_0C_main: | $2294
     add.b     #0x28,d0                          | calc sprite code
     move.b    d0,(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
       
 * Jara (Spinner) 150 pts
 handle_56_Jara: | $22AC
-    bsr.w     jara_init
+    jbsr     jara_init
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr.w     jara_check_proximity              | close to solvalou?
+    jbsr     jara_check_proximity              | close to solvalou?
     bcs.b     jara_set_dir                      | yes, go
     
 jara_set_clr_and_move: | $22B5
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY    
+    jbsr       move_object_dX_dY    
     bra       add_obj_handler
 
 jara_set_dir: | $22C4
@@ -3530,20 +3530,20 @@ jara_moving_right: | $22C8
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     subq.w    #1,(_dY,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Jara (Spinner) 150 pts
 handle_55_Jara_shoots: | $2306
-    bsr.b     jara_init
+    jbsr     jara_init
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr.w     jara_check_proximity              | close to solvalou?
+    jbsr     jara_check_proximity              | close to solvalou?
     bcs.b     jara_shoot                        | yes, go
     bra.b     jara_set_clr_and_move
     
 jara_shoot: | $2311
     move.l    d0,-(a7)
-    bsr       init_new_bullet
+    jbsr       init_new_bullet
     move.l    (a7)+,d0
     subq.b    #6,d0
     bcs.b     jara_moving_left
@@ -3565,7 +3565,7 @@ jara_moving_left: | $231E
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     addq.w    #1,(_dY,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
     
 jara_right_sprite_tbl: | $235C
@@ -3577,9 +3577,9 @@ jara_left_sprite_tbl: | $2362
 jara_init: | $2368
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | bank=0, size=1x1
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     lea       angle_dX_dY_terrazi_torkan_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #18,(_PTS,a5)                     | 150 pts
     move.b    #0xa0,(_CODE,a5)
     clr.b     (_TIMER,a5)                       | init anim timer
@@ -3602,12 +3602,12 @@ jara_hit: | $23A3
 handle_10_Kapi: | $23A8
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | size=1x1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #27,(_PTS,a5)                     | 300 pts
     move.b    #0x20,(_CODE,a5)
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     add.b     #63,d0
     add.b     #48,d0                            | 48-111
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -3618,7 +3618,7 @@ handle_10_Kapi: | $23A8
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     beq.b     kapi_10_fire                      | yes, g0
     move.b    (pulsing_colour_1),(_COLOUR,a5)   
-    bsr       move_object_dX_dY   
+    jbsr       move_object_dX_dY   
     bra       add_obj_handler
 
 kapi_10_fire: | $23F7
@@ -3631,11 +3631,11 @@ kapi_10_fire: | $23F7
     move.w     #-1,d1                           | ddY=-1
 1:  move.w    d1,(_ddY,a5)
     move.b    #1,(_TIMER,a5)
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)
     beq       flying_enemy_hit
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     addq.b    #1,(_TIMER1,a5)
     move.b    (_TIMER1,a5),d0
     lsr.b     #3,d0
@@ -3648,32 +3648,32 @@ kapi_10_fire: | $23F7
     move.w    (_ddY,a5),d0
     add.w     d0,(_dY,a5)                       | update dY
     subq.w    #2,(_dX,a5)
-    bsr       move_object_dX_dY   
+    jbsr       move_object_dX_dY   
     bra       add_obj_handler
 
 loc_2455: | $2455
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     move.w    (_ddY,a5),d0
     add.w     d0,(_dY,a5)                       | update dY
     subq.w    #2,(_dX,a5)
-    bsr       move_object_dX_dY   
+    jbsr       move_object_dX_dY   
     bra       add_obj_handler
 
 * Terrazi (Limuroid), 700 pts    
 handle_11_Terrazi: | $2487
     move.b    #2,(_STATE,a5)
     clr.b     (_ATTR,a5)                        | size=1x1
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     lea       angle_dX_dY_terrazi_torkan_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #39,(_PTS,a5)                     | 700 pts
     move.b    #0x01,(_CODE,a5)
     move.b    (ffreq_mask_terrazi),(_FFREQ,a5)
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     move.b    d0,(_TIMER,a5)                    | init shot timer
     jbsr       save_PC_to_fn_tbl_and_ret
@@ -3685,9 +3685,9 @@ handle_11_Terrazi: | $2487
     subq.b    #4,d0
     addq.b    #8,d0                             | too close to fire?
     bcs.b     terrazi_main_cont                 | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 terrazi_main_cont: | $24E2
@@ -3700,7 +3700,7 @@ terrazi_main_cont: | $24E2
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     addq.w    #1,(_ddX,a5)
     move.w    (_ddX,a5),d0
     lsr.b     #3,d0
@@ -3713,36 +3713,36 @@ terrazi_main_cont: | $24E2
     move.w    (_ddY,a5),d0
     add.w     d0,(_dY,a5)                       | update dY
     subq.w    #2,(_dX,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler    
 
 terrazi_main_cont_2: | $2535
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     move.w    (_ddY,a5),d0
     add.w     d0,(_dY,a5)                       | update dY
     subq.w    #2,(_dX,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler    
 
 * Zakato (Teleporter) 100 pts
 * shoots based on random timer (0-0xff)
 handle_12_Zakato_slow: | $2567
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #15,(_PTS,a5)                     | 100 pts
     clr.w     (_dY,a5)
     move.w    #16,(_dX,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     zakato_12_main                    | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
 
 zakato_12_main: | $257E
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.w     #0xff,d0
     add.b     #1,d0
     move.b    d0,(_TIMER,a5)
@@ -3755,32 +3755,32 @@ zakato_12_main: | $257E
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     beq.b     zakato_shoot                      | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 zakato_shoot: | $25B9
     move.b    #0xff,(_TIMER,a5)                 | re-init timer
     move.b    #3,(_STATE,a5)                    | flag benign
-    bsr       init_new_bullet
+    jbsr       init_new_bullet
     
 zakato_explode_and_remove: | $25C2
     SET_REENTRY_ADDR_HERE
-    bsr       zakato_explode                    | done exploding?
+    jbsr       zakato_explode                    | done exploding?
     bcc       remove_zakato                     | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
 
 * Zakato (Teleporter) 200 pts
 * shoots when Y coordinate close to Solvalou
 handle_13_Zakato_closeY: | $25D7
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #21,(_PTS,a5)                     | 200 pts
     clr.w     (_dY,a5)
     move.w    #16,(_dX,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     zakato_13_main                    | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
 
 zakato_13_main: | $25EE
@@ -3796,22 +3796,22 @@ zakato_13_main: | $25EE
     addq.b    #8,d0                             | close enough?
     bcs.b     zakato_shoot                      | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Zakato (Teleporter) 150 pts
 * shoots based on random timer (0-0x3f)
 handle_14_Zakato_fast: | $262E
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #18,(_PTS,a5)                     | 150 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     zakato_14_main                    | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
 
 zakato_14_main: | $263F
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.w     #0x3f,d0
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -3819,25 +3819,25 @@ zakato_14_main: | $263F
     move.b    #0x80,(_ATTR,a5)                  | bank=1,size=1x1
     move.b    #2,(_STATE,a5)
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go   
     subq.b    #1,(_TIMER,a5)                    | time to shoot?
     beq       zakato_shoot                      | yes, go    
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Zakato (Teleporter) 300 pts
 * shoots continuously until too close to Solvalou
 handle_15_Zakato: | $2684:
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #27,(_PTS,a5)                     | 300 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     zakato_15_main                    | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
 
 zakato_15_main: | $2695
@@ -3845,7 +3845,7 @@ zakato_15_main: | $2695
     move.b    #0x80,(_ATTR,a5)                  | bank=1,size=1x1
     move.b    #2,(_STATE,a5)
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq       flying_enemy_hit                  | yes, go   
@@ -3855,28 +3855,28 @@ zakato_15_main: | $2695
     addq.b    #8,d0                             | close enough?
     bcs.w     zakato_shoot                      | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Brag Zakato (Cracker) 600 pts
 * explodes based on random timer
 handle_16_Brag_Zakato_rnd: | $26DF
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #36,(_PTS,a5)                     | 600 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     brag_zakato_16_main               | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
     
 brag_zakato_16_main: | $26F0
-    bsr       pseudo_random_gen                 | rnd shot timer
+    jbsr       pseudo_random_gen                 | rnd shot timer
     and.w     #0x3f,d0                          | 0-63
     addq.b    #1,d0                             | 1-64
     move.b    d0,(_TIMER,a5)                    | init shot timer
     move.b    #0x12,(_CODE,a5)
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #2,(_STATE,a5)
     move.b    #0x80,(_ATTR,a5)                  | bank=1,size=1x1
     SET_REENTRY_ADDR_HERE
@@ -3885,24 +3885,24 @@ brag_zakato_16_main: | $26F0
     subq.b    #1,(_TIMER,a5)                    | time to explode?
     beq.b     brag_zakato_explode               | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * Brag Zakato (Cracker) 1,500 pts
 * explodes when it gets close to the Solvalou
 handle_17_Brag_Zakato_closeY: | $2736
-    bsr       init_teleport
+    jbsr       init_teleport
     move.b    #51,(_PTS,a5)                     | 1,500 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       zakato_teleport                   | done teleporting?
+    jbsr       zakato_teleport                   | done teleporting?
     bcc.b     brag_zakato_17_main               | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler    
     
 brag_zakato_17_main: | $2747
     move.b    #0x12,(_CODE,a5)
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #2,(_STATE,a5)
     move.b    #0x80,(_ATTR,a5)                  | bank=1,size=1x1
     SET_REENTRY_ADDR_HERE
@@ -3914,13 +3914,13 @@ brag_zakato_17_main: | $2747
     addq.b    #8,d0                             | close enough?
     bcs.b     brag_zakato_explode               | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 brag_zakato_explode: | $2791
     move.b    #0xff,(_TIMER,a5)                 | init timer
     move.b    #3,(_STATE,a5)                    | flag benign
-    bsr.w     brag_zakato_shoot
+    jbsr     brag_zakato_shoot
     bra.w     zakato_explode_and_remove
         
 remove_zakato: | $279D
@@ -3993,11 +3993,11 @@ zakato_teleport_sprite_tbl: | $281A
 
 init_teleport: | $2826
     move.b    #3,(_STATE,a5)                    | indestructible
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.w     #0x0f,d0
     add.b     #5,d0
     move.b    d0,(_X,a5)                        | MSB
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     add.b     #1,(_Y,a5)                        | MSB
     move.b    #0x24,(_COLOUR,a5)
     move.b    #0xff,(_TIMER,a5)                 | init timer
@@ -4010,12 +4010,12 @@ init_teleport: | $2826
 handle_18_Garu_Zakato: | $284C
     move.b    #2,(_STATE,a5)
     move.b    #0x80,(_ATTR,a5)                  | bank=1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     move.b    #0x13,(_CODE,a5)
     move.b    #48,(_PTS,a5)                     | 1,000 pts
     move.w    #48,(_dX,a5)
     clr.w     (_dY,a5)
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     #0x1f,d0                          | 0-31
     add.b     #32,d0                            | 32-63
     move.b    d0,(_TIMER,a5)                    | init timer
@@ -4025,11 +4025,11 @@ handle_18_Garu_Zakato: | $284C
     subq.b    #1,(_TIMER,a5)                    | time to explode?
     beq.b     garu_zakato_explode               | yes, go
     move.b    (pulsing_colour_2),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 garu_zakato_explode: | $2897
-    bsr.w     init_garu_zakato_explosion
+    jbsr     init_garu_zakato_explosion
     moveq     #GARU_ZAKATO_SND,d0
     jsr       osd_sound_start
     ** TBD possibly another sound here too!?!
@@ -4061,9 +4061,9 @@ handle_31_right_sheonite: | $28DD
     move.b    (_Y,a1),d1                        | MSB
     subq.b    #2,d1
     sub.b     (_Y,a5),d1                        | MSB
-    bsr       get_index_for_angle
+    jbsr       get_index_for_angle
     lea       angle_dX_dY_sheonite_tbl,a2
-    bsr       get_dX_dY_and_cpy_to_obj
+    jbsr       get_dX_dY_and_cpy_to_obj
     move.b    (_X,a1),d0                        | solvalou X MSB
     subq.b    #2,d0
     cmp.b     (_X,a5),d0                        | close to Solvalou?
@@ -4073,7 +4073,7 @@ handle_31_right_sheonite: | $28DD
     bne.b     1f
     tst.b     (sheonite_end_flag)               | time to start retreating?
     bne.b     animate_r_sheonite_2              | no, go
-1:  bsr.w     set_r_sheonite_above_solvalou
+1:  jbsr     set_r_sheonite_above_solvalou
     lea       r_sheonite_code_tbl_1,a0
     move.b    (countup_timer_1),d0
     lsr.b     #1,d0
@@ -4084,7 +4084,7 @@ handle_31_right_sheonite: | $28DD
 
 animate_r_sheonite_2: | $2950
     SET_REENTRY_ADDR_HERE
-    bsr.w     set_r_sheonite_above_solvalou
+    jbsr     set_r_sheonite_above_solvalou
     move.b    (countup_timer_1),d0
     lsr.b     #2,d0
     and.w     #7,d0
@@ -4134,7 +4134,7 @@ r_sheonite_retreat: | $29B1
     and.w     #3,d0                             | calc sprite code
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler    
 
 set_r_sheonite_above_solvalou: | $29F7
@@ -4170,9 +4170,9 @@ handle_32_left_sheonite: | $2A2E
     move.b    (_Y,a1),d1                        | solvalou spriteY MSB
     addq.b    #2,d1
     sub.b     (_Y,a5),d1                        | MSB
-    bsr       get_index_for_angle
+    jbsr       get_index_for_angle
     lea       angle_dX_dY_sheonite_tbl,a2
-    bsr       get_dX_dY_and_cpy_to_obj
+    jbsr       get_dX_dY_and_cpy_to_obj
     move.b    (_X,a1),d0                        | solvalou X MSB
     subq.b    #2,d0
     cmp.b     (_X,a5),d0
@@ -4186,7 +4186,7 @@ handle_32_left_sheonite: | $2A2E
     bne.b     1f
     tst.b     (sheonite_end_flag)               | time to retreat?
     bne.b     animate_l_sheonite_2              | no, go
-1:  bsr.w     set_l_sheonite_above_solvalou
+1:  jbsr     set_l_sheonite_above_solvalou
     lea       l_sheonite_code_tbl_1,a0
     move.b    (countup_timer_1),d0
     lsr.b     #1,d0
@@ -4197,7 +4197,7 @@ handle_32_left_sheonite: | $2A2E
 
 animate_l_sheonite_2: | $2A9D
     SET_REENTRY_ADDR_HERE
-    bsr.b     set_l_sheonite_above_solvalou
+    jbsr     set_l_sheonite_above_solvalou
     move.b    (countup_timer_1),d0
     lsr.b     #2,d0
     and.w     #7,d0
@@ -4248,7 +4248,7 @@ handle_01_Bacura: | $2B23
     move.b    #2,(_STATE,a5)
     move.b    #0x82,(_ATTR,a5)                  | bank=1, size=1x2
     move.w    #16,(_dX,a5)
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     addq.b    #1,(_Y,a5)                        | MSB
     jbsr       save_PC_to_fn_tbl_and_ret
     move.w    (_X,a5),d0                        | spriteX[8:0]<<5
@@ -4260,7 +4260,7 @@ handle_01_Bacura: | $2B23
     *lsl.w     #1,d0                             | x2 - entry offset
     move.b    (a0,d0.w),(_COLOUR,a5)
     move.b    (1,a0,d0.w),(_CODE,a5)
-    bsr       move_object_dX
+    jbsr       move_object_dX
     bra       add_obj_handler
 
 * sprite colour, code tuples
@@ -4277,22 +4277,22 @@ bacura_sprite_tbl: | $2B5D
        
 handle_06_Bullet: | $2B6D
     lea       angle_dX_dY_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 handle_07_Garu_Zakato_Bullet: | $2B79
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
                         
 handle_2C_Grobda_stationary: | $2B83
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #21,(_PTS,a5)                     | 200 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     bra       set_grobda_colour_and_move_dX
 
 * 
@@ -4300,36 +4300,36 @@ handle_2C_Grobda_stationary: | $2B83
 * - moving
 handle_35_Grobda_fwd: | $2B96
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #30,(_PTS,a5)                     | 400 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 600 pts
 * - moves forward (forever) when in crosshairs
 handle_36_Grobda_crosshairs_fwd: | $2BA6
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #36,(_PTS,a5)                     | 600 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       check_grobda_in_crosshairs        | in crosshairs?
+    jbsr       check_grobda_hit
+    jbsr       check_grobda_in_crosshairs        | in crosshairs?
     bcs.b     grobda_start_moving_fwd           | yes, go
     bra       set_grobda_colour_and_move_dX
 
 grobda_start_moving_fwd: | $2BBE
     move.w    #14,(_dX,a5)                      | dX=14 (fwd)
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX     | yes, Z80 code does JR $00
         
 set_grobda_colour_and_move_dX: | $2BD5
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX
+    jbsr       move_object_dX
     bra       add_obj_handler
 
 * (code for 37_Grobda unused was here)
@@ -4338,129 +4338,129 @@ set_grobda_colour_and_move_dX: | $2BD5
 * - moving, stops when in crosshairs
 handle_38_Grobda_fwd_crosshairs_stop_fwd: | $2C2E
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #48,(_PTS,a5)                     | 1,000 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       check_grobda_in_crosshairs        | in crosshairs?
+    jbsr       check_grobda_hit
+    jbsr       check_grobda_in_crosshairs        | in crosshairs?
     bcs.b     grobda_stops_in_crosshairs        | yes, go
-    bsr       animate_grobda_forwards
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 grobda_stops_in_crosshairs: | $2C44
     move.w    #8,(_dX,a5)                       | stop
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     subq.b    #1,(_TIMER,a5)                    | start moving again?
     beq.b     1f                                | yes, go
     bra       set_grobda_colour_and_move_dX
 1:  move.w    #14,(_dX,a5)                      | fwd
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 1,500 pts
 * - darts backwards when targeted
 handle_39_Grobda_targeted_back_stop: | $2C77
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #51,(_PTS,a5)                     | 1,500 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       check_targeted_and_init_timer     | targeted?
+    jbsr       check_grobda_hit
+    jbsr       check_targeted_and_init_timer     | targeted?
     bcs.b     grobda_dart_back                  | yes, go
     bra       set_grobda_colour_and_move_dX
 
 grobda_dart_back: | $2C90
     move.w    #2,(_dX,a5)                       | backwards
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     subq.b    #1,(_TIMER,a5)                    | dec timer
     beq.b     grobda_stop
-    bsr       animate_grobda_backwards
+    jbsr       animate_grobda_backwards
     bra       set_grobda_colour_and_move_dX
 
 grobda_stop: | $2CAD
     move.w    #8,(_dX,a5)                       | stop
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 2,000 pts
 * - moving, darts forward when targeted
 handle_3A_Grobda_fwd_crosshairs_darts_fwd: | $2CC4
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #54,(_PTS,a5)                     | 2,000 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       check_grobda_in_crosshairs        | in crosshairs?
+    jbsr       check_grobda_hit
+    jbsr       check_grobda_in_crosshairs        | in crosshairs?
     bcs.b     grobda_darts_fwd_in_crosshairs    | yes, go
-    bsr       animate_grobda_forwards
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
     
 grobda_darts_fwd_in_crosshairs: | $2CDB
     move.w    #22,(_dX,a5)                      | fast fwd
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     subq.b    #1,(_TIMER,a5)                    | stop darting?
     beq.b     1f                                | yes, go
-    bsr       animate_grobda_fast_forward
+    jbsr       animate_grobda_fast_forward
     bra       set_grobda_colour_and_move_dX
 1:  move.w    #14,(_dX,a5)                      | fwd
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 2,500 pts
 * - moving, darts back then forward when targeted
 handle_3B_Grobda_fwd_targeted_back_fwd: | $2D10
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #57,(_PTS,a5)                     | 2,500 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit
-    bsr       check_targeted_and_init_timer     | targeted?
+    jbsr       check_grobda_hit
+    jbsr       check_targeted_and_init_timer     | targeted?
     bcs.b     grobda_3B_dart_back               | yes, go
-    bsr       animate_grobda_forwards
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 grobda_3B_dart_back: | $2D27
     move.w    #2,(_dX,a5)                       | backwards
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     subq.b    #1,(_TIMER,a5)                    | time to change dir?
     beq.b     grobda_3B_dart_fwd                | yes, go
-    bsr       animate_grobda_backwards
+    jbsr       animate_grobda_backwards
     bra       set_grobda_colour_and_move_dX
 
 grobda_3B_dart_fwd: | $2D44
     move.w    #14,(_dX,a5)                      | forward
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 handle_3C_Grobda_targeted_fast_fwd: | $2D5C
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #63,(_PTS,a5)                     | 10,000 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
 loc_2D68:   
-    bsr       check_grobda_hit
-    bsr       check_targeted_and_init_timer     | targeted?
+    jbsr       check_grobda_hit
+    jbsr       check_targeted_and_init_timer     | targeted?
     bcs.b     1f                                | yes, go
     bra       set_grobda_colour_and_move_dX   
 1:  move.w    #22,(_dX,a5)                      | fast fwd
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit
+    jbsr       check_grobda_hit
     subq.b    #1,(_TIMER,a5)                    | dec timer
     beq.b     2f
-    bsr       animate_grobda_fast_forward
+    jbsr       animate_grobda_fast_forward
     bra       set_grobda_colour_and_move_dX
 2:  move.w    #8,(_dX,a5)                       | stop
     SET_REENTRY_ADDR_HERE
@@ -4470,65 +4470,65 @@ loc_2D68:
 * - stationary (crater removed when hit)
 handle_3D_Grobda_stationary_in_water: | $2DA3
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #21,(_PTS,a5)                     | 200 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit_and_remove
+    jbsr       check_grobda_hit_and_remove
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 400 pts
 * - moving
 handle_3E_Grobda_fwd_in_water: | $2DB7
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #30,(_PTS,a5)                     | 400 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit_and_remove
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit_and_remove
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 600 pts
 * - moves forward when in crosshairs
 handle_3F_Grobda_crosshairs_fwd_in_water: | $2DC8
     move.w    #8,d0                             | dX=8 (stop)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #36,(_PTS,a5)                     | 600 pts
     move.b    #0x4c,(_CODE,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit_and_remove
-    bsr       check_grobda_in_crosshairs        | in crosshairs?
+    jbsr       check_grobda_hit_and_remove
+    jbsr       check_grobda_in_crosshairs        | in crosshairs?
     bcs.b     1f                                | yes, go
     bra       set_grobda_colour_and_move_dX
 1:  move.w    #14,(_dX,a5)                      | fwd
     SET_REENTRY_ADDR_HERE
-    bsr       check_grobda_hit_and_remove
-    bsr       animate_grobda_forwards
+    jbsr       check_grobda_hit_and_remove
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 * Grobda (Tank/Stingray) 2,500 pts
 * - moves forward, then back, then fwd when targeted
 handle_40_Grobda_fwd_targeted_back_fwd_in_water: | $2DF9
     move.w    #14,d0                            | dX=14 (fwd)
-    bsr       activate_and_set_grobda_dX
+    jbsr       activate_and_set_grobda_dX
     move.b    #57,(_PTS,a5)                     | 2,500 pts
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       check_grobda_hit_and_remove
-    bsr       check_targeted_and_init_timer     | targeted?
+    jbsr       check_grobda_hit_and_remove
+    jbsr       check_targeted_and_init_timer     | targeted?
     bcs.b     1f                                | yes, go
-    bsr       animate_grobda_forwards
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 1:  move.w    #2,(_dX,a5)                       | backwards
     SET_REENTRY_ADDR_HERE
-    bsr.b     check_grobda_hit_and_remove
+    jbsr     check_grobda_hit_and_remove
     subq.b    #1,(_TIMER,a5)                    | time to move fwd?
     beq.b     2f                                | yes, go
-    bsr       animate_grobda_backwards
+    jbsr       animate_grobda_backwards
     bra       set_grobda_colour_and_move_dX
 2:  move.w    #14,(_dX,a5)                      | forwards    
     SET_REENTRY_ADDR_HERE
-    bsr.b     check_grobda_hit_and_remove
-    bsr       animate_grobda_forwards
+    jbsr     check_grobda_hit_and_remove
+    jbsr       animate_grobda_forwards
     bra       set_grobda_colour_and_move_dX
 
 check_grobda_hit: | $2E45
@@ -4624,7 +4624,7 @@ handle_2E_Domogram: | $2ED6
     move.b    #42,(_PTS,a5)                     | 800 pts
     move.b    #1,(_VECLEN,a5)                   | flag vector finished
     move.b    (ffreq_mask_domogram),(_FFREQ,a5)
-    bsr       pseudo_random_gen                 | random shot timer
+    jbsr       pseudo_random_gen                 | random shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -4641,7 +4641,7 @@ handle_2E_Domogram: | $2ED6
     move.b    (a0)+,d2                          | vector index
     move.l    a0,(_EXTRA,a5)                    | store updated ptr path data
     lea       domogram_vector_tbl,a2
-    bsr       cpy_dY_dX_to_obj
+    jbsr       cpy_dY_dX_to_obj
     subq.b    #1,(_NVEC,a5)                     | dec num vectors
     beq.b     domogram_done_all_vectors
     bra.b     domogram_main
@@ -4670,8 +4670,8 @@ domogram_shooting: | $2F76
     move.b    (_TYPE,a5),d0
     cmp.b     #12, d0                           | time to spawn bullet?
     bne.b     domogram_animate_sprite           | no, go
-    bsr       init_new_bullet
-    bsr       pseudo_random_gen                 | rnd shot timer
+    jbsr       init_new_bullet
+    jbsr       pseudo_random_gen                 | rnd shot timer
     and.b     (_FFREQ,a5),d0                    | scale with mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -4685,7 +4685,7 @@ domogram_animate_sprite: | $2F8C
 
 domogram_colour_and_move: | $2F99
     move.b    (pulsing_colour_1),(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 domogram_sprite_tbl: | $2FAB
@@ -4885,7 +4885,7 @@ flying_enemy_hit: | $311F
     lsl.b     #2,d1
     add.b     (1,a0,d0.w),d1                    | 2nd table entry
     move.b    d1,(_ATTR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 * code and size for flying enemy explosion
@@ -4917,15 +4917,15 @@ handle_bomb_explosion: | $3186
     beq.b     bomb_explosion_finished
     cmp.b     #2,d0
     bne.b     1f
-    bsr.b     adj_for_big_explosion_frame2
+    jbsr     adj_for_big_explosion_frame2
 1:  cmp.b     #5,d0
     bne.b     2f
-    bsr.b     adj_for_small_explosion_frame2
+    jbsr     adj_for_small_explosion_frame2
 2:  movea.l   #bomb_explosion_animation_tbl,a0
     add.w     d0,d0
     move.b    (a0,d0.w),(_CODE,a5)
     move.b    (1,a0,d0.w),(_ATTR,a5)
-3:  bsr       scroll_sprite_X
+3:  jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 bomb_explosion_finished: | $31D7
@@ -4937,7 +4937,7 @@ bomb_explosion_finished: | $31D7
     and.b     #1,d0
     add.b     #0xa6,d0
     move.b    d0,(_CODE,a5)
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
     
 * these are sprite codes, sizes for the bomb explosion
@@ -4975,10 +4975,10 @@ explode_and_remove_object: | $3216
     beq.b     remove_object                     | yes, go
     cmp.b     #2,d1
     bne.b     1f
-    bsr.b     adj_for_big_explosion_frame2
+    jbsr     adj_for_big_explosion_frame2
 1:  cmp.b     #5,d1
     bne.b     2f
-    bsr.b     adj_for_small_explosion_frame2
+    jbsr     adj_for_small_explosion_frame2
 2:  lea       bomb_explosion_animation_tbl,a0
     .ifdef	NO68020
     add.w     d1,d1                             | entry offset
@@ -4988,7 +4988,7 @@ explode_and_remove_object: | $3216
     .endif
     move.b    (a0)+,(_CODE,a5)
     move.b    (a0),(_ATTR,a5)
-3:  bsr       scroll_sprite_X
+3:  jbsr       scroll_sprite_X
     bra       add_obj_handler
 
 remove_object: | $3266
@@ -5002,8 +5002,8 @@ chk_timer_fire_bullet_reinit_timer: | $3271
     bne.b     9f
     subq.b    #1,(_TIMER,a5)                    | time to fire?
     bne.b     9f                                | no, exit
-    bsr.b     init_new_bullet
-    bsr       pseudo_random_gen                 | rnd shot timer
+    jbsr     init_new_bullet
+    jbsr       pseudo_random_gen                 | rnd shot timer
     and.b     (_FFREQ,a5),d0                    | scale wirh mask
     addq.b    #1,d0
     move.b    d0,(_TIMER,a5)                    | init timer
@@ -5037,16 +5037,16 @@ set_state_and_copy_obj_coords: | $32A5
 
 * a0=bullet a5=object firing
 found_idle_bullet_slot: | $32BB
-    bsr.b     set_state_and_copy_obj_coords
+    jbsr     set_state_and_copy_obj_coords
     move.b    #6,(_TYPE,a0)                     | bullet
     rts
 
 * a0=bullet d2=angle index
 init_radiating_bullet: | $32C4
-    bsr.b     set_state_and_copy_obj_coords
+    jbsr     set_state_and_copy_obj_coords
     lea       angle_dX_dY_terrazi_torkan_tbl,a2
     exg       a0,a5                             | copy to bullet
-    bsr       cpy_dY_dX_to_obj
+    jbsr       cpy_dY_dX_to_obj
     exg       a0,a5
     move.b    #7,(_TYPE,a0)                     | Garu Zakato bullet
     rts
@@ -5059,13 +5059,13 @@ brag_zakato_shoot: | $32D9
     move.b    (_Y,a5),d4                        | save MSB
     move.b    (_Y,a1),d1                        | MSB
     sub.b     d4,d1                             | d1=ydiff
-    bsr       get_index_for_angle
+    jbsr       get_index_for_angle
     sub.b     #32,d2
     ror.b     #3,d2
     and.w     #0x1f,d2
     moveq     #5-1,d7                           | 5 bullets to shoot
 1:  movem.l   d2/d7,-(a7)
-    bsr       find_idle_and_init_radiating_bullet
+    jbsr       find_idle_and_init_radiating_bullet
     movem.l   (a7)+,d2/d7
     addq.b    #2,d2                             | inc angle by 2
     and.w     #0x1f,d2                          | limit
@@ -5076,7 +5076,7 @@ init_garu_zakato_explosion: | $330A
     moveq     #0,d2                             | start angle
     moveq     #16-1,d7                          | 16 bullets to spawn
 1:  movem.l   d2/d7,-(a7)
-    bsr       find_idle_and_init_radiating_bullet
+    jbsr       find_idle_and_init_radiating_bullet
     movem.l   (a7)+,d2/d7
     addq.b    #2,d2                             | inc angle by 2
     and.b     #30,d2                            | wrap at 31
@@ -5122,7 +5122,7 @@ calc_dX_dY_for_vector_to_solvalou: | $3365
     sub.b     (_X,a5),d0                        | sub bullet MSB
     move.b    (_Y,a1),d1                        | solvalou MSB
     sub.b     (_Y,a5),d1                        | sub bullet MSB
-    bsr       get_index_for_angle
+    jbsr       get_index_for_angle
     addq.b    #4,d2                             | black magic?
     * fall thru
     
@@ -5145,7 +5145,7 @@ cpy_dY_dX_to_obj: | $3383
 
 * a5=object   
 gen_random_Y_store_obj: | $338B
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.w     #31,d0                            | 0-31
     cmp.b     #25,d0                            | >24?
     bcc.b     gen_random_Y_store_obj            | yes, try again
@@ -5155,7 +5155,7 @@ gen_random_Y_store_obj: | $338B
         
 gen_rnd_spriteY: | $3398
     lea       obj_tbl+0x23*_OBJSIZE,a4          | solvalou object
-1:  bsr       pseudo_random_gen
+1:  jbsr       pseudo_random_gen
     and.b     #31,d0
     cmp.b     #25,d0                            | too big?
     bcc.b     1b                                | yes, try again
@@ -5219,9 +5219,9 @@ main_fn_5__inc_num_bacura: | $33E5
 handle_08_Giddo_Spario: | $340D
     move.b    #2,(_STATE,a5)
     move.b    #0x80,(_ATTR,a5)                  | bank=1,size=1x1
-    bsr       gen_random_Y_store_obj
+    jbsr       gen_random_Y_store_obj
     lea       angle_dX_dY_sheonite_tbl,a2
-    bsr       calc_dX_dY_for_vector_to_solvalou
+    jbsr       calc_dX_dY_for_vector_to_solvalou
     move.b    #0,(_PTS,a5)                      | 10 pts
     jbsr       save_PC_to_fn_tbl_and_ret
     cmp.b     #3,(_STATE,a5)                    | hit?
@@ -5235,7 +5235,7 @@ handle_08_Giddo_Spario: | $340D
     and.w     #3,d1
     add.b     #0x26,d1
     move.b    d1,(_COLOUR,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
     
 giddo_spario_hit: | $3451
@@ -5248,7 +5248,7 @@ giddo_spario_hit: | $3451
     beq.b     remove_giddo_spario               | yes, go
     addq.b    #4,d0
     move.b    d0,(_CODE,a5)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 
 remove_giddo_spario: | $3476
@@ -5264,24 +5264,24 @@ remove_giddo_spario: | $3476
 handle_58_Galaxian: | $3481 (super)
     move.b    #2,(_STATE,a5)                    | active
     move.b    #0,(_ATTR,a5)                     | bank=0, size=0 (1x1)
-    bsr       gen_rnd_spriteY
+    jbsr       gen_rnd_spriteY
     move.w    #48,(_dX,a5)
     move.w    #0,(_dY,a5)
     move.b    #18,(_PTS,a5)                     | 150 pts
     move.b    #0x1B,(_CODE,a5)
     move.b    (ffreq_mask_terrazi),(_FFREQ,a5)
-    bsr       pseudo_random_gen
+    jbsr       pseudo_random_gen
     and.b     (_FFREQ,a5),d0
     move.b    d0,(_TIMER,a5)                    | init shot timer
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       flying_enemy_hit                  | yes, go
     move.b    (obj_tbl+_OBJSIZE*0x23+_Y),d0     | solvalou sprite Y MSB
     sub.b     (_Y,a5),d0                        | MSB
     subq.b    #4,d0
     addq.b    #8,d0                             | close enough?
     bcs.b     galaxian_change_dir               | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     move.b    (pulsing_colour_1),(_COLOUR,a5)
     bra.b     galaxian_exit
 galaxian_change_dir: | $34CD (super)
@@ -5292,9 +5292,9 @@ galaxian_change_dir: | $34CD (super)
 1:  move.w    d1,(_ddY,a5)                      | update ddY
     move.b    #15,(_TIMER1,a5)                  | re-init timer1
     SET_REENTRY_ADDR_HERE
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       flying_enemy_hit                  | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     addq.b    #1,(_TIMER1,a5)
     move.b    (_TIMER1,a5),d0
     lsr.b     #4,d0
@@ -5311,13 +5311,13 @@ galaxian_colour_and_move: | $3518 (super)
     move.w    (_ddY,a5),d0
     add.w     d0,(_dY,a5)
 galaxian_exit: | $3526 (super)
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra       add_obj_handler
 galaxian_cont: | $352F (super)
     SET_REENTRY_ADDR_HERE
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       flying_enemy_hit                  | yes, go
-    bsr       chk_timer_fire_bullet_reinit_timer
+    jbsr       chk_timer_fire_bullet_reinit_timer
     bra.b     galaxian_colour_and_move
 is_object_hit: | $3546
     cmp.b     #3,(_STATE,a5)
@@ -5347,32 +5347,32 @@ handle_59_Jet_Taking_Off: | $3557 (super)
     move.b    #6,(_COLOUR,a5)
     move.b    #128,(_TIMER,a5)
     jbsr       save_PC_to_fn_tbl_and_ret
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       bomb_explode_and_zero_player_score    | yes, go
     subq.b    #1,(_TIMER,a5)                    | time to move?
     beq       move_jet_taking_off               | yes, go
-    bsr       scroll_sprite_X
+    jbsr       scroll_sprite_X
     bra       add_obj_handler
 move_jet_taking_off: | $3590 (super)
     move.b    #2,(_COLOUR)
     SET_REENTRY_ADDR_HERE
-    bsr       is_object_hit                     | hit?
+    jbsr       is_object_hit                     | hit?
     beq       explode_remove_and_zero_player_score    | yes, go
     addq.w    #1,(_dY,a5)                       | accelerate
-    bsr       move_object_dX_dY
+    jbsr       move_object_dX_dY
     bra     add_obj_handler
 bomb_explode_and_zero_player_score: | $35B1 (super)
-    bsr.b     zero_player_score
+    jbsr     zero_player_score
     bra       handle_bomb_explosion
 explode_remove_and_zero_player_score: | $35B7 (super)
-    bsr.b     zero_player_score
+    jbsr     zero_player_score
     bra       explode_and_remove_object
 zero_player_score: | $35BD (super)
     lea       curr_player_score_msb,a0
     move.b    #0,(a0)+
     move.b    #0,(a0)+
     move.b    #0,(a0)+
-    bsr       display_player_scores
+    jbsr       display_player_scores
     rts
     
 * installed into object #15
@@ -5473,12 +5473,12 @@ remove_andor_genesis_core: | $3562
     bra       add_obj_handler
 
 andor_genesis_core_hit: | $356B
-    bsr       pre_gun_port_explosion
+    jbsr       pre_gun_port_explosion
     SET_REENTRY_ADDR_HERE
     lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
     move.w    (_X,a0),(_X,a5)                   | update spriteX
     move.w    (_Y,a0),(_Y,a5)                   | update spriteY
-    bsr       gun_port_explosion
+    jbsr       gun_port_explosion
     cmp.b     #4,(_STATE,a5)                    | finished exploding?
     beq       1f                                | no, skip
     rts
@@ -5500,7 +5500,7 @@ handle_Bragza: | $35A5
     and.w     #7,d1
     add.b     #0x15,d1                          | generate colour
     move.b    d1,(_COLOUR,a5)
-    bsr       move_object_dX
+    jbsr       move_object_dX
     bra       add_obj_handler
     
 * installed into object #13
@@ -5530,7 +5530,7 @@ handle_4F_Andor_Genesis_obj_13: | $35C2
     add.w     #0xfe00,d0                        | calc spriteY
     move.w    d0,(_X,a5)                        | update spriteY
     move.b    (andor_genesis_colour),(_COLOUR,a5)
-    bsr       chk_timer_fire_bullet_reinit_timer        
+    jbsr       chk_timer_fire_bullet_reinit_timer        
     rts
 
 remove_tl_gun_port: | $3615
@@ -5539,7 +5539,7 @@ remove_tl_gun_port: | $3615
     bra       add_obj_handler
 
 tl_gun_port_hit: | $361E
-    bsr       pre_gun_port_explosion
+    jbsr       pre_gun_port_explosion
     SET_REENTRY_ADDR_HERE
     lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
     move.w    (_X,a0),d0
@@ -5548,7 +5548,7 @@ tl_gun_port_hit: | $361E
     move.w    (_Y,a0),d0
     add.w     #0x0200,d0                        | calc spriteY
     move.w    d0,(_Y,a5)                        | update spriteY
-    bsr       gun_port_explosion
+    jbsr       gun_port_explosion
     cmp.b     #4,(_STATE,a5)                    | finished exploding?
     bne.b     9f                                | no, skip
     bra.b     remove_tl_gun_port
@@ -5581,7 +5581,7 @@ handle_50_Andor_Genesis_obj_12: | $364D
     add.w     #0xfe00,d0                        | calc spriteY
     move.w    d0,(_X,a5)                        | update spriteY
     move.b    (andor_genesis_colour),(_COLOUR,a5)
-    bsr       chk_timer_fire_bullet_reinit_timer        
+    jbsr       chk_timer_fire_bullet_reinit_timer        
     rts
 
 remove_tr_gun_port: | $36A0
@@ -5590,7 +5590,7 @@ remove_tr_gun_port: | $36A0
     bra       add_obj_handler
 
 tr_gun_port_hit: | $36A9
-    bsr       pre_gun_port_explosion
+    jbsr       pre_gun_port_explosion
     SET_REENTRY_ADDR_HERE
     lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
     move.w    (_X,a0),d0
@@ -5599,7 +5599,7 @@ tr_gun_port_hit: | $36A9
     move.w    (_Y,a0),d0
     add.w     #0xfe00,d0                        | calc spriteY
     move.w    d0,(_Y,a5)                        | update spriteY
-    bsr       gun_port_explosion
+    jbsr       gun_port_explosion
     cmp.b     #4,(_STATE,a5)                    | finished exploding?
     bne.b     9f                                | no, skip
     bra.b     remove_tr_gun_port
@@ -5632,7 +5632,7 @@ handle_51_Andor_Genesis_obj_11: | $36D8
     add.w     #0x0200,d0                        | calc spriteY
     move.w    d0,(_X,a5)                        | update spriteY
     move.b    (andor_genesis_colour),(_COLOUR,a5)
-    bsr       chk_timer_fire_bullet_reinit_timer        
+    jbsr       chk_timer_fire_bullet_reinit_timer        
     rts
 
 remove_bl_gun_port: | $372B
@@ -5641,7 +5641,7 @@ remove_bl_gun_port: | $372B
     bra       add_obj_handler
 
 bl_gun_port_hit: | $3734
-    bsr       pre_gun_port_explosion
+    jbsr       pre_gun_port_explosion
     SET_REENTRY_ADDR_HERE
     lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
     move.w    (_X,a0),d0
@@ -5650,7 +5650,7 @@ bl_gun_port_hit: | $3734
     move.w    (_Y,a0),d0
     add.w     #0x0200,d0                        | calc spriteY
     move.w    d0,(_Y,a5)                        | update spriteY
-    bsr.w     gun_port_explosion
+    jbsr     gun_port_explosion
     cmp.b     #4,(_STATE,a5)                    | finished exploding?
     bne.b     9f                                | no, skip
     bra.b     remove_bl_gun_port
@@ -5683,7 +5683,7 @@ handle_52_Andor_Genesis_obj_10: | $3763
     add.w     #0x0200,d0                        | calc spriteY
     move.w    d0,(_X,a5)                        | update spriteY
     move.b    (andor_genesis_colour),(_COLOUR,a5)
-    bsr       chk_timer_fire_bullet_reinit_timer        
+    jbsr       chk_timer_fire_bullet_reinit_timer        
     rts
 
 remove_br_gun_port: | $37B6
@@ -5692,7 +5692,7 @@ remove_br_gun_port: | $37B6
     bra       add_obj_handler
 
 br_gun_port_hit: | $37BF
-    bsr       pre_gun_port_explosion
+    jbsr       pre_gun_port_explosion
     SET_REENTRY_ADDR_HERE
     lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
     move.w    (_X,a0),d0
@@ -5701,7 +5701,7 @@ br_gun_port_hit: | $37BF
     move.w    (_Y,a0),d0
     add.w     #0xfe00,d0                        | calc spriteY
     move.w    d0,(_Y,a5)                        | update spriteY
-    bsr.b     gun_port_explosion
+    jbsr     gun_port_explosion
     cmp.b     #4,(_STATE,a5)                    | finished exploding?
     bne.b     9f                                | no, skip
     bra.b     remove_br_gun_port
@@ -5721,7 +5721,7 @@ gun_port_explosion: | $37F8
     subq.b    #5,d0
     addq.b    #3,d0                             | adjust for size?
     bcc.b     1f                                | no, skip
-    bsr.b     adj_gun_port_for_sprite_size
+    jbsr     adj_gun_port_for_sprite_size
 1:  move.b    d1,d0
     and.w     #3,d0                             | time to animate sprite?
     bne.b     9f                                | no, go
@@ -5995,7 +5995,7 @@ handle_53_Easter_Egg: | $3A46
     SET_REENTRY_ADDR_HERE
     cmp.b     #3,(_STATE,a5)                    | hit?
     beq.b     check_copyright_strings           | yes, go
-    bsr       scroll_sprite_X       
+    jbsr       scroll_sprite_X       
     bra       add_obj_handler
 
 check_copyright_strings: | $3A75
@@ -6003,12 +6003,12 @@ check_copyright_strings: | $3A75
     *** here is where the Z80 code checked the copyright strings
     *** and displayed a message if they had been modified
     *** obviously no point doing that now
-    bsr.b     display_easter_egg
+    jbsr     display_easter_egg
     SET_REENTRY_ADDR_HERE
     subq.b    #1,(_TIMER,a5)                    | time to wipe?
     beq.b     1f                                | yes, go
     rts
-1:  bsr.w     wipe_easter_egg
+1:  jbsr     wipe_easter_egg
     
 remove_easter_egg: | $3AA5
     clr.b     (_STATE,a5)
@@ -6019,12 +6019,12 @@ display_easter_egg: | $3AC9
 	tst.b	is_super_xevious
 	bne.b	0f
     lea       str_NAMCO_ORIGINAL,a0
-    bsr       cpl_and_display_string_16
+    jbsr       cpl_and_display_string_16
     move.w    #0x1921,d0                        | screen col,row
     moveq     #7,d7
     moveq     #BANK_FG_COLORRAM,d2
     move.w    #0x1a,d1
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     lea       str_program_by_EVEZOO,a0          | default
 .ifne OPT_TCDEV_EASTER_EGG
     .ifdef __neogeo__
@@ -6040,7 +6040,7 @@ display_easter_egg: | $3AC9
     lea       str_SPECIALTHANKSFORYOU,a0
     moveq     #22,d7                            | length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     move.w    #0x1722,d0                        | screen col,row
     lea       str_BYGAMEDESIGNEREVEZOO,a0
     moveq     #24,d7                            | length
@@ -6085,7 +6085,7 @@ cpl_and_display_string_16: | $3B48
     lea       str_decrypt_buf,a0                | string
     moveq     #16,d7                            | length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     rts 
     
 cpl_and_display_string_24: | $3B62
@@ -6099,7 +6099,7 @@ cpl_and_display_string_24: | $3B62
     lea       str_decrypt_buf,a0                | string
     moveq     #24,d7                            | length
     moveq     #BANK_FG_VIDEORAM,d2
-    bsr       display_string
+    jbsr       display_string
     rts 
 
 wipe_easter_egg: | $3B7C
@@ -6107,12 +6107,12 @@ wipe_easter_egg: | $3B7C
     moveq     #16,d7
     moveq     #BANK_FG_VIDEORAM,d2
     move.w    #0x24,d1                          | space
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x1921,d0                        | screen col,row
     moveq     #16,d7
     moveq     #BANK_FG_COLORRAM,d2
     move.w    #0x24,d1                          | space
-    bsr       display_char_B_times
+    jbsr       display_char_B_times
     move.w    #0x1722,d0                        | screen col,row
     moveq     #24,d7
     moveq     #BANK_FG_VIDEORAM,d2
