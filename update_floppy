@@ -9,10 +9,4 @@ if exists df0:$game.high
 delete df0:$game.high
 endif
 
-set arc ${game}_HD.lha
-if exists ${arc}
-    echo deleting ${arc}...
-    delete ${arc}
-endif
-; also archive with lha
-lha a -r $arc ${game}_HD
+

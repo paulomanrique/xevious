@@ -19,7 +19,7 @@
 .include "xevious.inc"
 
 * this doesn't return in the real code
-* but we are calling from main, so we
+* jut we are calling from main, so we
 * initialise and return
 
 _start_of_xevious_sub_rom:
@@ -29,13 +29,13 @@ xevious_sub_reset: | $0000
 	lea		area_object_tbl_tbl_super(pc),a0
 	lea		flying_enemy_type_offset_tbl_super(pc),a1
 	tst.b	is_super_xevious
-	bne.b	0f
+	jne	0f
 	lea		area_object_tbl_tbl_normal(pc),a0	
 	lea		flying_enemy_type_offset_tbl_normal(pc),a1
 0:
 	move.l	a0,area_object_tbl_tbl_pointer
 	move.l	a1,flying_enemy_type_offset_tbl_pointer
-    bra.b     sub_start
+    jra     sub_start
     
 .ifne OPT_SUB_HAS_IRQ
 xevious_sub_irq:
@@ -86,7 +86,7 @@ restart_main_fn_loop:
     moveq     #32-1,d7
 main_fn_loop:   
     move.l    (a6),d0                           | get jump address
-	beq.b	1f		| skip if 0
+	jeq	1f		| skip if 0
     movem.l   d7/a6,-(a7)
     move.l	d0,a0
     jsr       (a0)                          | call function
@@ -101,7 +101,7 @@ main_fn_loop:
     jsr       osd_debug_hook
 
     * the Z80 code jumps back to restart_main_loop
-    * - but we need to share CPU with the MAIN code
+    * - jut we need to share CPU with the MAIN code
     * - so return here
 9:  rts
 
@@ -170,10 +170,10 @@ sub_fn_1__update_scroll_hw: | $0218
 * - do it completely differently here
 sub_fn_4__handle_credits_and_start: | $0227
     jsr       osd_read_coin
-    beq.b       1f
+    jeq       1f
     * add a credit
     cmp.b     #0x99,(num_credits)               | max credits?
-    beq.b     1f                                | yes, exit
+    jeq     1f                                | yes, exit
     moveq     #1,d0
     move.b    (num_credits),d1
     abcd      d0,d1
@@ -183,17 +183,17 @@ sub_fn_4__handle_credits_and_start: | $0227
     * process 1P, 2P
 1:  moveq     #0,d2
     jsr       osd_read_start
-    beq.b     9f
+    jeq     9f
     btst.b    #0,d0                             | P1START?
-    beq.b     2f                                | no, skip
+    jeq     2f                                | no, skip
     cmp.b     #1,(num_credits)                  | enough for 1P?
-    bcs.b     9f                                | no, exit
+    jcs     9f                                | no, exit
     moveq     #1,d2                             | 1 credit/player
-    bra.b     8f
+    jra     8f
 2:  btst.b    #1,d0                             | P2START?
-    beq.b     9f                                | no, return
+    jeq     9f                                | no, return
     cmp.b     #2,(num_credits)                  | enough for 2P?
-    bcs.b     9f                                | no, exit
+    jcs     9f                                | no, exit
     moveq     #2,d2                             | 2 credits/players
     * can start a game here
 8:  andi      #0x0f,ccr                         | clear X
@@ -207,7 +207,7 @@ sub_fn_4__handle_credits_and_start: | $0227
 
 sub_fn_5__handle_pulsing_colours: | $0264
     tst.b     (scroll_disabled)
-    bne.b     9f
+    jne     9f
     move.b    (countup_timer_1),d0
     lsr.b     #1,d0
     and.b     #3,d0
@@ -233,7 +233,7 @@ colour_lut_pulsing_2:
     
 sub_fn_30__handle_scroll: | $02A6
     tst.b     (scroll_disabled)
-    bne.b     9f
+    jne     9f
     jbsr     get_map_row
     move.w    #0x40,d0
     move.w    (scroll_cntr),d1
@@ -254,8 +254,8 @@ get_map_row: | $02D4
     lsr.w     #8,d1                             | scroll MSB
     lsr.w     #8,d2
     cmp.b     d2,d1                             | same as before?
-    beq.b     9f                                | yes, return
-    bmi.b     1f
+    jeq     9f                                | yes, return
+    jmi     1f
     add.b     #0x40,d1
 1:  add.b     #0xf2,d1                          | adjustment (map row)
     move.b    (area_offset_in_map),d2
@@ -323,10 +323,10 @@ sub_2_fn_3__inc_enemy_AI_and_flying_enemies: | $03D1
     move.b    (a1,d1.w),d0                      | get entry
     add.b     (enemy_AI_level),d0
     cmp.b     #0x80,d0                          | too high?
-    bcs.b     1f                                | no, skip
+    jcs     1f                                | no, skip
     sub.b     #0x40,d0                          | decrease again
 1:  move.b    d0,(enemy_AI_level)
-    bra       update_flying_enemies
+    jra       update_flying_enemies
 
 sub_2_fn_5__reset_flying_enemies: | $03FD
     clr.b     (num_flying_enemies)
@@ -343,29 +343,29 @@ difficulty_tbl:
 
 sub_2_fn_23__adjust_AI_level_based_on_score: | $040C
     move.l    a0,(area_obj_ptr)
-    move.w    (curr_player_score_msb),d1        | thousands, BCD
+    move.w    (curr_player_score_msb),d1        | thousands, jCD
     move.b    (solvalou_number),d0
     jbsr     avg_score_per_solvalou
     cmp.w     #16,d1                            | less than 16K/solvalou?
-    ble.b     1f                                | yes, skip
+    jle     1f                                | yes, skip
     move.w    #16,d1                            | limit
 1:  add.b     d1,(enemy_AI_level)    
     rts
 
 * Divides score (K's) by sovlalou#
-* (technically - treats BCD as binary)
+* (technically - treats jCD as binary)
 * IOW - averge score per solvalou
-* d1=score (K's,BCD), d0=#solvalou
-* Returns 16-bit result in d1
+* d1=score (K's,jCD), d0=#solvalou
+* Returns 16-jit result in d1
 avg_score_per_solvalou: | $0E23
     move.b    d0,d2
     moveq     #0,d0
     moveq     #16-1,d7
 1:  add.w     d1,d1
     roxl.b    #1,d0
-    bcs.b     2f
+    jcs     2f
     cmp.b     d2,d0
-    bcs.b     3f
+    jcs     3f
 2:  sub.b     d2,d0
     addq.w    #1,d1
 3:  dbf       d7,1b
@@ -522,7 +522,7 @@ sub_2_fn_15__domogram: | $05E1
     move.w    (next_domogram),d0
     addq.b    #1,d0
     cmp.b     #12,d0                            | wrap?
-    bcs.b     2f
+    jcs     2f
     clr.w     d0
 2:  move.w    d0,(next_domogram)
     rts
@@ -543,7 +543,7 @@ sub_2_fn_19__sheonite_end: | $0640
 
 sub_2_fn_20__andor_genesis_start: | $064A
     lea       obj_tbl+_OBJSIZE*0x0F,a5
-    ** Another Xevious BUG!!!
+    ** Another Xevious jUG!!!
     ** state=2 causes this object to award points when
     ** the core is bombed
     ** - points are awarded from the last object #15
@@ -573,7 +573,7 @@ sub_2_fn_21__andor_genesis_end: | $0685
                 
 sub_fn_2__handle_objects: | $068F
     movea.l   (area_obj_ptr),a0
-    ** Another Xevious BUG!!!
+    ** Another Xevious jUG!!!
     ** We need to check for zero here, because this
     ** gets executed before area_obj_ptr and scroll_cntr
     ** are initialised by the MAIN CPU.
@@ -581,10 +581,10 @@ sub_fn_2__handle_objects: | $068F
     ** On the Neo Geo, @$0000=$00, which does match
     **   and ultimately jumps to an invalid address
     cmpa.l    #0,a0
-    beq.b     9f
+    jeq     9f
     move.b    (scroll_cntr),d0                  | MSB
     cmp.b     (a0),d0                           | current row?
-    bne.b     9f
+    jne     9f
     moveq     #0,d0
     move.b    (1,a0),d0                         | byte #2 (type)
     adda.w    #2,a0                             | ptr byte #3
@@ -696,16 +696,16 @@ sub_2_fn_6__set_bacura_inc_cnt: | $075D
 sub_fn_3__handle_next_area: | $078B
     jbsr       save_PC_to_fn_tbl_and_ret   
     cmp.b     #0x0e,(scroll_cntr)               | MSB
-    beq.b     9f                                | not ready to finish
+    jeq     9f                                | not ready to finish
     jbsr       save_PC_to_fn_tbl_and_ret   
     cmp.b     #0x0e,(scroll_cntr)               | MSB
-    bne.b     9f                                | not finished
+    jne     9f                                | not finished
     move.w    (area),d0
     .ifeq OPT_LOOP_AREA
     addq.w    #1,d0                             | inc area
     .endif
     cmp.w     #16,d0                            | last area?
-    bne.b     1f                                | no, skip
+    jne     1f                                | no, skip
     move.w    #6,d0                             | restart at area 7
 1:  move.w    d0,(area)                         | update area
     lea       area_offset_in_map_tbl,a0
@@ -726,7 +726,7 @@ sub_fn_3__handle_next_area: | $078B
     moveq     #BANK_FG_VIDEORAM,d2
     jbsr       display_char
     .endif
-    bra.b     sub_fn_3__handle_next_area
+    jra     sub_fn_3__handle_next_area
 9:  rts
 area_offset_in_map_tbl: | $07BD
     .byte 0x24, 0, 0x54, 0xE, 0x40, 0x1A, 0x64, 4, 0x2A, 0x5C, 0xE, 4, 0x38, 0x54, 0x1A, 0
@@ -736,7 +736,7 @@ area_offset_in_map_tbl: | $07BD
             
 sub_fn_6__display_1UP_2UP: | $07CD
     tst.b     (maincpu_inited)
-    beq.b     9f
+    jeq     9f
     move.b    (countup_timer_1),d3
     lsr.b     #4,d3
     and.b     #1,d3                             | d3=bit4 of timer (Z80 B)
@@ -744,14 +744,14 @@ sub_fn_6__display_1UP_2UP: | $07CD
     move.w    #0x0500,d1                        | col=5
     moveq     #0,d6
     move.b    (curr_player),d6                  | d6=player(0/1) (Z80 C)
-    beq.b     1f                                | P1? yes, skip
+    jeq     1f                                | P1? yes, skip
     exg       d0,d1                             | swap cols
 1:  jbsr     flash_1up_2up
     exg       d0,d1                             | swap cols
     tst.b     (two_player_game)                 | 2P?
-    bne.b     2f                                | yes, go
+    jne     2f                                | yes, go
     moveq     #6,d6
-    bra.b     3f    
+    jra     3f    
 2:  eori.w    #1,d6                             | swap player
 
 display_1up_2up:
@@ -769,7 +769,7 @@ display_1up_2up:
 flash_1up_2up:
     movem.l   d0/d1/d6,-(a7)
     and.b     (is_real_game),d3                 | timer for flashing
-    beq.b     1f
+    jeq     1f
     move.b    #2,d6                             | 3rd string in table ("   ")
 1:  jbsr       display_1up_2up   
     movem.l   (a7)+,d0/d1/d6
@@ -1573,10 +1573,10 @@ xevious_bb_r:
     lsr.w     #1,d3               | d3=(adr_2b>>1)
     move.b    (d3.w,a0),d4        | d4=rom2a[addr_2b>>1]
     btst      #0,d2
-    beq.b     1f
+    jeq     1f
     and.b     #0xf0,d4
     lsl.w     #4,d4
-    bra.b     2f
+    jra     2f
 1:  and.b     #0x0f,d4
     lsl.w     #8,d4
 2:  move.b    (d2.w,a1),d5        | d5=rom2b[adr_2b]
@@ -1593,15 +1593,15 @@ xevious_bb_r:
     and.b     #0x01,d3
     or.b      d3,d2               | d2=adr_2c
     btst      #10,d4              | (dat1 & 0x400)
-    beq.b     3f
+    jeq     3f
     eor.b     #0x01,d2            | (adr_2c ^= 1)
 3:  btst      #9,d4               | (dat1 & 0x200)
-    beq.b     4f
+    jeq     4f
     eor.b     #0x02,d2            | (adr_2c ^= 2)
 4:  btst      #0,d6               | (offset & 1)
-    beq.b     5f
+    jeq     5f
     or.w      #0x800,d2           | d2=(adr_2c|0x800)
-    move.b    (d2.w,a2),d6        | BB1
+    move.b    (d2.w,a2),d6        | jB1
     movem.l   (a7)+,d0-d1
     rts
 5:  move.b    (d2.w,a2),d6        | dat2=rom2c[adr_2c]
@@ -1615,10 +1615,10 @@ xevious_bb_r:
     or.b      d3,d6
     or.b      d5,d6               | 6,7,5,4,3,2,1,0
     btst      #10,d4              | (dat1 & 0x400)
-    beq.b     6f
+    jeq     6f
     eor.b     #0x40,d6
 6:  btst      #9,d4               | (dat1 & 0x200)
-    beq.b     7f
+    jeq     7f
     eor.b     #0x80,d6    
 7:  movem.l   (a7)+,d0-d1
     rts
