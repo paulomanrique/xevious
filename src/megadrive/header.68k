@@ -1,0 +1,60 @@
+*
+* Mega Drive ROM header: 68K vectors + Sega header
+*
+
+    .include "vdpregs.inc"
+
+    .section .vectors,"a"
+
+    .global _start
+
+* 64 exception vectors
+    .long   0x00FFFE00                          | initial SP (top of work RAM)
+    .long   _start                              | reset PC
+    .long   md_error                            | bus error
+    .long   md_error                            | address error
+    .long   md_error                            | illegal instruction
+    .long   md_error                            | zero divide
+    .long   md_error                            | CHK
+    .long   md_error                            | TRAPV
+    .long   md_error                            | privilege violation
+    .long   md_error                            | trace
+    .long   md_error                            | line A
+    .long   md_error                            | line F
+    .rept   12
+    .long   md_error                            | reserved
+    .endr
+    .long   md_error                            | spurious interrupt
+    .long   md_error                            | IRQ1
+    .long   md_ext_irq                          | IRQ2 (ext)
+    .long   md_error                            | IRQ3
+    .long   md_hblank                           | IRQ4 (hblank)
+    .long   md_error                            | IRQ5
+    .long   md_vblank                           | IRQ6 (vblank)
+    .long   md_error                            | IRQ7
+    .rept   16
+    .long   md_error                            | TRAP #0-15
+    .endr
+    .rept   16
+    .long   md_error                            | reserved
+    .endr
+
+* Sega header (0x100)
+    .ascii  "SEGA MEGA DRIVE "                  | console name
+    .ascii  "(C)JOTD 2026.JUN"                  | copyright/date
+    .ascii  "XEVIOUS                                         "  | domestic name (48)
+    .ascii  "XEVIOUS                                         "  | overseas name (48)
+    .ascii  "GM 00004200-00"                    | serial
+    .word   0x0000                              | checksum (fixed by tools/fix_header.py)
+    .ascii  "J               "                  | device support: 3-button pad
+    .long   0x00000000                          | ROM start
+    .long   0x003FFFFF                          | ROM end (fixed by tools/fix_header.py)
+    .long   0x00FF0000                          | RAM start
+    .long   0x00FFFFFF                          | RAM end
+    .ascii  "RA"                                | SRAM enabled
+    .byte   0xF8,0x20                           | SRAM type: odd bytes, no battery flag clear
+    .long   0x00200001                          | SRAM start
+    .long   0x002003FF                          | SRAM end
+    .ascii  "            "                      | modem
+    .ascii  "                                        "  | notes (40)
+    .ascii  "JUE             "                  | region

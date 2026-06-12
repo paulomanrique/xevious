@@ -1,0 +1,1098 @@
+*
+* Mega Drive-specific portions of Xevious (OSD layer)
+*
+
+    .include "vdpregs.inc"
+    .include "xevious.inc"
+    .include "graphics_md.68k"
+
+    .global md_main
+    .global md_vblank
+
+* osd layer
+    .global osd_enable_vblank_interrupt
+    .global osd_ack_vblank_interrupt
+    .global osd_disable_vblank_interrupt
+    .global osd_kick_wdog
+    .global osd_w_fg_colorram
+    .global osd_w_bg_colorram
+    .global osd_w_fg_videoram
+    .global osd_w_bg_videoram
+    .global osd_update_scroll_hw
+    .global osd_update_sprite_shadow
+    .global osd_update_32_sprite_hw
+    .global osd_read_dipswitches
+    .global osd_read_p1_inputs
+    .global osd_read_p2_inputs
+    .global osd_read_coin
+    .global osd_read_start
+    .global osd_sound_start
+    .global osd_sound_stop
+    .global osd_sound_mute
+    .global osd_sound_unmute
+    .global osd_read_high_scores
+    .global osd_write_high_scores
+    .global osd_debug_hook
+
+* display geometry
+* playfield: 224px wide at nametable columns 6..33 (screen x 48..271)
+* arcade fg rows 4..39 -> plane A rows 0..35; hidden/unused rows -> plane row 44
+* arcade bg rows 0..63 -> plane B rows 0..63 (vscroll selects window)
+    .equ    MD_LEFT_COL,    6
+    .equ    FG_DUMP_ROW,    44
+* display window: arcade screen rows (srow 0-35; fg row = srow+4)
+*  game:  srows 4..31  (top HUD srows 0-1 and bottom srow 35 live on the panel)
+*  title: srows 7..34  (logos, hiscore table, copyright lines)
+* plane A vscroll = (window top srow) * 8
+* bg vscroll = (FGV - 56 - scroll) & 511; from arcade row relation
+* bg_row = fg_row - 11 - scroll/8 (scroll moves terrain DOWN the screen)
+    .equ    FGV_GAME,       32                  | plane A vscroll per mode
+    .equ    FGV_TITLE,      56
+    .equ    VBIAS_GAME,     (FGV_GAME-56)&511
+    .equ    VBIAS_TITLE,    (FGV_TITLE-56)&511
+
+* HUD panel (window plane, screen columns 34-39, 6 cells wide)
+    .equ    PANEL_COL,      34
+    .equ    PANEL_W,        6
+    .equ    PANEL_ROWS,     28
+    .equ    SOLID_SLOT,     GFX_FG_CACHE_TILES-1 | reserved opaque-black tile
+
+* fg cache overflow: title-type screens (logo, hiscore table) need more than
+* 128 live (char,colour) combos; borrow the tail of the sprite pool while in
+* title mode (sprites are idle there), purged when gameplay starts
+    .equ    FG_OVF_SLOTS,   96
+    .equ    FG_TOTAL_SLOTS, GFX_FG_CACHE_TILES+FG_OVF_SLOTS
+    .equ    FG_OVF_TILE,    GFX_POOL_BASE_TILE+GFX_POOL_TILES-FG_OVF_SLOTS
+* panel glyphs: pre-rendered opaque tiles, independent of the fg cache;
+* placed just below the overflow region at the pool tail
+    .equ    PANEL_GLYPHS,   19
+    .equ    PANEL_TILE,     FG_OVF_TILE-PANEL_GLYPHS
+* glyph ids: 0-9 digits, 10..16 = U,P,H,I,A,C,R, 17 ship icon, 18 solid black
+    .equ    PG_U,           10
+    .equ    PG_P,           11
+    .equ    PG_H,           12
+    .equ    PG_I,           13
+    .equ    PG_A,           14
+    .equ    PG_C,           15
+    .equ    PG_R,           16
+    .equ    PG_SHIP,        17
+    .equ    PG_SOLID,       18
+* panel text colours (arcade fg colour codes 0-63)
+    .equ    PCOL_TEXT,      61                  | white
+    .equ    PCOL_LABEL,     38                  | red
+    .equ    PCOL_ICON,      42                  | ship icon colour (core uses 0x2A)
+* chars: digits 0x00-0x09, uppercase 'A'=0x0A.., space 0x24, ship icon 0x25
+    .equ    CH_SPACE,       0x24
+    .equ    CH_SHIP,        0x25
+
+* debug probe: paint the backdrop to trace how far execution gets
+    .macro  PROBE colour
+    .ifdef DEBUG
+    move.l  #0xC0000000,(VDP_CTRL)
+    move.w  #\colour,(VDP_DATA)
+    .endif
+    .endm
+
+    .text
+
+***************************************************************
+*** init
+***************************************************************
+
+md_main:
+    bsr     md_platform_init
+    .ifdef DIAG_FGTEST
+* isolated fg pipeline test: draw a grid of chars without the core
+* row r (4..19), col c (0..27): char = r*2, attr = colour pattern
+    moveq   #0,d6                               | row index 0..15
+fgtest_row:
+    moveq   #0,d7                               | col 0..27
+fgtest_col:
+    move.w  d6,d0
+    addq.w  #4,d0                               | fg row 4..19
+    move.w  d7,d1
+    lsl.w   #6,d1
+    add.w   d1,d0                               | offset = col*64+row
+    * attr: colour bits[3:0] in attr[5:2] -> colour = row (1..15)
+    move.w  d6,d1
+    addq.w  #1,d1
+    andi.w  #0x0F,d1
+    lsl.w   #2,d1                               | attr[5:2] = colour[3:0]
+    jsr     osd_w_fg_colorram
+    * char = col*2 (0,2,4..54)
+    move.w  d7,d1
+    add.w   d1,d1
+    jsr     osd_w_fg_videoram
+    addq.w  #1,d7
+    cmpi.w  #28,d7
+    blt.b   fgtest_col
+    addq.w  #1,d6
+    cmpi.w  #16,d6
+    blt.b   fgtest_row
+fgtest_spin:
+    bra.b   fgtest_spin
+    .endif
+    jmp     xevious_reset
+
+md_platform_init:
+* load full game palette set (4 lines)
+    lea     gfx_palettes_game,a0
+    VDP_W_CRAM 0
+    moveq   #64-1,d7
+1:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,1b
+
+* upload resident bg patterns (display is still off: full speed)
+    lea     gfx_bg_patterns,a0
+    VDP_W_VRAM (GFX_BG_BASE_TILE*32)
+    move.l  #GFX_N_BG*16-1,d7
+2:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,2b
+
+* build per-cell VDP command tables
+* arcade offset = col*64 + row (col 0-31, row 0-63)
+* md col = 6 + ((29 - col) & 31)
+    lea     md_fg_cmd_tbl,a0
+    lea     md_bg_cmd_tbl,a1
+    moveq   #0,d7                               | offset
+3:  move.w  d7,d0
+    andi.w  #0x3F,d0                            | row
+    move.w  d7,d1
+    lsr.w   #6,d1                               | col
+    moveq   #29,d2
+    sub.w   d1,d2
+    andi.w  #0x1F,d2
+    addq.w  #MD_LEFT_COL,d2                     | md col
+    * fg row: only rows 6..38 can ever be displayed (both window modes);
+    * others (incl. the arcade's own HUD rows 4,5,39) get a null command
+    * so they never consume fg cache slots
+    move.w  d0,d3
+    subq.w  #6,d3
+    cmpi.w  #33,d3
+    bcs.b   4f
+    moveq   #0,d4                               | hidden: null cmd
+    move.l  d4,(a0)+
+    bra.b   8f
+4:  move.w  d0,d3
+    subq.w  #4,d3                               | plane A row = fg row - 4
+    lsl.w   #6,d3
+    add.w   d2,d3
+    add.w   d3,d3                               | cell byte offset
+    addi.w  #VRAM_PLANE_A,d3
+    bsr     md_vram_cmd
+    move.l  d4,(a0)+
+8:
+    * bg row (direct)
+    move.w  d0,d3
+    lsl.w   #6,d3
+    add.w   d2,d3
+    add.w   d3,d3
+    addi.w  #VRAM_PLANE_B,d3                    | max 0xE000+0x1FFE = 0xFFFE, fits
+    bsr     md_vram_cmd
+    move.l  d4,(a1)+
+    addq.w  #1,d7
+    cmpi.w  #0x800,d7
+    blt.b   3b
+
+* init fg cache slot->key table to invalid (incl. overflow slots)
+    lea     md_fg_slot_key,a0
+    move.w  #FG_TOTAL_SLOTS/2-1,d7
+5:  move.l  #0xFFFFFFFF,(a0)+
+    dbf     d7,5b
+
+* panel cell -> window NT command table
+    lea     md_panel_cmd_tbl,a0
+    moveq   #0,d7
+7:  moveq   #0,d3
+    move.w  d7,d3
+    divu    #PANEL_W,d3                         | low = row, high = col
+    move.w  d3,d5
+    lsl.w   #6,d5                               | row*64
+    swap    d3
+    add.w   d3,d5                               | + col
+    addi.w  #PANEL_COL,d5
+    add.w   d5,d5
+    addi.w  #VRAM_WINDOW_NT,d5
+    move.w  d5,d3
+    bsr     md_vram_cmd
+    move.l  d4,(a0)+
+    addq.w  #1,d7
+    cmpi.w  #PANEL_W*PANEL_ROWS,d7
+    blt.b   7b
+
+* fill the panel with the opaque tile and draw static labels
+    bsr     md_panel_init
+
+* mode/scroll state
+    clr.b   (md_mode)
+    clr.b   (md_menu)
+    clr.w   (md_menu_cnt)
+    clr.w   (md_scroll_shadow)
+    move.w  #VBIAS_GAME,(md_vbias)
+    move.w  #FGV_GAME,(md_fg_vscroll)
+
+* enable display (interrupts stay off until core enables them)
+    move.w  #VDPR01_ON,(VDP_CTRL)
+    rts
+
+* d3.w = vram address -> d4.l = VDP write command
+md_vram_cmd:
+    moveq   #0,d4
+    move.w  d3,d4
+    andi.w  #0x3FFF,d4
+    swap    d4
+    move.w  d3,d4
+    rol.w   #2,d4
+    andi.w  #3,d4
+    ori.l   #0x40000000,d4
+    rts
+
+***************************************************************
+*** vblank
+***************************************************************
+
+md_vblank:
+    movem.l d0-d7/a0-a6,-(a7)
+    tst.w   (VDP_CTRL)                          | ack vint (clear F flag)
+
+* flush plane B vscroll (window bias - game scroll: scroll moves terrain down)
+    move.w  (md_vbias),d0
+    sub.w   (md_scroll_shadow),d0
+    andi.w  #0x1FF,d0
+    VDP_W_VSRAM 2
+    move.w  d0,(VDP_DATA)
+* plane A vscroll (window position per mode)
+    VDP_W_VSRAM 0
+    move.w  (md_fg_vscroll),d0
+    move.w  d0,(VDP_DATA)
+
+    bsr     md_check_mode
+    bsr     md_check_menu
+    bsr     md_update_panel
+
+    .ifdef DIAG_STATE
+* encode flags in the backdrop colour (left border):
+* red = is_real_game, green = md_menu, blue = scroll_disabled
+    moveq   #0,d0
+    tst.b   (is_real_game)
+    beq.b   .+6
+    ori.w   #0x000A,d0
+    tst.b   (md_menu)
+    beq.b   .+6
+    ori.w   #0x00A0,d0
+    tst.b   (scroll_disabled)
+    beq.b   .+6
+    ori.w   #0x0A00,d0
+    move.l  #0xC0000000,(VDP_CTRL)
+    move.w  d0,(VDP_DATA)
+    .endif
+
+    .ifdef DIAG_DUMP
+* copy plane A nametable to a RAM buffer at frame 360 (gdb extracts it)
+    addq.w  #1,(md_diag_frame)
+    cmpi.w  #600,(md_diag_frame)
+    bne.b   no_diag
+    move.l  #0x00000003,(VDP_CTRL)              | VRAM READ @0xC000 (CD=0000)
+    lea     (md_diag_buf),a0
+    move.w  #0x1000-1,d0
+diag_rd:
+    move.w  (VDP_DATA),(a0)+
+    dbf     d0,diag_rd
+    move.l  #0x20000002,(VDP_CTRL)              | VRAM READ @0xA000 (fg cache tiles)
+    lea     (md_diag_buf2),a0
+    move.w  #0x800-1,d0
+diag_rd2:
+    move.w  (VDP_DATA),(a0)+
+    dbf     d0,diag_rd2
+md_diag_done:
+    nop                                         | breakpoint anchor (diag path only)
+no_diag:
+    .endif
+
+* one game tick per vblank (60Hz); the core copies this into its
+* main-loop semaphore (the platform layer owns this counter, see amiga.68k)
+    move.b  #1,(vb_ticks_count)
+
+    jsr     xevious_im1_irq
+
+    movem.l (a7)+,d0-d7/a0-a6
+    rte
+
+* title <-> game mode switch, detected via core bg shadow sentinel
+* (same trick as the Amiga port: title screen has tile 0xCD at 0x60E)
+md_check_mode:
+    moveq   #0,d0
+    cmpi.b  #0xCD,(bg_videoram+0x60E)
+    bne.b   0f
+    moveq   #1,d0
+0:  cmp.b   (md_mode),d0
+    beq     mode_done
+    move.b  d0,(md_mode)
+    tst.b   d0
+    beq.b   enter_game_mode
+
+enter_title_mode:
+* PAL1 = title palette
+    lea     gfx_palette_title,a0
+    VDP_W_CRAM 32
+    moveq   #16-1,d7
+1:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,1b
+* copy title bg patterns into the sprite pool area
+    lea     gfx_title_patterns,a0
+    VDP_W_VRAM (GFX_POOL_BASE_TILE*32)
+    move.l  #GFX_N_TITLE*16-1,d7
+2:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,2b
+    rts
+
+enter_game_mode:
+* PAL1 = game palette (patterns are resident, nothing to upload)
+    lea     gfx_palettes_game+32,a0
+    VDP_W_CRAM 32
+    moveq   #16-1,d7
+1:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,1b
+mode_done:
+    rts
+
+* menu-screen detector: no active objects and not in a real game means a
+* text-heavy screen (title, logos, hi-score table): shift the display
+* window down (footer text visible) and let the fg cache overflow into
+* the sprite pool; both are reverted as soon as action resumes
+md_check_menu:
+    tst.b   (is_real_game)
+    bne.b   in_action
+    tst.b   (scroll_disabled)
+    bne.b   menu_idle                           | scroll halted: menu screen
+* scroll runs: menu only if nothing is alive (hi-score-over-map screens
+* scroll the background; the demo always has the ship object active)
+    lea     obj_tbl,a0
+    moveq   #64-1,d7
+0:  cmpi.b  #2,(a0)
+    bcc.b   in_action                           | active object: demo/game
+    lea     (_OBJSIZE,a0),a0
+    dbf     d7,0b
+menu_idle:
+* idle frame: count up to the threshold
+    move.w  (md_menu_cnt),d0
+    addq.w  #1,d0
+    move.w  d0,(md_menu_cnt)
+    cmpi.w  #30,d0
+    blt.b   9f
+    tst.b   (md_menu)
+    bne.b   9f
+    st.b    (md_menu)
+    move.w  #VBIAS_TITLE,(md_vbias)
+    move.w  #FGV_TITLE,(md_fg_vscroll)
+9:  rts
+
+in_action:
+    clr.w   (md_menu_cnt)
+    tst.b   (md_menu)
+    beq.b   9b
+    clr.b   (md_menu)
+    move.w  #VBIAS_GAME,(md_vbias)
+    move.w  #FGV_GAME,(md_fg_vscroll)
+* purge fg overflow slots: their tiles belong to the sprite pool in-game
+    lea     md_fg_slot_refs+GFX_FG_CACHE_TILES*2,a0
+    lea     md_fg_slot_key+GFX_FG_CACHE_TILES*2,a1
+    lea     md_fg_key_slot,a2
+    move.w  #FG_OVF_SLOTS-1,d7
+2:  clr.w   (a0)+
+    move.w  (a1),d0
+    cmpi.w  #0x1FFF,d0
+    bhi.b   3f                                  | 0xFFFF = unused
+    clr.b   (a2,d0.w)
+3:  move.w  #0xFFFF,(a1)+
+    dbf     d7,2b
+* drop cell references into the purged range
+    lea     md_fg_cell_slot,a0
+    move.w  #0x800-1,d7
+4:  cmpi.w  #GFX_FG_CACHE_TILES+1,(a0)
+    blt.b   5f
+    clr.w   (a0)
+5:  addq.l  #2,a0
+    dbf     d7,4b
+    rts
+
+***************************************************************
+*** HUD panel (window plane, right side)
+***************************************************************
+
+* panel layout (rows 0..27 of 6 cells):
+*  0 "1UP"  1 p1 score   3 "HI"  4 hi score   6 "2UP"  7 p2 score
+*  20 "A" + area   24 "CR" + credits   26 lives icons
+* The panel uses its own pre-rendered opaque glyph tiles (PANEL_TILE..)
+* so it never competes with the in-field fg cache.
+
+* glyph build table: char code, colour code
+panel_glyph_tbl:
+    .byte   0x00,PCOL_TEXT, 0x01,PCOL_TEXT, 0x02,PCOL_TEXT, 0x03,PCOL_TEXT
+    .byte   0x04,PCOL_TEXT, 0x05,PCOL_TEXT, 0x06,PCOL_TEXT, 0x07,PCOL_TEXT
+    .byte   0x08,PCOL_TEXT, 0x09,PCOL_TEXT
+    .byte   0x1E,PCOL_LABEL, 0x19,PCOL_LABEL, 0x11,PCOL_LABEL, 0x12,PCOL_LABEL
+    .byte   0x0A,PCOL_LABEL, 0x0C,PCOL_LABEL, 0x1B,PCOL_LABEL
+    .byte   CH_SHIP,PCOL_ICON
+    .byte   CH_SPACE,PCOL_TEXT                  | solid black
+    .align 2
+
+md_panel_init:
+    movem.l d0-d7/a0-a2,-(a7)
+* pre-render the glyph tiles
+    lea     panel_glyph_tbl(pc),a2
+    moveq   #0,d7                               | glyph id
+1:  moveq   #0,d1
+    move.b  (a2)+,d1                            | char
+    moveq   #0,d2
+    move.b  (a2)+,d2                            | colour code
+    move.w  d7,d0
+    bsr     md_panel_render_glyph
+    addq.w  #1,d7
+    cmpi.w  #PANEL_GLYPHS,d7
+    blt.b   1b
+* fill all cells with the opaque black tile
+    moveq   #0,d0
+2:  moveq   #PG_SOLID,d1
+    bsr     md_panel_putg
+    addq.w  #1,d0
+    cmpi.w  #PANEL_W*PANEL_ROWS,d0
+    blt.b   2b
+* labels
+    lea     panel_str_1up(pc),a2
+    moveq   #0*PANEL_W,d0
+    bsr.b   md_panel_puts
+    lea     panel_str_hi(pc),a2
+    moveq   #3*PANEL_W,d0
+    bsr.b   md_panel_puts
+    lea     panel_str_2up(pc),a2
+    moveq   #6*PANEL_W,d0
+    bsr.b   md_panel_puts
+    lea     panel_str_a(pc),a2
+    moveq   #20*PANEL_W,d0
+    bsr.b   md_panel_puts
+    lea     panel_str_cr(pc),a2
+    move.w  #24*PANEL_W,d0
+    bsr.b   md_panel_puts
+    movem.l (a7)+,d0-d7/a0-a2
+    rts
+
+panel_str_1up:  .byte 3, 1,PG_U,PG_P            | "1UP"
+panel_str_hi:   .byte 2, PG_H,PG_I              | "HI"
+panel_str_2up:  .byte 3, 2,PG_U,PG_P            | "2UP"
+panel_str_a:    .byte 1, PG_A                   | "A"
+panel_str_cr:   .byte 2, PG_C,PG_R              | "CR"
+    .align 2
+
+* a2 = length-prefixed glyph-id string, d0 = start cell
+md_panel_puts:
+    moveq   #0,d7
+    move.b  (a2)+,d7
+    subq.w  #1,d7
+1:  moveq   #0,d1
+    move.b  (a2)+,d1
+    bsr     md_panel_putg
+    addq.w  #1,d0
+    dbf     d7,1b
+    rts
+
+* render char d1 / colour code d2 into panel glyph tile d0 (opaque background)
+md_panel_render_glyph:
+    movem.l d0-d6/a0,-(a7)
+    * colour -> PAL0 slot
+    lea     gfx_fg_color_map,a0
+    move.b  (a0,d2.w),d2
+    moveq   #0,d6
+    move.b  d2,d6                               | foreground slot
+    * char bitmap
+    lsl.w   #3,d1
+    lea     gfx_fg_chars,a0
+    lea     (a0,d1.w),a0
+    * dest tile
+    move.w  d0,d3
+    addi.w  #PANEL_TILE,d3
+    lsl.w   #5,d3
+    bsr     md_vram_cmd
+    move.w  sr,-(a7)
+    move    #0x2700,sr
+    move.l  d4,(VDP_CTRL)
+    moveq   #8-1,d2                             | 8 rows
+1:  move.b  (a0)+,d3
+    moveq   #2-1,d5
+2:  moveq   #0,d0
+    .rept 4
+    add.w   d0,d0
+    add.w   d0,d0
+    add.w   d0,d0
+    add.w   d0,d0
+    add.b   d3,d3
+    bcc.b   .+6
+    or.w    d6,d0                               | set pixel: colour slot
+    bra.b   .+6                                 | (ori #imm below is 4 bytes)
+    ori.w   #15,d0                              | clear pixel: opaque black
+    .endr
+    move.w  d0,(VDP_DATA)
+    dbf     d5,2b
+    dbf     d2,1b
+    move.w  (a7)+,sr
+    movem.l (a7)+,d0-d6/a0
+    rts
+
+* d0.w = panel cell (0..167), d1.w = glyph id; preserves d0-d2
+md_panel_putg:
+    movem.l d4-d5/a0,-(a7)
+    move.w  d1,d5
+    addi.w  #PANEL_TILE,d5
+    ori.w   #0x8000,d5                          | priority, PAL0
+    lea     md_panel_cmd_tbl,a0
+    move.w  d0,d4
+    add.w   d4,d4
+    add.w   d4,d4
+    move.l  (a0,d4.w),d4
+    move.w  sr,-(a7)
+    move    #0x2700,sr
+    move.l  d4,(VDP_CTRL)
+    move.w  d5,(VDP_DATA)
+    move.w  (a7)+,sr
+    movem.l (a7)+,d4-d5/a0
+    rts
+
+* render a score (3 BCD bytes at (a2), stored value = score/10) as 6 digits
+* from panel cell d0: digits[1..5] plus the implicit trailing zero
+md_panel_bcd:
+    moveq   #0,d5
+    move.b  (a2)+,d5
+    lsl.l   #8,d5
+    move.b  (a2)+,d5
+    lsl.l   #8,d5
+    move.b  (a2)+,d5                            | 6 BCD digits in bits 23:0
+    lsl.l   #4,d5                               | drop millions, append 0
+    andi.l  #0x00FFFFFF,d5
+    moveq   #0,d6                               | nonzero-seen flag
+    moveq   #6-1,d7
+1:  move.l  d5,d1
+    swap    d1
+    lsr.w   #4,d1
+    andi.w  #0x000F,d1                          | top nibble
+    lsl.l   #4,d5
+    andi.l  #0x00FFFFFF,d5
+    bsr.b   md_panel_digit
+    addq.w  #1,d0
+    dbf     d7,1b
+    rts
+
+md_panel_digit:
+    tst.w   d6
+    bne.b   1f                                  | already printing
+    tst.w   d1
+    bne.b   0f
+    cmpi.w  #1,d7                               | keep last two visible
+    bgt.b   2f
+0:  moveq   #1,d6
+1:  bra     md_panel_putg                       | digit glyph id = digit
+2:  moveq   #PG_SOLID,d1
+    bra     md_panel_putg
+
+* per-frame panel refresh (called from vblank)
+md_update_panel:
+    movem.l d0-d7/a0-a2,-(a7)
+* P1 / P2 scores depending on current player
+    lea     curr_player_score_msb,a2
+    lea     other_player_score_msb,a1
+    tst.b   (curr_player)
+    beq.b   1f
+    exg     a1,a2
+1:  moveq   #1*PANEL_W,d0
+    bsr     md_panel_bcd                        | a2 = P1 score
+    move.l  a1,a2
+    move.w  #7*PANEL_W,d0
+    bsr     md_panel_bcd
+    lea     RAM_high_score,a2
+    moveq   #4*PANEL_W,d0
+    bsr     md_panel_bcd
+* area number (2 digits, decimal)
+    move.w  (area),d3
+    addq.w  #1,d3
+    ext.l   d3
+    divu    #10,d3
+    move.w  #20*PANEL_W+2,d0
+    move.w  d3,d1
+    bsr     md_panel_putg
+    addq.w  #1,d0
+    swap    d3
+    move.w  d3,d1
+    bsr     md_panel_putg
+* credits (BCD byte)
+    moveq   #0,d1
+    move.b  (num_credits),d1
+    move.w  d1,d3
+    lsr.w   #4,d1
+    move.w  #24*PANEL_W+3,d0
+    bsr     md_panel_putg
+    addq.w  #1,d0
+    move.w  d3,d1
+    andi.w  #0x0F,d1
+    bsr     md_panel_putg
+* lives: up to 6 ship icons
+    moveq   #0,d5
+    move.b  (curr_player_solvalou_left),d5
+    cmpi.w  #PANEL_W,d5
+    bls.b   2f
+    moveq   #PANEL_W,d5
+2:  move.w  #26*PANEL_W,d0
+    moveq   #0,d7
+3:  moveq   #PG_SOLID,d1
+    cmp.w   d5,d7
+    bge.b   4f
+    moveq   #PG_SHIP,d1
+4:  bsr     md_panel_putg
+    addq.w  #1,d0
+    addq.w  #1,d7
+    cmpi.w  #PANEL_W,d7
+    blt.b   3b
+    movem.l (a7)+,d0-d7/a0-a2
+    rts
+
+***************************************************************
+*** interrupt control
+***************************************************************
+
+osd_enable_vblank_interrupt:
+    move    #0x2000,sr
+    rts
+
+osd_ack_vblank_interrupt:
+    tst.w   (VDP_CTRL)
+    rts
+
+osd_disable_vblank_interrupt:
+    move    #0x2700,sr
+    rts
+
+osd_kick_wdog:
+    rts
+
+* d0 = colour for the raster profiling bar; the core sends NeoGeo backdrop
+* values (0x4F00 = red at tick start, 0x8000 = black at tick end)
+osd_debug_hook:
+    .ifdef DEBUG_RASTER
+    move.l  d1,-(a7)
+    moveq   #0,d1
+    cmpi.w  #0x8000,d0
+    beq.b   1f
+    move.w  #0x000E,d1                          | red
+1:  VDP_W_CRAM 0
+    move.w  d1,(VDP_DATA)
+    move.l  (a7)+,d1
+    .endif
+    rts
+
+***************************************************************
+*** foreground layer (dynamic 1bpp->4bpp cache)
+***************************************************************
+
+* d0.w = byte offset, d1.b = tile code; preserve d0-d3/a0/a1
+osd_w_fg_videoram:
+    .ifeq OPT_DISABLE_FG_LAYER
+    movem.l d0-d5/a0-a1,-(a7)
+    lea     fg_videoram,a0
+    move.b  d1,(a0,d0.w)                        | core shadow
+    lea     fg_colorram,a0
+    move.b  (a0,d0.w),d2                        | attr
+    bsr.b   fg_write
+    movem.l (a7)+,d0-d5/a0-a1
+    .endif
+    rts
+
+* d0.w = byte offset, d1.b = attr; preserve d0-d3/a0/a1
+osd_w_fg_colorram:
+    .ifeq OPT_DISABLE_FG_LAYER
+    movem.l d0-d5/a0-a1,-(a7)
+    move.b  d1,d2                               | attr
+    lea     fg_colorram,a0
+    move.b  d2,(a0,d0.w)                        | core shadow
+    lea     fg_videoram,a0
+    move.b  (a0,d0.w),d1                        | tile code
+    bsr.b   fg_write
+    movem.l (a7)+,d0-d5/a0-a1
+    .endif
+    rts
+
+* d0.w = offset, d1.b = char, d2.b = attr (d0-d5/a0-a1 saved by caller)
+fg_write:
+    .ifdef DIAG_NO_FG
+    rts
+    .endif
+    * skip cells that can never be displayed (null command)
+    lea     md_fg_cmd_tbl,a0
+    move.w  d0,d5
+    add.w   d5,d5
+    add.w   d5,d5
+    tst.l   (a0,d5.w)
+    beq     fg_skip
+    * colour6 = attr[5:2] -> bits 3:0, attr[1:0] -> bits 5:4 (see OSD spec)
+    moveq   #0,d3
+    move.b  d2,d3
+    lsr.w   #2,d3
+    andi.w  #0x0F,d3
+    moveq   #0,d4
+    move.b  d2,d4
+    andi.w  #3,d4
+    lsl.w   #4,d4
+    or.w    d4,d3
+    * cache key = colour_slot<<8 | char
+    lea     gfx_fg_color_map,a0
+    move.b  (a0,d3.w),d3                        | PAL0 slot 1..15
+    lsl.w   #8,d3
+    moveq   #0,d4
+    move.b  d1,d4
+    or.w    d4,d3                               | d3 = key
+    lea     md_fg_key_slot,a0
+    moveq   #0,d4
+    move.b  (a0,d3.w),d4                        | cache slot+1 (0 = miss)
+    bne.b   1f
+    bsr     fg_cache_alloc                      | d3=key -> d4=slot+1
+1:
+    * reference counting: release the slot this cell previously used,
+    * claim the new one (allocator only reuses slots with zero refs)
+    lea     md_fg_cell_slot,a0
+    move.w  d0,d5
+    add.w   d5,d5
+    lea     (a0,d5.w),a0
+    move.w  (a0),d5                             | old slot+1 (0 = none)
+    move.w  d4,(a0)
+    lea     md_fg_slot_refs,a0
+    tst.w   d5
+    beq.b   2f
+    subq.w  #1,d5
+    add.w   d5,d5
+    subq.w  #1,(a0,d5.w)                        | refs[old]--
+2:  move.w  d4,d5
+    subq.w  #1,d5
+    add.w   d5,d5
+    addq.w  #1,(a0,d5.w)                        | refs[new]++
+    move.w  d4,d5
+    subq.w  #1,d5
+    bsr     md_fg_slot_tile
+    move.w  d5,d4
+    ori.w   #0x8000,d4                          | priority, PAL0
+    * arcade flips -> NT bits 11/12
+    moveq   #0,d5
+    move.b  d2,d5
+    andi.w  #0xC0,d5
+    lsl.w   #5,d5
+    or.w    d5,d4
+    * write nametable cell
+    lea     md_fg_cmd_tbl,a0
+    move.w  d0,d5
+    add.w   d5,d5
+    add.w   d5,d5
+    move.l  (a0,d5.w),d5
+    move.w  sr,-(a7)
+    move    #0x2700,sr
+    move.l  d5,(VDP_CTRL)
+    move.w  d4,(VDP_DATA)
+    move.w  (a7)+,sr
+fg_skip:
+    rts
+
+* allocate fg cache slot for key d3 (slot<<8|char); returns d4 = slot+1
+* skips slots still referenced by on-screen cells; title mode may use the
+* overflow slots; clobbers d1/d5/a0/a1
+fg_cache_alloc:
+    move.w  d2,-(a7)                            | caller's attr
+    move.w  #GFX_FG_CACHE_TILES,d1              | slot limit (action mode)
+    tst.b   (md_menu)
+    beq.b   0f
+    move.w  #FG_TOTAL_SLOTS,d1                  | menu screens: extended
+0:  move.w  (md_fg_ring),d4
+    move.w  d1,d5
+    subq.w  #1,d5
+find_free_slot:
+    addq.w  #1,d4
+    cmp.w   d1,d4
+    blt.b   1f
+    moveq   #0,d4                               | wrap
+1:  move.w  d4,d2
+    add.w   d2,d2
+    lea     md_fg_slot_refs,a0
+    tst.w   (a0,d2.w)
+    dbeq    d5,find_free_slot                   | until refs==0 (or all busy)
+    move.w  (a7)+,d2                            | restore attr
+    move.w  d4,(md_fg_ring)
+    * unmap evicted key
+    lea     md_fg_slot_key,a1
+    move.w  d4,d5
+    add.w   d5,d5
+    lea     (a1,d5.w),a1
+    move.w  (a1),d5
+    cmpi.w  #0xFFFF,d5
+    beq.b   1f
+    lea     md_fg_key_slot,a0
+    clr.b   (a0,d5.w)
+1:  move.w  d3,(a1)                             | slot -> key
+    lea     md_fg_key_slot,a0
+    move.w  d4,d5
+    addq.w  #1,d5
+    move.b  d5,(a0,d3.w)                        | key -> slot+1
+    * expand 1bpp char to 4bpp tile in VRAM
+    * key bit 12 = panel variant: background pixels use slot 15 (opaque
+    * black) instead of transparency
+    movem.l d0-d3/d5/d6,-(a7)
+    moveq   #0,d6                               | background pixel value
+    btst    #12,d3
+    beq.b   1f
+    moveq   #15,d6
+1:  move.w  d3,d1
+    lsr.w   #8,d1
+    andi.w  #0x0F,d1                            | d1 = colour slot value
+    andi.w  #0xFF,d3                            | char
+    lsl.w   #3,d3
+    lea     gfx_fg_chars,a0
+    lea     (a0,d3.w),a0                        | char bitmap (8 bytes)
+    move.w  d4,d5
+    bsr     md_fg_slot_tile
+    move.w  d5,d3
+    lsl.w   #5,d3                               | dest vram addr (tile*32)
+    bsr     md_vram_cmd
+    move.w  sr,-(a7)
+    move    #0x2700,sr
+    move.l  d4,(VDP_CTRL)
+    moveq   #8-1,d2                             | 8 rows
+2:  move.b  (a0)+,d3                            | row bits
+    moveq   #2-1,d5                             | 2 words per row
+3:  moveq   #0,d0
+    .rept 4
+    add.w   d0,d0
+    add.w   d0,d0
+    add.w   d0,d0
+    add.w   d0,d0
+    add.b   d3,d3                               | msb out
+    bcc.b   .+6
+    or.w    d1,d0                               | set pixel: colour slot
+    bra.b   .+4
+    or.w    d6,d0                               | clear pixel: background
+    .endr
+    move.w  d0,(VDP_DATA)
+    dbf     d5,3b
+    dbf     d2,2b
+    move.w  (a7)+,sr
+    movem.l (a7)+,d0-d3/d5/d6
+    move.w  (md_fg_ring),d4
+    addq.w  #1,d4                               | return slot+1
+    rts
+
+* d5 = cache slot -> d5 = VRAM tile index (handles overflow region)
+md_fg_slot_tile:
+    cmpi.w  #GFX_FG_CACHE_TILES,d5
+    blt.b   1f
+    addi.w  #FG_OVF_TILE-GFX_FG_CACHE_TILES,d5
+    rts
+1:  addi.w  #GFX_FG_CACHE_BASE,d5
+    rts
+
+***************************************************************
+*** background layer (combo lookup)
+***************************************************************
+
+* d0.w = byte offset, d1.b = tile code; preserve d0-d3/a0/a1
+osd_w_bg_videoram:
+    .ifeq OPT_DISABLE_BG_LAYER
+    movem.l d0-d5/a0-a2,-(a7)
+    lea     bg_videoram,a0
+    move.b  d1,(a0,d0.w)
+    lea     bg_colorram,a0
+    move.b  (a0,d0.w),d2                        | attr
+    bsr.b   bg_write
+    movem.l (a7)+,d0-d5/a0-a2
+    .endif
+    rts
+
+* d0.w = byte offset, d1.b = attr; preserve d0-d4/a0/a1
+osd_w_bg_colorram:
+    .ifeq OPT_DISABLE_BG_LAYER
+    movem.l d0-d5/a0-a2,-(a7)
+    move.b  d1,d2                               | attr
+    lea     bg_colorram,a0
+    move.b  d2,(a0,d0.w)
+    lea     bg_videoram,a0
+    move.b  (a0,d0.w),d1                        | tile code
+    bsr.b   bg_write
+    movem.l (a7)+,d0-d5/a0-a2
+    .endif
+    rts
+
+* d0.w = offset, d1.b = code, d2.b = attr (d0-d5/a0-a2 saved by caller)
+* clut7 = attr[5:2] | code[7]<<4 | attr[1:0]<<5 ; code9 = code | attr[0]<<8
+bg_write:
+    moveq   #0,d3
+    move.b  d2,d3
+    lsr.w   #2,d3
+    andi.w  #0x0F,d3                            | attr[5:2]
+    moveq   #0,d4
+    move.b  d2,d4
+    andi.w  #3,d4
+    lsl.w   #5,d4
+    or.w    d4,d3                               | + attr[1:0]<<5
+    moveq   #0,d4
+    move.b  d1,d4
+    andi.w  #0x80,d4
+    lsr.w   #3,d4
+    or.w    d4,d3                               | + code[7]<<4 -> clut7
+    moveq   #0,d4
+    move.b  d1,d4
+    btst    #0,d2
+    beq.b   1f
+    ori.w   #0x100,d4                           | code9
+1:  moveq   #0,d5
+    move.w  d3,d5
+    lsl.l   #8,d5
+    add.l   d5,d5                               | clut<<9
+    or.l    d4,d5                               | combo index
+    add.l   d5,d5
+    lea     gfx_bg_combo_tbl,a1
+    adda.l  d5,a1
+    move.w  (a1),d4                             | combo word (0 = unused)
+    * arcade flips -> NT bits 11/12 (xor with combo flips)
+    moveq   #0,d5
+    move.b  d2,d5
+    andi.w  #0xC0,d5
+    lsl.w   #5,d5
+    eor.w   d5,d4
+    andi.w  #0x1FFF,d4
+    ori.w   #0x2000,d4                          | PAL1
+    * write nametable cell
+    lea     md_bg_cmd_tbl,a0
+    move.w  d0,d5
+    add.w   d5,d5
+    add.w   d5,d5
+    move.l  (a0,d5.w),d5
+    move.w  sr,-(a7)
+    move    #0x2700,sr
+    move.l  d5,(VDP_CTRL)
+    move.w  d4,(VDP_DATA)
+    move.w  (a7)+,sr
+    rts
+
+***************************************************************
+*** scroll
+***************************************************************
+
+* d6.w = scroll register value (0-0x1FF); applied in vblank
+osd_update_scroll_hw:
+    move.w  d6,(md_scroll_shadow)
+    rts
+
+***************************************************************
+*** sprites (M3: shadow/hitbox data only; hardware sprites in M5)
+***************************************************************
+
+* a5 = obj_tbl
+osd_update_sprite_shadow:
+    movem.l d0-d1/d7/a2/a5,-(a7)
+    lea     sprite_shadow_msb,a2
+    moveq   #64-1,d7
+1:  move.b  (_STATE,a5),d0
+    subq.b  #1,d0
+    beq.b   3f                                  | inactive: skip
+    addq.b  #1,d0
+    bne.b   2f
+    * flagged inactive: zero coords, mark inactive
+    clr.w   (_X,a5)
+    clr.w   (_Y,a5)
+    move.b  #1,(_STATE,a5)
+    bra.b   3f
+2:  * active: update hitbox shadow (MANDATORY format)
+    move.w  (_Y,a5),d0
+    lsr.w   #5,d0
+    moveq   #-0x11,d1                           | 0xEF
+    sub.b   d0,d1
+    move.b  d1,(a2)
+    move.w  (_X,a5),d0
+    lsr.w   #5,d0
+    addq.w  #8,d0
+    lsr.w   #1,d0
+    move.b  d0,(1,a2)
+3:  addq.l  #2,a2
+    lea     (_OBJSIZE,a5),a5
+    dbf     d7,1b
+    movem.l (a7)+,d0-d1/d7/a2/a5
+    rts
+
+* d0.w = base sprite number (0/32) - hardware update lands in M5
+osd_update_32_sprite_hw:
+    rts
+
+***************************************************************
+*** inputs (M3 stubs - M6 implements pads)
+***************************************************************
+
+* d0 = DSWA, d1 = DSWB
+osd_read_dipswitches:
+    move.w  #0x7F,d0                            | lives 3, bonus 20K/60K
+    move.w  #0x7F,d1                            | difficulty normal, flags award, no bomb
+    rts
+
+osd_read_p1_inputs:
+osd_read_p2_inputs:
+    move.b  #0xF8,d0                            | no direction, no fire
+    rts
+
+osd_read_coin:
+    moveq   #0,d0
+    rts
+
+osd_read_start:
+    moveq   #0,d0
+    rts
+
+***************************************************************
+*** sound (M7)
+***************************************************************
+
+osd_sound_start:
+osd_sound_stop:
+osd_sound_mute:
+osd_sound_unmute:
+    rts
+
+***************************************************************
+*** high scores (M8)
+***************************************************************
+
+osd_read_high_scores:
+osd_write_high_scores:
+    rts
+
+***************************************************************
+*** OSD state
+***************************************************************
+
+    .bss
+    .align 2
+md_vb_count:        ds.w    1
+md_scroll_shadow:   ds.w    1
+md_vbias:           ds.w    1
+md_fg_vscroll:      ds.w    1
+md_mode:            ds.b    1
+md_menu:            ds.b    1
+    .align 2
+md_menu_cnt:        ds.w    1
+md_fg_ring:         ds.w    1
+md_fg_key_slot:     ds.b    8192                | (panel<<12|slot<<8|char) -> slot+1
+md_fg_slot_key:     ds.w    FG_TOTAL_SLOTS      | cache slot -> key
+md_fg_slot_refs:    ds.w    FG_TOTAL_SLOTS      | on-screen refs per slot
+* cell->slot tables: keep contiguous (purge scans both at once)
+md_fg_cell_slot:    ds.w    0x800               | arcade cell -> slot+1 in use
+md_panel_cell_slot: ds.w    PANEL_W*PANEL_ROWS  | panel cell -> slot+1 in use
+    .align 4
+md_panel_cmd_tbl:   ds.l    PANEL_W*PANEL_ROWS  | panel cell -> window NT cmd
+    .align 4
+md_fg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane A VDP cmd
+md_bg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane B VDP cmd
+    .ifdef DIAG_DUMP
+    .align 2
+md_diag_frame:      ds.w    1
+md_diag_buf:        ds.b    0x2000
+md_diag_buf2:       ds.b    0x1000
+    .endif

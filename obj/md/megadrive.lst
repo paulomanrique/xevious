@@ -1,0 +1,1898 @@
+68K GAS  src/megadrive/megadrive.68k 			page 1
+
+
+   1               	*
+   2               	* Mega Drive-specific portions of Xevious (OSD layer)
+   3               	*
+   4               	
+   5               	    .include "vdpregs.inc"
+   1               	*
+   2               	* Mega Drive hardware definitions for Xevious port
+   3               	*
+   4               	
+   5               	* 68K memory map
+   6               	    .equ    ROM_BASE,       0x000000
+   7               	    .equ    SRAM_BASE,      0x200001            | odd bytes
+   8               	    .equ    SRAM_END,       0x2003FF
+   9               	    .equ    Z80_RAM,        0xA00000
+  10               	    .equ    Z80_BUSREQ,     0xA11100
+  11               	    .equ    Z80_RESET,      0xA11200
+  12               	    .equ    IO_VERSION,     0xA10001
+  13               	    .equ    IO_DATA1,       0xA10003
+  14               	    .equ    IO_DATA2,       0xA10005
+  15               	    .equ    IO_CTRL1,       0xA10009
+  16               	    .equ    IO_CTRL2,       0xA1000B
+  17               	    .equ    TMSS_REG,       0xA14000
+  18               	    .equ    SRAM_CTRL,      0xA130F1
+  19               	    .equ    RAM_BASE,       0xFF0000
+  20               	
+  21               	* VDP ports
+  22               	    .equ    VDP_DATA,       0xC00000
+  23               	    .equ    VDP_CTRL,       0xC00004
+  24               	    .equ    VDP_HV,         0xC00008
+  25               	    .equ    PSG_PORT,       0xC00011
+  26               	
+  27               	* VRAM layout
+  28               	* tile patterns: 0x0000-0xAFFF (tile 0 = blank)
+  29               	*   bg game patterns   from 0x0020 (generated, see graphics_md.68k)
+  30               	*   sprite pool        after bg    (generated bound)
+  31               	*   fg dynamic cache   below window NT
+  32               	    .equ    VRAM_WINDOW_NT, 0xB000              | 64x32 window nametable (4KB)
+  33               	    .equ    VRAM_SAT,       0xBC00              | sprite attribute table (640B)
+  34               	    .equ    VRAM_HSCROLL,   0xBF00              | hscroll table
+  35               	    .equ    VRAM_PLANE_A,   0xC000              | 64x64 nametable (8KB)
+  36               	    .equ    VRAM_PLANE_B,   0xE000              | 64x64 nametable (8KB)
+  37               	
+  38               	* VDP register values
+  39               	* NOTE: '|' is the comment char in MIT syntax: use '+' in expressions!
+  40               	    .equ    VDPR00, 0x8004                      | mode 1: no hint, normal ops
+  41               	    .equ    VDPR01_OFF, 0x8134                  | mode 2: display off, vint, dma, V28, mode5
+  42               	    .equ    VDPR01_ON,  0x8174                  | mode 2: display on
+  43               	    .equ    VDPR02, 0x8200+(VRAM_PLANE_A>>10)   | plane A nametable
+  44               	    .equ    VDPR03, 0x8300+(VRAM_WINDOW_NT>>10) | window nametable
+  45               	    .equ    VDPR04, 0x8400+(VRAM_PLANE_B>>13)   | plane B nametable
+  46               	    .equ    VDPR05, 0x8500+(VRAM_SAT>>9)        | sprite attribute table
+  47               	    .equ    VDPR06, 0x8600
+  48               	    .equ    VDPR07, 0x8700                      | backdrop colour = pal0 idx0
+  49               	    .equ    VDPR08, 0x8800
+  50               	    .equ    VDPR09, 0x8900
+  51               	    .equ    VDPR10, 0x8AFF                      | hint counter
+  52               	    .equ    VDPR11, 0x8B00                      | full-screen scroll
+68K GAS  src/megadrive/megadrive.68k 			page 2
+
+
+  53               	    .equ    VDPR12, 0x8C81                      | H40, no shadow/hilite, no interlace
+  54               	    .equ    VDPR13, 0x8D00+(VRAM_HSCROLL>>10)   | hscroll table
+  55               	    .equ    VDPR14, 0x8E00
+  56               	    .equ    VDPR15, 0x8F02                      | autoincrement 2
+  57               	    .equ    VDPR16, 0x9011                      | plane size 64x64
+  58               	    .equ    VDPR17, 0x9191                      | window: right side, x>=272 (17*16)
+  59               	    .equ    VDPR18, 0x9200                      | window Y: full height
+  60               	
+  61               	* VDP command address macros (control port longword formats)
+  62               	* vram write:  0x40000000 + (a&0x3FFF)<<16 + (a&0xC000)>>14
+  63               	* cram write:  0xC0000000 + ...
+  64               	* vsram write: 0x40000010 + ...
+  65               	
+  66               	    .macro  VDP_W_VRAM   addr
+  67               	    move.l  #0x40000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  68               	    .endm
+  69               	
+  70               	    .macro  VDP_W_CRAM   addr
+  71               	    move.l  #0xC0000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  72               	    .endm
+  73               	
+  74               	    .macro  VDP_W_VSRAM  addr
+  75               	    move.l  #0x40000010+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  76               	    .endm
+   6               	    .include "xevious.inc"
+   1               	
+   2               	* xevious.inc
+   3               	
+   4               	***    
+   5               	*** BUILD OPTIONS
+   6               	***
+   7               		.ifdef	RELEASE
+   8               	    * hardware options
+   9               	    OPT_DISABLE_FG_LAYER=0              | don't change values here!
+  10               	    OPT_DISABLE_BG_LAYER=0              | don't change values here!
+  11               	    OPT_DISABLE_SPRITES=0               | don't change values here!
+  12               	    OPT_DISABLE_DISPLAY_MASKS=0         | don't change values here!
+  13               											| don't change values here!
+  14               	    * optimisation options              | don't change values here!
+  15               	    OPT_SUB_HAS_IRQ=1                   | don't change values here!
+  16               	    * game test options                 | don't change values here!
+  17               	    OPT_START_AREA=1    | 1-16          | don't change values here!
+  18               	    OPT_LOOP_AREA=0                     | don't change values here!
+  19               	    OPT_INVINCIBLE=0                    | don't change values here!
+  20               	    OPT_INFINITE_LIVES=0                | don't change values here!
+  21               	    * score is BCD format               | don't change values here!
+  22               	    OPT_START_SCORE=0x0000000           | don't change values here!
+  23               	    OPT_ENABLE_HIGH_SCORE_IO=1          | don't change values here!
+  24               	    OPT_TCDEV_EASTER_EGG=1              | don't change values here!
+  25               	    OPT_REVEAL_SOL_TOWER=0              | don't change values here!
+  26               	    OPT_REVEAL_BONUS_FLAG=0             | don't change values here!
+  27               	    OPT_DISPLAY_AREA=0                  | don't change values here!
+  28               	    OPT_SKIP_SPLASH=0                   | don't change values here!
+  29               	    OPT_SKIP_ATTRACT=0                  | don't change values here!
+  30               		.else
+  31               		* dev/debug mode: changes here won't reflect on release version!
+  32               	    * hardware options
+68K GAS  src/megadrive/megadrive.68k 			page 3
+
+
+  33               	    OPT_DISABLE_FG_LAYER=0
+  34               	    OPT_DISABLE_BG_LAYER=0
+  35               	    OPT_DISABLE_SPRITES=0
+  36               	    OPT_DISABLE_DISPLAY_MASKS=0
+  37               	
+  38               	    * optimisation options
+  39               	    OPT_SUB_HAS_IRQ=1
+  40               	    * game test options    
+  41               	    OPT_START_AREA=1    | 1-16
+  42               	    OPT_LOOP_AREA=0
+  43               	    OPT_INVINCIBLE=0
+  44               	    OPT_INFINITE_LIVES=0
+  45               	    * score is BCD format
+  46               	    OPT_START_SCORE=0x0000000
+  47               	    OPT_ENABLE_HIGH_SCORE_IO=1
+  48               	    OPT_TCDEV_EASTER_EGG=1
+  49               	    OPT_REVEAL_SOL_TOWER=0
+  50               	    OPT_REVEAL_BONUS_FLAG=0
+  51               	    OPT_DISPLAY_AREA=0
+  52               	    OPT_SKIP_SPLASH=0
+  53               	    OPT_SKIP_ATTRACT=0
+  54               		.endif
+  55               		
+  56               	***
+  57               	*** end of BUILD OPTIONS
+  58               	***
+  59               	
+  60               	* offsets into object table
+  61               	    .equ  _STATE,     0
+  62               	    .equ  _ATTR,      1
+  63               	    .equ  _EXTRA,     4
+  64               	    .equ  _X,         8
+  65               	    .equ  _dX,        10
+  66               	    .equ  _ddX,       12
+  67               	    .equ  _Y,         14
+  68               	    .equ  _dY,        16
+  69               	    .equ  _ddY,       18
+  70               	    .equ  _CODE,      20
+  71               	    .equ  _COLOUR,    21
+  72               	    .equ  _PTS,       22
+  73               	    .equ  _TIMER,     24
+  74               	    .equ  _TIMER1,    25
+  75               	      .equ  _NVEC,    25
+  76               	    .equ  _TIMER2,    26
+  77               	      .equ  _VECLEN,  26
+  78               	    .equ  _FFREQ,     28
+  79               	    .equ  _TYPE,      30
+  80               	
+  81               	    .equ  _OBJSIZE,   32
+  82               	
+  83               	* video functions
+  84               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  85               	    .equ  BANK_BG_COLORRAM,   (1<<2)
+  86               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
+  87               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
+  88               	
+  89               	* sound ordinals
+68K GAS  src/megadrive/megadrive.68k 			page 4
+
+
+  90               	
+  91               	    .equ  MAIN_THEME_SND,         0x01
+  92               	    .equ  HIGHEST_SCORE_SND,      0x02
+  93               	    .equ  HIGH_SCORE_SND,         0x03
+  94               	    .equ  EXTRA_SOLVALOU_SND,     0x04
+  95               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+  96               	    .equ  GARU_ZAKATO_SND,        0x06
+  97               	    .equ  ANDOR_GENESIS_SND,      0x07
+  98               	    .equ  SHEONITE_SND,           0x08
+  99               	    .equ  TELEPORT_SND,           0x09
+ 100               	    .equ  BACURA_HIT_SND,         0x0a
+ 101               	    .equ  SHOT_SND,               0x0b
+ 102               	    .equ  BOMB_SND,               0x0c
+ 103               	    .equ  BONUS_FLAG_SND,         0x0d
+ 104               	    .equ  SOLVALOU_SND,           0x0e
+ 105               	    * 60XX (noise chip?)
+ 106               	    .equ  COIN_SND,               0x10
+ 107               	    .equ  GROUND_EXPLOSION_SND,   0x11
+ 108               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
+ 109               	    
+ 110               	
+ 111               	
+   7               	    .include "graphics_md.68k"
+   1               	* generated by assets/megadrive/convert_graphics_md.py - DO NOT EDIT
+   2               	
+   3               	* bg game colors 16 (quantized from 25)
+   4               	* bg title colors (from 12)
+   5               	* bg game: 1162 combos -> 919 patterns (29408 bytes)
+   6               	* bg title: 232 combos -> 131 patterns (4192 bytes)
+   7               	* sprites: 50 colors -> 21 quantized, split 15/11
+   8               	* sprites: 1030 combos -> 695 frames (88960 bytes)
+   9               	* fg: 54 distinct colors -> 14 slots
+  10               	* VRAM: bg 919 tiles @1, pool 360 tiles @920 (90 frames), fg cache @1280
+  11               	
+  12               	    .equ GFX_BG_BASE_TILE, 1
+  13               	    .equ GFX_N_BG, 919
+  14               	    .equ GFX_POOL_BASE_TILE, 920
+  15               	    .equ GFX_POOL_TILES, 360
+  16               	    .equ GFX_POOL_FRAMES, 90
+  17               	    .equ GFX_N_TITLE, 131
+  18               	    .equ GFX_N_FRAMES, 695
+  19               	    .equ GFX_FG_CACHE_BASE, 1280
+  20               	    .equ GFX_FG_CACHE_TILES, 128
+  21               	
+  22               	    .global gfx_palettes_game
+  23               	    .global gfx_palette_title
+  24               	    .global gfx_bg_combo_tbl
+  25               	    .global gfx_bg_patterns
+  26               	    .global gfx_title_patterns
+  27               	    .global gfx_sprite_combo_tbl
+  28               	    .global gfx_sprite_frames
+  29               	    .global gfx_fg_chars
+  30               	    .global gfx_fg_color_map
+  31               	
+  32               	    .section .rodata
+  33               	
+  34               	    .align 2
+68K GAS  src/megadrive/megadrive.68k 			page 5
+
+
+  35               	gfx_palettes_game:
+  36 0000 0000 0E00 	    .word 0x0000,0x0E00,0x0E80,0x06C0,0x0442,0x0662,0x0444,0x0684,0x0088,0x0688,0x002A,0x026A,0x0AA
+  36      0E80 06C0 
+  36      0442 0662 
+  36      0444 0684 
+  36      0088 0688 
+  37 0020 0000 0CC0 	    .word 0x0000,0x0CC0,0x0042,0x0062,0x0C62,0x0244,0x0064,0x0284,0x0A84,0x0066,0x0468,0x0488,0x048
+  37      0042 0062 
+  37      0C62 0244 
+  37      0064 0284 
+  37      0A84 0066 
+  38 0040 0000 0024 	    .word 0x0000,0x0024,0x0044,0x0644,0x0006,0x0466,0x0048,0x0088,0x0688,0x08AA,0x000C,0x0ACC,0x028
+  38      0044 0644 
+  38      0006 0466 
+  38      0048 0088 
+  38      0688 08AA 
+  39 005e 0000 0800 	    .word 0x0000,0x0800,0x0240,0x0880,0x08E0,0x0404,0x0808,0x08AA,0x000C,0x0ACC,0x0AEE,0x0000,0x000
+  39      0240 0880 
+  39      08E0 0404 
+  39      0808 08AA 
+  39      000C 0ACC 
+  40               	gfx_palette_title:
+  41 007c 0000 0E00 	    .word 0x0000,0x0E00,0x0CC0,0x0022,0x0042,0x0062,0x0E82,0x0444,0x0284,0x0268,0x048A,0x0EEE,0x000
+  41      0CC0 0022 
+  41      0042 0062 
+  41      0E82 0444 
+  41      0284 0268 
+  42               	
+  43               	    .align 2
+  44               	gfx_bg_combo_tbl:
+  45 009c 8801 9809 	    .incbin "gfx_bg_combo.bin"
+  45      900F 8015 
+  45      8008 8008 
+  45      8008 8008 
+  45      801B 9B6F 
+  46               	    .align 2
+  47               	gfx_bg_patterns:
+  48 2009c 7677 7777 	    .incbin "gfx_bg_patterns.bin"
+  48      7777 7777 
+  48      7777 7777 
+  48      7777 7677 
+  48      7777 7777 
+  49               	    .align 2
+  50               	gfx_title_patterns:
+  51 2737c 5555 8888 	    .incbin "gfx_title_patterns.bin"
+  51      5588 8888 
+  51      5888 8888 
+  51      8888 8888 
+  51      8888 8888 
+  52               	    .align 2
+  53               	gfx_sprite_combo_tbl:
+  54 283dc 0000 FFFF 	    .incbin "gfx_sprite_combo.bin"
+  54      FFFF FFFF 
+  54      FFFF FFFF 
+  54      FFFF FFFF 
+  54      0000 FFFF 
+  55               	    .align 2
+68K GAS  src/megadrive/megadrive.68k 			page 6
+
+
+  56               	gfx_sprite_frames:
+  57 483dc 0000 0000 	    .incbin "gfx_sprite_frames.bin"
+  57      0000 0000 
+  57      0000 0000 
+  57      0000 0000 
+  57      0000 0000 
+  58               	    .align 2
+  59               	gfx_fg_chars:
+  60 5df5c 3E71 7171 	    .incbin "gfx_fg_chars.bin"
+  60      7171 3E00 
+  60      3C1C 1C1C 
+  60      1C1C 1C00 
+  60      7E07 073E 
+  61               	    .align 2
+  62               	gfx_fg_color_map:
+  63 5e75c 0F07 0202 	    .incbin "gfx_fg_color_map.bin"
+  63      040C 0202 
+  63      080C 0808 
+  63      090A 0606 
+  63      0808 070B 
+   8               	
+   9               	    .global md_main
+  10               	    .global md_vblank
+  11               	
+  12               	* osd layer
+  13               	    .global osd_enable_vblank_interrupt
+  14               	    .global osd_ack_vblank_interrupt
+  15               	    .global osd_disable_vblank_interrupt
+  16               	    .global osd_kick_wdog
+  17               	    .global osd_w_fg_colorram
+  18               	    .global osd_w_bg_colorram
+  19               	    .global osd_w_fg_videoram
+  20               	    .global osd_w_bg_videoram
+  21               	    .global osd_update_scroll_hw
+  22               	    .global osd_update_sprite_shadow
+  23               	    .global osd_update_32_sprite_hw
+  24               	    .global osd_read_dipswitches
+  25               	    .global osd_read_p1_inputs
+  26               	    .global osd_read_p2_inputs
+  27               	    .global osd_read_coin
+  28               	    .global osd_read_start
+  29               	    .global osd_sound_start
+  30               	    .global osd_sound_stop
+  31               	    .global osd_sound_mute
+  32               	    .global osd_sound_unmute
+  33               	    .global osd_read_high_scores
+  34               	    .global osd_write_high_scores
+  35               	    .global osd_debug_hook
+  36               	
+  37               	* display geometry
+  38               	* playfield: 224px wide at nametable columns 6..33 (screen x 48..271)
+  39               	* arcade fg rows 4..39 -> plane A rows 0..35; hidden/unused rows -> plane row 44
+  40               	* arcade bg rows 0..63 -> plane B rows 0..63 (vscroll selects window)
+  41               	    .equ    MD_LEFT_COL,    6
+  42               	    .equ    FG_DUMP_ROW,    44
+  43               	* display window: arcade screen rows (srow 0-35; fg row = srow+4)
+  44               	*  game:  srows 4..31  (top HUD srows 0-1 and bottom srow 35 live on the panel)
+68K GAS  src/megadrive/megadrive.68k 			page 7
+
+
+  45               	*  title: srows 7..34  (logos, hiscore table, copyright lines)
+  46               	* plane A vscroll = (window top srow) * 8
+  47               	* bg vscroll = (FGV - 56 - scroll) & 511; from arcade row relation
+  48               	* bg_row = fg_row - 11 - scroll/8 (scroll moves terrain DOWN the screen)
+  49               	    .equ    FGV_GAME,       32                  | plane A vscroll per mode
+  50               	    .equ    FGV_TITLE,      56
+  51               	    .equ    VBIAS_GAME,     (FGV_GAME-56)&511
+  52               	    .equ    VBIAS_TITLE,    (FGV_TITLE-56)&511
+  53               	
+  54               	* HUD panel (window plane, screen columns 34-39, 6 cells wide)
+  55               	    .equ    PANEL_COL,      34
+  56               	    .equ    PANEL_W,        6
+  57               	    .equ    PANEL_ROWS,     28
+  58               	    .equ    SOLID_SLOT,     GFX_FG_CACHE_TILES-1 | reserved opaque-black tile
+  59               	
+  60               	* fg cache overflow: title-type screens (logo, hiscore table) need more than
+  61               	* 128 live (char,colour) combos; borrow the tail of the sprite pool while in
+  62               	* title mode (sprites are idle there), purged when gameplay starts
+  63               	    .equ    FG_OVF_SLOTS,   96
+  64               	    .equ    FG_TOTAL_SLOTS, GFX_FG_CACHE_TILES+FG_OVF_SLOTS
+  65               	    .equ    FG_OVF_TILE,    GFX_POOL_BASE_TILE+GFX_POOL_TILES-FG_OVF_SLOTS
+  66               	* panel glyphs: pre-rendered opaque tiles, independent of the fg cache;
+  67               	* placed just below the overflow region at the pool tail
+  68               	    .equ    PANEL_GLYPHS,   19
+  69               	    .equ    PANEL_TILE,     FG_OVF_TILE-PANEL_GLYPHS
+  70               	* glyph ids: 0-9 digits, 10..16 = U,P,H,I,A,C,R, 17 ship icon, 18 solid black
+  71               	    .equ    PG_U,           10
+  72               	    .equ    PG_P,           11
+  73               	    .equ    PG_H,           12
+  74               	    .equ    PG_I,           13
+  75               	    .equ    PG_A,           14
+  76               	    .equ    PG_C,           15
+  77               	    .equ    PG_R,           16
+  78               	    .equ    PG_SHIP,        17
+  79               	    .equ    PG_SOLID,       18
+  80               	* panel text colours (arcade fg colour codes 0-63)
+  81               	    .equ    PCOL_TEXT,      61                  | white
+  82               	    .equ    PCOL_LABEL,     38                  | red
+  83               	    .equ    PCOL_ICON,      42                  | ship icon colour (core uses 0x2A)
+  84               	* chars: digits 0x00-0x09, uppercase 'A'=0x0A.., space 0x24, ship icon 0x25
+  85               	    .equ    CH_SPACE,       0x24
+  86               	    .equ    CH_SHIP,        0x25
+  87               	
+  88               	* debug probe: paint the backdrop to trace how far execution gets
+  89               	    .macro  PROBE colour
+  90               	    .ifdef DEBUG
+  91               	    move.l  #0xC0000000,(VDP_CTRL)
+  92               	    move.w  #\colour,(VDP_DATA)
+  93               	    .endif
+  94               	    .endm
+  95               	
+  96               	    .text
+  97               	
+  98               	***************************************************************
+  99               	*** init
+ 100               	***************************************************************
+ 101               	
+68K GAS  src/megadrive/megadrive.68k 			page 8
+
+
+ 102               	md_main:
+ 103 0000 6100 0008 	    bsr     md_platform_init
+ 104               	    .ifdef DIAG_FGTEST
+ 105               	* isolated fg pipeline test: draw a grid of chars without the core
+ 106               	* row r (4..19), col c (0..27): char = r*2, attr = colour pattern
+ 107               	    moveq   #0,d6                               | row index 0..15
+ 108               	fgtest_row:
+ 109               	    moveq   #0,d7                               | col 0..27
+ 110               	fgtest_col:
+ 111               	    move.w  d6,d0
+ 112               	    addq.w  #4,d0                               | fg row 4..19
+ 113               	    move.w  d7,d1
+ 114               	    lsl.w   #6,d1
+ 115               	    add.w   d1,d0                               | offset = col*64+row
+ 116               	    * attr: colour bits[3:0] in attr[5:2] -> colour = row (1..15)
+ 117               	    move.w  d6,d1
+ 118               	    addq.w  #1,d1
+ 119               	    andi.w  #0x0F,d1
+ 120               	    lsl.w   #2,d1                               | attr[5:2] = colour[3:0]
+ 121               	    jsr     osd_w_fg_colorram
+ 122               	    * char = col*2 (0,2,4..54)
+ 123               	    move.w  d7,d1
+ 124               	    add.w   d1,d1
+ 125               	    jsr     osd_w_fg_videoram
+ 126               	    addq.w  #1,d7
+ 127               	    cmpi.w  #28,d7
+ 128               	    blt.b   fgtest_col
+ 129               	    addq.w  #1,d6
+ 130               	    cmpi.w  #16,d6
+ 131               	    blt.b   fgtest_row
+ 132               	fgtest_spin:
+ 133               	    bra.b   fgtest_spin
+ 134               	    .endif
+ 135 0004 4EF9 0000 	    jmp     xevious_reset
+ 135      0000 
+ 136               	
+ 137               	md_platform_init:
+ 138               	* load full game palette set (4 lines)
+ 139 000a 41F9 0000 	    lea     gfx_palettes_game,a0
+ 139      0000 
+ 140 0010 23FC C000 	    VDP_W_CRAM 0
+ 140      0000 00C0 
+ 140      0004 
+ 141 001a 7E3F      	    moveq   #64-1,d7
+ 142 001c 33D8 00C0 	1:  move.w  (a0)+,(VDP_DATA)
+ 142      0000 
+ 143 0022 51CF FFF8 	    dbf     d7,1b
+ 144               	
+ 145               	* upload resident bg patterns (display is still off: full speed)
+ 146 0026 41F9 0000 	    lea     gfx_bg_patterns,a0
+ 146      0000 
+ 147 002c 23FC 4020 	    VDP_W_VRAM (GFX_BG_BASE_TILE*32)
+ 147      0000 00C0 
+ 147      0004 
+ 148 0036 2E3C 0000 	    move.l  #GFX_N_BG*16-1,d7
+ 148      396F 
+ 149 003c 33D8 00C0 	2:  move.w  (a0)+,(VDP_DATA)
+68K GAS  src/megadrive/megadrive.68k 			page 9
+
+
+ 149      0000 
+ 150 0042 51CF FFF8 	    dbf     d7,2b
+ 151               	
+ 152               	* build per-cell VDP command tables
+ 153               	* arcade offset = col*64 + row (col 0-31, row 0-63)
+ 154               	* md col = 6 + ((29 - col) & 31)
+ 155 0046 41F9 0000 	    lea     md_fg_cmd_tbl,a0
+ 155      0000 
+ 156 004c 43F9 0000 	    lea     md_bg_cmd_tbl,a1
+ 156      0000 
+ 157 0052 7E00      	    moveq   #0,d7                               | offset
+ 158 0054 3007      	3:  move.w  d7,d0
+ 159 0056 0240 003F 	    andi.w  #0x3F,d0                            | row
+ 160 005a 3207      	    move.w  d7,d1
+ 161 005c EC49      	    lsr.w   #6,d1                               | col
+ 162 005e 741D      	    moveq   #29,d2
+ 163 0060 9441      	    sub.w   d1,d2
+ 164 0062 0242 001F 	    andi.w  #0x1F,d2
+ 165 0066 5C42      	    addq.w  #MD_LEFT_COL,d2                     | md col
+ 166               	    * fg row: only rows 6..38 can ever be displayed (both window modes);
+ 167               	    * others (incl. the arcade's own HUD rows 4,5,39) get a null command
+ 168               	    * so they never consume fg cache slots
+ 169 0068 3600      	    move.w  d0,d3
+ 170 006a 5D43      	    subq.w  #6,d3
+ 171 006c 0C43 0021 	    cmpi.w  #33,d3
+ 172 0070 6506      	    bcs.b   4f
+ 173 0072 7800      	    moveq   #0,d4                               | hidden: null cmd
+ 174 0074 20C4      	    move.l  d4,(a0)+
+ 175 0076 6014      	    bra.b   8f
+ 176 0078 3600      	4:  move.w  d0,d3
+ 177 007a 5943      	    subq.w  #4,d3                               | plane A row = fg row - 4
+ 178 007c ED4B      	    lsl.w   #6,d3
+ 179 007e D642      	    add.w   d2,d3
+ 180 0080 D643      	    add.w   d3,d3                               | cell byte offset
+ 181 0082 0643 C000 	    addi.w  #VRAM_PLANE_A,d3
+ 182 0086 6100 009A 	    bsr     md_vram_cmd
+ 183 008a 20C4      	    move.l  d4,(a0)+
+ 184               	8:
+ 185               	    * bg row (direct)
+ 186 008c 3600      	    move.w  d0,d3
+ 187 008e ED4B      	    lsl.w   #6,d3
+ 188 0090 D642      	    add.w   d2,d3
+ 189 0092 D643      	    add.w   d3,d3
+ 190 0094 0643 E000 	    addi.w  #VRAM_PLANE_B,d3                    | max 0xE000+0x1FFE = 0xFFFE, fits
+ 191 0098 6100 0088 	    bsr     md_vram_cmd
+ 192 009c 22C4      	    move.l  d4,(a1)+
+ 193 009e 5247      	    addq.w  #1,d7
+ 194 00a0 0C47 0800 	    cmpi.w  #0x800,d7
+ 195 00a4 6DAE      	    blt.b   3b
+ 196               	
+ 197               	* init fg cache slot->key table to invalid (incl. overflow slots)
+ 198 00a6 41F9 0000 	    lea     md_fg_slot_key,a0
+ 198      0000 
+ 199 00ac 3E3C 006F 	    move.w  #FG_TOTAL_SLOTS/2-1,d7
+ 200 00b0 20FC FFFF 	5:  move.l  #0xFFFFFFFF,(a0)+
+ 200      FFFF 
+ 201 00b6 51CF FFF8 	    dbf     d7,5b
+68K GAS  src/megadrive/megadrive.68k 			page 10
+
+
+ 202               	
+ 203               	* panel cell -> window NT command table
+ 204 00ba 41F9 0000 	    lea     md_panel_cmd_tbl,a0
+ 204      0000 
+ 205 00c0 7E00      	    moveq   #0,d7
+ 206 00c2 7600      	7:  moveq   #0,d3
+ 207 00c4 3607      	    move.w  d7,d3
+ 208 00c6 86FC 0006 	    divu    #PANEL_W,d3                         | low = row, high = col
+ 209 00ca 3A03      	    move.w  d3,d5
+ 210 00cc ED4D      	    lsl.w   #6,d5                               | row*64
+ 211 00ce 4843      	    swap    d3
+ 212 00d0 DA43      	    add.w   d3,d5                               | + col
+ 213 00d2 0645 0022 	    addi.w  #PANEL_COL,d5
+ 214 00d6 DA45      	    add.w   d5,d5
+ 215 00d8 0645 B000 	    addi.w  #VRAM_WINDOW_NT,d5
+ 216 00dc 3605      	    move.w  d5,d3
+ 217 00de 6100 0042 	    bsr     md_vram_cmd
+ 218 00e2 20C4      	    move.l  d4,(a0)+
+ 219 00e4 5247      	    addq.w  #1,d7
+ 220 00e6 0C47 00A8 	    cmpi.w  #PANEL_W*PANEL_ROWS,d7
+ 221 00ea 6DD6      	    blt.b   7b
+ 222               	
+ 223               	* fill the panel with the opaque tile and draw static labels
+ 224 00ec 6100 0216 	    bsr     md_panel_init
+ 225               	
+ 226               	* mode/scroll state
+ 227 00f0 4239 0000 	    clr.b   (md_mode)
+ 227      0000 
+ 228 00f6 4239 0000 	    clr.b   (md_menu)
+ 228      0000 
+ 229 00fc 4279 0000 	    clr.w   (md_menu_cnt)
+ 229      0000 
+ 230 0102 4279 0000 	    clr.w   (md_scroll_shadow)
+ 230      0000 
+ 231 0108 33FC 01E8 	    move.w  #VBIAS_GAME,(md_vbias)
+ 231      0000 0000 
+ 232 0110 33FC 0020 	    move.w  #FGV_GAME,(md_fg_vscroll)
+ 232      0000 0000 
+ 233               	
+ 234               	* enable display (interrupts stay off until core enables them)
+ 235 0118 33FC 8174 	    move.w  #VDPR01_ON,(VDP_CTRL)
+ 235      00C0 0004 
+ 236 0120 4E75      	    rts
+ 237               	
+ 238               	* d3.w = vram address -> d4.l = VDP write command
+ 239               	md_vram_cmd:
+ 240 0122 7800      	    moveq   #0,d4
+ 241 0124 3803      	    move.w  d3,d4
+ 242 0126 0244 3FFF 	    andi.w  #0x3FFF,d4
+ 243 012a 4844      	    swap    d4
+ 244 012c 3803      	    move.w  d3,d4
+ 245 012e E55C      	    rol.w   #2,d4
+ 246 0130 0244 0003 	    andi.w  #3,d4
+ 247 0134 0084 4000 	    ori.l   #0x40000000,d4
+ 247      0000 
+ 248 013a 4E75      	    rts
+ 249               	
+68K GAS  src/megadrive/megadrive.68k 			page 11
+
+
+ 250               	***************************************************************
+ 251               	*** vblank
+ 252               	***************************************************************
+ 253               	
+ 254               	md_vblank:
+ 255 013c 48E7 FFFE 	    movem.l d0-d7/a0-a6,-(a7)
+ 256 0140 4A79 00C0 	    tst.w   (VDP_CTRL)                          | ack vint (clear F flag)
+ 256      0004 
+ 257               	
+ 258               	* flush plane B vscroll (window bias - game scroll: scroll moves terrain down)
+ 259 0146 3039 0000 	    move.w  (md_vbias),d0
+ 259      0000 
+ 260 014c 9079 0000 	    sub.w   (md_scroll_shadow),d0
+ 260      0000 
+ 261 0152 0240 01FF 	    andi.w  #0x1FF,d0
+ 262 0156 23FC 4002 	    VDP_W_VSRAM 2
+ 262      0010 00C0 
+ 262      0004 
+ 263 0160 33C0 00C0 	    move.w  d0,(VDP_DATA)
+ 263      0000 
+ 264               	* plane A vscroll (window position per mode)
+ 265 0166 23FC 4000 	    VDP_W_VSRAM 0
+ 265      0010 00C0 
+ 265      0004 
+ 266 0170 3039 0000 	    move.w  (md_fg_vscroll),d0
+ 266      0000 
+ 267 0176 33C0 00C0 	    move.w  d0,(VDP_DATA)
+ 267      0000 
+ 268               	
+ 269 017c 6100 001E 	    bsr     md_check_mode
+ 270 0180 6100 0098 	    bsr     md_check_menu
+ 271 0184 6100 032E 	    bsr     md_update_panel
+ 272               	
+ 273               	    .ifdef DIAG_STATE
+ 274               	* encode flags in the backdrop colour (left border):
+ 275               	* red = is_real_game, green = md_menu, blue = scroll_disabled
+ 276               	    moveq   #0,d0
+ 277               	    tst.b   (is_real_game)
+ 278               	    beq.b   .+6
+ 279               	    ori.w   #0x000A,d0
+ 280               	    tst.b   (md_menu)
+ 281               	    beq.b   .+6
+ 282               	    ori.w   #0x00A0,d0
+ 283               	    tst.b   (scroll_disabled)
+ 284               	    beq.b   .+6
+ 285               	    ori.w   #0x0A00,d0
+ 286               	    move.l  #0xC0000000,(VDP_CTRL)
+ 287               	    move.w  d0,(VDP_DATA)
+ 288               	    .endif
+ 289               	
+ 290               	    .ifdef DIAG_DUMP
+ 291               	* copy plane A nametable to a RAM buffer at frame 360 (gdb extracts it)
+ 292               	    addq.w  #1,(md_diag_frame)
+ 293               	    cmpi.w  #600,(md_diag_frame)
+ 294               	    bne.b   no_diag
+ 295               	    move.l  #0x00000003,(VDP_CTRL)              | VRAM READ @0xC000 (CD=0000)
+ 296               	    lea     (md_diag_buf),a0
+68K GAS  src/megadrive/megadrive.68k 			page 12
+
+
+ 297               	    move.w  #0x1000-1,d0
+ 298               	diag_rd:
+ 299               	    move.w  (VDP_DATA),(a0)+
+ 300               	    dbf     d0,diag_rd
+ 301               	    move.l  #0x20000002,(VDP_CTRL)              | VRAM READ @0xA000 (fg cache tiles)
+ 302               	    lea     (md_diag_buf2),a0
+ 303               	    move.w  #0x800-1,d0
+ 304               	diag_rd2:
+ 305               	    move.w  (VDP_DATA),(a0)+
+ 306               	    dbf     d0,diag_rd2
+ 307               	md_diag_done:
+ 308               	    nop                                         | breakpoint anchor (diag path only)
+ 309               	no_diag:
+ 310               	    .endif
+ 311               	
+ 312               	* one game tick per vblank (60Hz); the core copies this into its
+ 313               	* main-loop semaphore (the platform layer owns this counter, see amiga.68k)
+ 314 0188 13FC 0001 	    move.b  #1,(vb_ticks_count)
+ 314      0000 0000 
+ 315               	
+ 316 0190 4EB9 0000 	    jsr     xevious_im1_irq
+ 316      0000 
+ 317               	
+ 318 0196 4CDF 7FFF 	    movem.l (a7)+,d0-d7/a0-a6
+ 319 019a 4E73      	    rte
+ 320               	
+ 321               	* title <-> game mode switch, detected via core bg shadow sentinel
+ 322               	* (same trick as the Amiga port: title screen has tile 0xCD at 0x60E)
+ 323               	md_check_mode:
+ 324 019c 7000      	    moveq   #0,d0
+ 325 019e 0C39 00CD 	    cmpi.b  #0xCD,(bg_videoram+0x60E)
+ 325      0000 0000 
+ 326 01a6 6602      	    bne.b   0f
+ 327 01a8 7001      	    moveq   #1,d0
+ 328 01aa B039 0000 	0:  cmp.b   (md_mode),d0
+ 328      0000 
+ 329 01b0 6700 0066 	    beq     mode_done
+ 330 01b4 13C0 0000 	    move.b  d0,(md_mode)
+ 330      0000 
+ 331 01ba 4A00      	    tst.b   d0
+ 332 01bc 673E      	    beq.b   enter_game_mode
+ 333               	
+ 334               	enter_title_mode:
+ 335               	* PAL1 = title palette
+ 336 01be 41F9 0000 	    lea     gfx_palette_title,a0
+ 336      0000 
+ 337 01c4 23FC C020 	    VDP_W_CRAM 32
+ 337      0000 00C0 
+ 337      0004 
+ 338 01ce 7E0F      	    moveq   #16-1,d7
+ 339 01d0 33D8 00C0 	1:  move.w  (a0)+,(VDP_DATA)
+ 339      0000 
+ 340 01d6 51CF FFF8 	    dbf     d7,1b
+ 341               	* copy title bg patterns into the sprite pool area
+ 342 01da 41F9 0000 	    lea     gfx_title_patterns,a0
+ 342      0000 
+ 343 01e0 23FC 7300 	    VDP_W_VRAM (GFX_POOL_BASE_TILE*32)
+68K GAS  src/megadrive/megadrive.68k 			page 13
+
+
+ 343      0001 00C0 
+ 343      0004 
+ 344 01ea 2E3C 0000 	    move.l  #GFX_N_TITLE*16-1,d7
+ 344      082F 
+ 345 01f0 33D8 00C0 	2:  move.w  (a0)+,(VDP_DATA)
+ 345      0000 
+ 346 01f6 51CF FFF8 	    dbf     d7,2b
+ 347 01fa 4E75      	    rts
+ 348               	
+ 349               	enter_game_mode:
+ 350               	* PAL1 = game palette (patterns are resident, nothing to upload)
+ 351 01fc 41F9 0000 	    lea     gfx_palettes_game+32,a0
+ 351      0000 
+ 352 0202 23FC C020 	    VDP_W_CRAM 32
+ 352      0000 00C0 
+ 352      0004 
+ 353 020c 7E0F      	    moveq   #16-1,d7
+ 354 020e 33D8 00C0 	1:  move.w  (a0)+,(VDP_DATA)
+ 354      0000 
+ 355 0214 51CF FFF8 	    dbf     d7,1b
+ 356               	mode_done:
+ 357 0218 4E75      	    rts
+ 358               	
+ 359               	* menu-screen detector: no active objects and not in a real game means a
+ 360               	* text-heavy screen (title, logos, hi-score table): shift the display
+ 361               	* window down (footer text visible) and let the fg cache overflow into
+ 362               	* the sprite pool; both are reverted as soon as action resumes
+ 363               	md_check_menu:
+ 364 021a 4A39 0000 	    tst.b   (is_real_game)
+ 364      0000 
+ 365 0220 6652      	    bne.b   in_action
+ 366 0222 4A39 0000 	    tst.b   (scroll_disabled)
+ 366      0000 
+ 367 0228 6616      	    bne.b   menu_idle                           | scroll halted: menu screen
+ 368               	* scroll runs: menu only if nothing is alive (hi-score-over-map screens
+ 369               	* scroll the background; the demo always has the ship object active)
+ 370 022a 41F9 0000 	    lea     obj_tbl,a0
+ 370      0000 
+ 371 0230 7E3F      	    moveq   #64-1,d7
+ 372 0232 0C10 0002 	0:  cmpi.b  #2,(a0)
+ 373 0236 643C      	    bcc.b   in_action                           | active object: demo/game
+ 374 0238 41E8 0020 	    lea     (_OBJSIZE,a0),a0
+ 375 023c 51CF FFF4 	    dbf     d7,0b
+ 376               	menu_idle:
+ 377               	* idle frame: count up to the threshold
+ 378 0240 3039 0000 	    move.w  (md_menu_cnt),d0
+ 378      0000 
+ 379 0246 5240      	    addq.w  #1,d0
+ 380 0248 33C0 0000 	    move.w  d0,(md_menu_cnt)
+ 380      0000 
+ 381 024e 0C40 001E 	    cmpi.w  #30,d0
+ 382 0252 6D1E      	    blt.b   9f
+ 383 0254 4A39 0000 	    tst.b   (md_menu)
+ 383      0000 
+ 384 025a 6616      	    bne.b   9f
+ 385 025c 50F9 0000 	    st.b    (md_menu)
+ 385      0000 
+68K GAS  src/megadrive/megadrive.68k 			page 14
+
+
+ 386 0262 33FC 0000 	    move.w  #VBIAS_TITLE,(md_vbias)
+ 386      0000 0000 
+ 387 026a 33FC 0038 	    move.w  #FGV_TITLE,(md_fg_vscroll)
+ 387      0000 0000 
+ 388 0272 4E75      	9:  rts
+ 389               	
+ 390               	in_action:
+ 391 0274 4279 0000 	    clr.w   (md_menu_cnt)
+ 391      0000 
+ 392 027a 4A39 0000 	    tst.b   (md_menu)
+ 392      0000 
+ 393 0280 67F0      	    beq.b   9b
+ 394 0282 4239 0000 	    clr.b   (md_menu)
+ 394      0000 
+ 395 0288 33FC 01E8 	    move.w  #VBIAS_GAME,(md_vbias)
+ 395      0000 0000 
+ 396 0290 33FC 0020 	    move.w  #FGV_GAME,(md_fg_vscroll)
+ 396      0000 0000 
+ 397               	* purge fg overflow slots: their tiles belong to the sprite pool in-game
+ 398 0298 41F9 0000 	    lea     md_fg_slot_refs+GFX_FG_CACHE_TILES*2,a0
+ 398      0000 
+ 399 029e 43F9 0000 	    lea     md_fg_slot_key+GFX_FG_CACHE_TILES*2,a1
+ 399      0000 
+ 400 02a4 45F9 0000 	    lea     md_fg_key_slot,a2
+ 400      0000 
+ 401 02aa 3E3C 005F 	    move.w  #FG_OVF_SLOTS-1,d7
+ 402 02ae 4258      	2:  clr.w   (a0)+
+ 403 02b0 3011      	    move.w  (a1),d0
+ 404 02b2 0C40 1FFF 	    cmpi.w  #0x1FFF,d0
+ 405 02b6 6204      	    bhi.b   3f                                  | 0xFFFF = unused
+ 406 02b8 4232 0000 	    clr.b   (a2,d0.w)
+ 407 02bc 32FC FFFF 	3:  move.w  #0xFFFF,(a1)+
+ 408 02c0 51CF FFEC 	    dbf     d7,2b
+ 409               	* drop cell references into the purged range
+ 410 02c4 41F9 0000 	    lea     md_fg_cell_slot,a0
+ 410      0000 
+ 411 02ca 3E3C 07FF 	    move.w  #0x800-1,d7
+ 412 02ce 0C50 0081 	4:  cmpi.w  #GFX_FG_CACHE_TILES+1,(a0)
+ 413 02d2 6D02      	    blt.b   5f
+ 414 02d4 4250      	    clr.w   (a0)
+ 415 02d6 5488      	5:  addq.l  #2,a0
+ 416 02d8 51CF FFF4 	    dbf     d7,4b
+ 417 02dc 4E75      	    rts
+ 418               	
+ 419               	***************************************************************
+ 420               	*** HUD panel (window plane, right side)
+ 421               	***************************************************************
+ 422               	
+ 423               	* panel layout (rows 0..27 of 6 cells):
+ 424               	*  0 "1UP"  1 p1 score   3 "HI"  4 hi score   6 "2UP"  7 p2 score
+ 425               	*  20 "A" + area   24 "CR" + credits   26 lives icons
+ 426               	* The panel uses its own pre-rendered opaque glyph tiles (PANEL_TILE..)
+ 427               	* so it never competes with the in-field fg cache.
+ 428               	
+ 429               	* glyph build table: char code, colour code
+ 430               	panel_glyph_tbl:
+ 431 02de 003D 013D 	    .byte   0x00,PCOL_TEXT, 0x01,PCOL_TEXT, 0x02,PCOL_TEXT, 0x03,PCOL_TEXT
+68K GAS  src/megadrive/megadrive.68k 			page 15
+
+
+ 431      023D 033D 
+ 432 02e6 043D 053D 	    .byte   0x04,PCOL_TEXT, 0x05,PCOL_TEXT, 0x06,PCOL_TEXT, 0x07,PCOL_TEXT
+ 432      063D 073D 
+ 433 02ee 083D 093D 	    .byte   0x08,PCOL_TEXT, 0x09,PCOL_TEXT
+ 434 02f2 1E26 1926 	    .byte   0x1E,PCOL_LABEL, 0x19,PCOL_LABEL, 0x11,PCOL_LABEL, 0x12,PCOL_LABEL
+ 434      1126 1226 
+ 435 02fa 0A26 0C26 	    .byte   0x0A,PCOL_LABEL, 0x0C,PCOL_LABEL, 0x1B,PCOL_LABEL
+ 435      1B26 
+ 436 0300 252A      	    .byte   CH_SHIP,PCOL_ICON
+ 437 0302 243D      	    .byte   CH_SPACE,PCOL_TEXT                  | solid black
+ 438               	    .align 2
+ 439               	
+ 440               	md_panel_init:
+ 441 0304 48E7 FFE0 	    movem.l d0-d7/a0-a2,-(a7)
+ 442               	* pre-render the glyph tiles
+ 443 0308 45FA FFD4 	    lea     panel_glyph_tbl(pc),a2
+ 444 030c 7E00      	    moveq   #0,d7                               | glyph id
+ 445 030e 7200      	1:  moveq   #0,d1
+ 446 0310 121A      	    move.b  (a2)+,d1                            | char
+ 447 0312 7400      	    moveq   #0,d2
+ 448 0314 141A      	    move.b  (a2)+,d2                            | colour code
+ 449 0316 3007      	    move.w  d7,d0
+ 450 0318 6100 0070 	    bsr     md_panel_render_glyph
+ 451 031c 5247      	    addq.w  #1,d7
+ 452 031e 0C47 0013 	    cmpi.w  #PANEL_GLYPHS,d7
+ 453 0322 6DEA      	    blt.b   1b
+ 454               	* fill all cells with the opaque black tile
+ 455 0324 7000      	    moveq   #0,d0
+ 456 0326 7212      	2:  moveq   #PG_SOLID,d1
+ 457 0328 6100 0104 	    bsr     md_panel_putg
+ 458 032c 5240      	    addq.w  #1,d0
+ 459 032e 0C40 00A8 	    cmpi.w  #PANEL_W*PANEL_ROWS,d0
+ 460 0332 6DF2      	    blt.b   2b
+ 461               	* labels
+ 462 0334 45FA 002E 	    lea     panel_str_1up(pc),a2
+ 463 0338 7000      	    moveq   #0*PANEL_W,d0
+ 464 033a 6138      	    bsr.b   md_panel_puts
+ 465 033c 45FA 002A 	    lea     panel_str_hi(pc),a2
+ 466 0340 7012      	    moveq   #3*PANEL_W,d0
+ 467 0342 6130      	    bsr.b   md_panel_puts
+ 468 0344 45FA 0025 	    lea     panel_str_2up(pc),a2
+ 469 0348 7024      	    moveq   #6*PANEL_W,d0
+ 470 034a 6128      	    bsr.b   md_panel_puts
+ 471 034c 45FA 0021 	    lea     panel_str_a(pc),a2
+ 472 0350 7078      	    moveq   #20*PANEL_W,d0
+ 473 0352 6120      	    bsr.b   md_panel_puts
+ 474 0354 45FA 001B 	    lea     panel_str_cr(pc),a2
+ 475 0358 303C 0090 	    move.w  #24*PANEL_W,d0
+ 476 035c 6116      	    bsr.b   md_panel_puts
+ 477 035e 4CDF 07FF 	    movem.l (a7)+,d0-d7/a0-a2
+ 478 0362 4E75      	    rts
+ 479               	
+ 480 0364 0301 0A0B 	panel_str_1up:  .byte 3, 1,PG_U,PG_P            | "1UP"
+ 481 0368 020C 0D   	panel_str_hi:   .byte 2, PG_H,PG_I              | "HI"
+ 482 036b 0302 0A0B 	panel_str_2up:  .byte 3, 2,PG_U,PG_P            | "2UP"
+ 483 036f 010E      	panel_str_a:    .byte 1, PG_A                   | "A"
+ 484 0371 020F 10   	panel_str_cr:   .byte 2, PG_C,PG_R              | "CR"
+68K GAS  src/megadrive/megadrive.68k 			page 16
+
+
+ 485               	    .align 2
+ 486               	
+ 487               	* a2 = length-prefixed glyph-id string, d0 = start cell
+ 488               	md_panel_puts:
+ 489 0374 7E00      	    moveq   #0,d7
+ 490 0376 1E1A      	    move.b  (a2)+,d7
+ 491 0378 5347      	    subq.w  #1,d7
+ 492 037a 7200      	1:  moveq   #0,d1
+ 493 037c 121A      	    move.b  (a2)+,d1
+ 494 037e 6100 00AE 	    bsr     md_panel_putg
+ 495 0382 5240      	    addq.w  #1,d0
+ 496 0384 51CF FFF4 	    dbf     d7,1b
+ 497 0388 4E75      	    rts
+ 498               	
+ 499               	* render char d1 / colour code d2 into panel glyph tile d0 (opaque background)
+ 500               	md_panel_render_glyph:
+ 501 038a 48E7 FE80 	    movem.l d0-d6/a0,-(a7)
+ 502               	    * colour -> PAL0 slot
+ 503 038e 41F9 0000 	    lea     gfx_fg_color_map,a0
+ 503      0000 
+ 504 0394 1430 2000 	    move.b  (a0,d2.w),d2
+ 505 0398 7C00      	    moveq   #0,d6
+ 506 039a 1C02      	    move.b  d2,d6                               | foreground slot
+ 507               	    * char bitmap
+ 508 039c E749      	    lsl.w   #3,d1
+ 509 039e 41F9 0000 	    lea     gfx_fg_chars,a0
+ 509      0000 
+ 510 03a4 41F0 1000 	    lea     (a0,d1.w),a0
+ 511               	    * dest tile
+ 512 03a8 3600      	    move.w  d0,d3
+ 513 03aa 0643 048D 	    addi.w  #PANEL_TILE,d3
+ 514 03ae EB4B      	    lsl.w   #5,d3
+ 515 03b0 6100 FD70 	    bsr     md_vram_cmd
+ 516 03b4 40E7      	    move.w  sr,-(a7)
+ 517 03b6 46FC 2700 	    move    #0x2700,sr
+ 518 03ba 23C4 00C0 	    move.l  d4,(VDP_CTRL)
+ 518      0004 
+ 519 03c0 7407      	    moveq   #8-1,d2                             | 8 rows
+ 520 03c2 1618      	1:  move.b  (a0)+,d3
+ 521 03c4 7A01      	    moveq   #2-1,d5
+ 522 03c6 7000      	2:  moveq   #0,d0
+ 523               	    .rept 4
+ 524               	    add.w   d0,d0
+ 525               	    add.w   d0,d0
+ 526               	    add.w   d0,d0
+ 527               	    add.w   d0,d0
+ 528               	    add.b   d3,d3
+ 529               	    bcc.b   .+6
+ 530               	    or.w    d6,d0                               | set pixel: colour slot
+ 531               	    bra.b   .+6                                 | (ori #imm below is 4 bytes)
+ 532               	    ori.w   #15,d0                              | clear pixel: opaque black
+ 533 03c8 D040 D040 	    .endr
+ 533      D040 D040 
+ 533      D603 6404 
+ 533      8046 6004 
+ 533      0040 000F 
+ 534 0418 33C0 00C0 	    move.w  d0,(VDP_DATA)
+68K GAS  src/megadrive/megadrive.68k 			page 17
+
+
+ 534      0000 
+ 535 041e 51CD FFA6 	    dbf     d5,2b
+ 536 0422 51CA FF9E 	    dbf     d2,1b
+ 537 0426 46DF      	    move.w  (a7)+,sr
+ 538 0428 4CDF 017F 	    movem.l (a7)+,d0-d6/a0
+ 539 042c 4E75      	    rts
+ 540               	
+ 541               	* d0.w = panel cell (0..167), d1.w = glyph id; preserves d0-d2
+ 542               	md_panel_putg:
+ 543 042e 48E7 0C80 	    movem.l d4-d5/a0,-(a7)
+ 544 0432 3A01      	    move.w  d1,d5
+ 545 0434 0645 048D 	    addi.w  #PANEL_TILE,d5
+ 546 0438 0045 8000 	    ori.w   #0x8000,d5                          | priority, PAL0
+ 547 043c 41F9 0000 	    lea     md_panel_cmd_tbl,a0
+ 547      0000 
+ 548 0442 3800      	    move.w  d0,d4
+ 549 0444 D844      	    add.w   d4,d4
+ 550 0446 D844      	    add.w   d4,d4
+ 551 0448 2830 4000 	    move.l  (a0,d4.w),d4
+ 552 044c 40E7      	    move.w  sr,-(a7)
+ 553 044e 46FC 2700 	    move    #0x2700,sr
+ 554 0452 23C4 00C0 	    move.l  d4,(VDP_CTRL)
+ 554      0004 
+ 555 0458 33C5 00C0 	    move.w  d5,(VDP_DATA)
+ 555      0000 
+ 556 045e 46DF      	    move.w  (a7)+,sr
+ 557 0460 4CDF 0130 	    movem.l (a7)+,d4-d5/a0
+ 558 0464 4E75      	    rts
+ 559               	
+ 560               	* render a score (3 BCD bytes at (a2), stored value = score/10) as 6 digits
+ 561               	* from panel cell d0: digits[1..5] plus the implicit trailing zero
+ 562               	md_panel_bcd:
+ 563 0466 7A00      	    moveq   #0,d5
+ 564 0468 1A1A      	    move.b  (a2)+,d5
+ 565 046a E18D      	    lsl.l   #8,d5
+ 566 046c 1A1A      	    move.b  (a2)+,d5
+ 567 046e E18D      	    lsl.l   #8,d5
+ 568 0470 1A1A      	    move.b  (a2)+,d5                            | 6 BCD digits in bits 23:0
+ 569 0472 E98D      	    lsl.l   #4,d5                               | drop millions, append 0
+ 570 0474 0285 00FF 	    andi.l  #0x00FFFFFF,d5
+ 570      FFFF 
+ 571 047a 7C00      	    moveq   #0,d6                               | nonzero-seen flag
+ 572 047c 7E05      	    moveq   #6-1,d7
+ 573 047e 2205      	1:  move.l  d5,d1
+ 574 0480 4841      	    swap    d1
+ 575 0482 E849      	    lsr.w   #4,d1
+ 576 0484 0241 000F 	    andi.w  #0x000F,d1                          | top nibble
+ 577 0488 E98D      	    lsl.l   #4,d5
+ 578 048a 0285 00FF 	    andi.l  #0x00FFFFFF,d5
+ 578      FFFF 
+ 579 0490 6108      	    bsr.b   md_panel_digit
+ 580 0492 5240      	    addq.w  #1,d0
+ 581 0494 51CF FFE8 	    dbf     d7,1b
+ 582 0498 4E75      	    rts
+ 583               	
+ 584               	md_panel_digit:
+ 585 049a 4A46      	    tst.w   d6
+68K GAS  src/megadrive/megadrive.68k 			page 18
+
+
+ 586 049c 660C      	    bne.b   1f                                  | already printing
+ 587 049e 4A41      	    tst.w   d1
+ 588 04a0 6606      	    bne.b   0f
+ 589 04a2 0C47 0001 	    cmpi.w  #1,d7                               | keep last two visible
+ 590 04a6 6E06      	    bgt.b   2f
+ 591 04a8 7C01      	0:  moveq   #1,d6
+ 592 04aa 6000 FF82 	1:  bra     md_panel_putg                       | digit glyph id = digit
+ 593 04ae 7212      	2:  moveq   #PG_SOLID,d1
+ 594 04b0 6000 FF7C 	    bra     md_panel_putg
+ 595               	
+ 596               	* per-frame panel refresh (called from vblank)
+ 597               	md_update_panel:
+ 598 04b4 48E7 FFE0 	    movem.l d0-d7/a0-a2,-(a7)
+ 599               	* P1 / P2 scores depending on current player
+ 600 04b8 45F9 0000 	    lea     curr_player_score_msb,a2
+ 600      0000 
+ 601 04be 43F9 0000 	    lea     other_player_score_msb,a1
+ 601      0000 
+ 602 04c4 4A39 0000 	    tst.b   (curr_player)
+ 602      0000 
+ 603 04ca 6702      	    beq.b   1f
+ 604 04cc C34A      	    exg     a1,a2
+ 605 04ce 7006      	1:  moveq   #1*PANEL_W,d0
+ 606 04d0 6100 FF94 	    bsr     md_panel_bcd                        | a2 = P1 score
+ 607 04d4 2449      	    move.l  a1,a2
+ 608 04d6 303C 002A 	    move.w  #7*PANEL_W,d0
+ 609 04da 6100 FF8A 	    bsr     md_panel_bcd
+ 610 04de 45F9 0000 	    lea     RAM_high_score,a2
+ 610      0000 
+ 611 04e4 7018      	    moveq   #4*PANEL_W,d0
+ 612 04e6 6100 FF7E 	    bsr     md_panel_bcd
+ 613               	* area number (2 digits, decimal)
+ 614 04ea 3639 0000 	    move.w  (area),d3
+ 614      0000 
+ 615 04f0 5243      	    addq.w  #1,d3
+ 616 04f2 48C3      	    ext.l   d3
+ 617 04f4 86FC 000A 	    divu    #10,d3
+ 618 04f8 303C 007A 	    move.w  #20*PANEL_W+2,d0
+ 619 04fc 3203      	    move.w  d3,d1
+ 620 04fe 6100 FF2E 	    bsr     md_panel_putg
+ 621 0502 5240      	    addq.w  #1,d0
+ 622 0504 4843      	    swap    d3
+ 623 0506 3203      	    move.w  d3,d1
+ 624 0508 6100 FF24 	    bsr     md_panel_putg
+ 625               	* credits (BCD byte)
+ 626 050c 7200      	    moveq   #0,d1
+ 627 050e 1239 0000 	    move.b  (num_credits),d1
+ 627      0000 
+ 628 0514 3601      	    move.w  d1,d3
+ 629 0516 E849      	    lsr.w   #4,d1
+ 630 0518 303C 0093 	    move.w  #24*PANEL_W+3,d0
+ 631 051c 6100 FF10 	    bsr     md_panel_putg
+ 632 0520 5240      	    addq.w  #1,d0
+ 633 0522 3203      	    move.w  d3,d1
+ 634 0524 0241 000F 	    andi.w  #0x0F,d1
+ 635 0528 6100 FF04 	    bsr     md_panel_putg
+ 636               	* lives: up to 6 ship icons
+68K GAS  src/megadrive/megadrive.68k 			page 19
+
+
+ 637 052c 7A00      	    moveq   #0,d5
+ 638 052e 1A39 0000 	    move.b  (curr_player_solvalou_left),d5
+ 638      0000 
+ 639 0534 0C45 0006 	    cmpi.w  #PANEL_W,d5
+ 640 0538 6302      	    bls.b   2f
+ 641 053a 7A06      	    moveq   #PANEL_W,d5
+ 642 053c 303C 009C 	2:  move.w  #26*PANEL_W,d0
+ 643 0540 7E00      	    moveq   #0,d7
+ 644 0542 7212      	3:  moveq   #PG_SOLID,d1
+ 645 0544 BE45      	    cmp.w   d5,d7
+ 646 0546 6C02      	    bge.b   4f
+ 647 0548 7211      	    moveq   #PG_SHIP,d1
+ 648 054a 6100 FEE2 	4:  bsr     md_panel_putg
+ 649 054e 5240      	    addq.w  #1,d0
+ 650 0550 5247      	    addq.w  #1,d7
+ 651 0552 0C47 0006 	    cmpi.w  #PANEL_W,d7
+ 652 0556 6DEA      	    blt.b   3b
+ 653 0558 4CDF 07FF 	    movem.l (a7)+,d0-d7/a0-a2
+ 654 055c 4E75      	    rts
+ 655               	
+ 656               	***************************************************************
+ 657               	*** interrupt control
+ 658               	***************************************************************
+ 659               	
+ 660               	osd_enable_vblank_interrupt:
+ 661 055e 46FC 2000 	    move    #0x2000,sr
+ 662 0562 4E75      	    rts
+ 663               	
+ 664               	osd_ack_vblank_interrupt:
+ 665 0564 4A79 00C0 	    tst.w   (VDP_CTRL)
+ 665      0004 
+ 666 056a 4E75      	    rts
+ 667               	
+ 668               	osd_disable_vblank_interrupt:
+ 669 056c 46FC 2700 	    move    #0x2700,sr
+ 670 0570 4E75      	    rts
+ 671               	
+ 672               	osd_kick_wdog:
+ 673 0572 4E75      	    rts
+ 674               	
+ 675               	* d0 = colour for the raster profiling bar; the core sends NeoGeo backdrop
+ 676               	* values (0x4F00 = red at tick start, 0x8000 = black at tick end)
+ 677               	osd_debug_hook:
+ 678               	    .ifdef DEBUG_RASTER
+ 679               	    move.l  d1,-(a7)
+ 680               	    moveq   #0,d1
+ 681               	    cmpi.w  #0x8000,d0
+ 682               	    beq.b   1f
+ 683               	    move.w  #0x000E,d1                          | red
+ 684               	1:  VDP_W_CRAM 0
+ 685               	    move.w  d1,(VDP_DATA)
+ 686               	    move.l  (a7)+,d1
+ 687               	    .endif
+ 688 0574 4E75      	    rts
+ 689               	
+ 690               	***************************************************************
+ 691               	*** foreground layer (dynamic 1bpp->4bpp cache)
+68K GAS  src/megadrive/megadrive.68k 			page 20
+
+
+ 692               	***************************************************************
+ 693               	
+ 694               	* d0.w = byte offset, d1.b = tile code; preserve d0-d3/a0/a1
+ 695               	osd_w_fg_videoram:
+ 696               	    .ifeq OPT_DISABLE_FG_LAYER
+ 697 0576 48E7 FCC0 	    movem.l d0-d5/a0-a1,-(a7)
+ 698 057a 41F9 0000 	    lea     fg_videoram,a0
+ 698      0000 
+ 699 0580 1181 0000 	    move.b  d1,(a0,d0.w)                        | core shadow
+ 700 0584 41F9 0000 	    lea     fg_colorram,a0
+ 700      0000 
+ 701 058a 1430 0000 	    move.b  (a0,d0.w),d2                        | attr
+ 702 058e 6128      	    bsr.b   fg_write
+ 703 0590 4CDF 033F 	    movem.l (a7)+,d0-d5/a0-a1
+ 704               	    .endif
+ 705 0594 4E75      	    rts
+ 706               	
+ 707               	* d0.w = byte offset, d1.b = attr; preserve d0-d3/a0/a1
+ 708               	osd_w_fg_colorram:
+ 709               	    .ifeq OPT_DISABLE_FG_LAYER
+ 710 0596 48E7 FCC0 	    movem.l d0-d5/a0-a1,-(a7)
+ 711 059a 1401      	    move.b  d1,d2                               | attr
+ 712 059c 41F9 0000 	    lea     fg_colorram,a0
+ 712      0000 
+ 713 05a2 1182 0000 	    move.b  d2,(a0,d0.w)                        | core shadow
+ 714 05a6 41F9 0000 	    lea     fg_videoram,a0
+ 714      0000 
+ 715 05ac 1230 0000 	    move.b  (a0,d0.w),d1                        | tile code
+ 716 05b0 6106      	    bsr.b   fg_write
+ 717 05b2 4CDF 033F 	    movem.l (a7)+,d0-d5/a0-a1
+ 718               	    .endif
+ 719 05b6 4E75      	    rts
+ 720               	
+ 721               	* d0.w = offset, d1.b = char, d2.b = attr (d0-d5/a0-a1 saved by caller)
+ 722               	fg_write:
+ 723               	    .ifdef DIAG_NO_FG
+ 724               	    rts
+ 725               	    .endif
+ 726               	    * skip cells that can never be displayed (null command)
+ 727 05b8 41F9 0000 	    lea     md_fg_cmd_tbl,a0
+ 727      0000 
+ 728 05be 3A00      	    move.w  d0,d5
+ 729 05c0 DA45      	    add.w   d5,d5
+ 730 05c2 DA45      	    add.w   d5,d5
+ 731 05c4 4AB0 5000 	    tst.l   (a0,d5.w)
+ 732 05c8 6700 00A8 	    beq     fg_skip
+ 733               	    * colour6 = attr[5:2] -> bits 3:0, attr[1:0] -> bits 5:4 (see OSD spec)
+ 734 05cc 7600      	    moveq   #0,d3
+ 735 05ce 1602      	    move.b  d2,d3
+ 736 05d0 E44B      	    lsr.w   #2,d3
+ 737 05d2 0243 000F 	    andi.w  #0x0F,d3
+ 738 05d6 7800      	    moveq   #0,d4
+ 739 05d8 1802      	    move.b  d2,d4
+ 740 05da 0244 0003 	    andi.w  #3,d4
+ 741 05de E94C      	    lsl.w   #4,d4
+ 742 05e0 8644      	    or.w    d4,d3
+ 743               	    * cache key = colour_slot<<8 | char
+68K GAS  src/megadrive/megadrive.68k 			page 21
+
+
+ 744 05e2 41F9 0000 	    lea     gfx_fg_color_map,a0
+ 744      0000 
+ 745 05e8 1630 3000 	    move.b  (a0,d3.w),d3                        | PAL0 slot 1..15
+ 746 05ec E14B      	    lsl.w   #8,d3
+ 747 05ee 7800      	    moveq   #0,d4
+ 748 05f0 1801      	    move.b  d1,d4
+ 749 05f2 8644      	    or.w    d4,d3                               | d3 = key
+ 750 05f4 41F9 0000 	    lea     md_fg_key_slot,a0
+ 750      0000 
+ 751 05fa 7800      	    moveq   #0,d4
+ 752 05fc 1830 3000 	    move.b  (a0,d3.w),d4                        | cache slot+1 (0 = miss)
+ 753 0600 6604      	    bne.b   1f
+ 754 0602 6100 0070 	    bsr     fg_cache_alloc                      | d3=key -> d4=slot+1
+ 755               	1:
+ 756               	    * reference counting: release the slot this cell previously used,
+ 757               	    * claim the new one (allocator only reuses slots with zero refs)
+ 758 0606 41F9 0000 	    lea     md_fg_cell_slot,a0
+ 758      0000 
+ 759 060c 3A00      	    move.w  d0,d5
+ 760 060e DA45      	    add.w   d5,d5
+ 761 0610 41F0 5000 	    lea     (a0,d5.w),a0
+ 762 0614 3A10      	    move.w  (a0),d5                             | old slot+1 (0 = none)
+ 763 0616 3084      	    move.w  d4,(a0)
+ 764 0618 41F9 0000 	    lea     md_fg_slot_refs,a0
+ 764      0000 
+ 765 061e 4A45      	    tst.w   d5
+ 766 0620 6708      	    beq.b   2f
+ 767 0622 5345      	    subq.w  #1,d5
+ 768 0624 DA45      	    add.w   d5,d5
+ 769 0626 5370 5000 	    subq.w  #1,(a0,d5.w)                        | refs[old]--
+ 770 062a 3A04      	2:  move.w  d4,d5
+ 771 062c 5345      	    subq.w  #1,d5
+ 772 062e DA45      	    add.w   d5,d5
+ 773 0630 5270 5000 	    addq.w  #1,(a0,d5.w)                        | refs[new]++
+ 774 0634 3A04      	    move.w  d4,d5
+ 775 0636 5345      	    subq.w  #1,d5
+ 776 0638 6100 0156 	    bsr     md_fg_slot_tile
+ 777 063c 3805      	    move.w  d5,d4
+ 778 063e 0044 8000 	    ori.w   #0x8000,d4                          | priority, PAL0
+ 779               	    * arcade flips -> NT bits 11/12
+ 780 0642 7A00      	    moveq   #0,d5
+ 781 0644 1A02      	    move.b  d2,d5
+ 782 0646 0245 00C0 	    andi.w  #0xC0,d5
+ 783 064a EB4D      	    lsl.w   #5,d5
+ 784 064c 8845      	    or.w    d5,d4
+ 785               	    * write nametable cell
+ 786 064e 41F9 0000 	    lea     md_fg_cmd_tbl,a0
+ 786      0000 
+ 787 0654 3A00      	    move.w  d0,d5
+ 788 0656 DA45      	    add.w   d5,d5
+ 789 0658 DA45      	    add.w   d5,d5
+ 790 065a 2A30 5000 	    move.l  (a0,d5.w),d5
+ 791 065e 40E7      	    move.w  sr,-(a7)
+ 792 0660 46FC 2700 	    move    #0x2700,sr
+ 793 0664 23C5 00C0 	    move.l  d5,(VDP_CTRL)
+ 793      0004 
+ 794 066a 33C4 00C0 	    move.w  d4,(VDP_DATA)
+68K GAS  src/megadrive/megadrive.68k 			page 22
+
+
+ 794      0000 
+ 795 0670 46DF      	    move.w  (a7)+,sr
+ 796               	fg_skip:
+ 797 0672 4E75      	    rts
+ 798               	
+ 799               	* allocate fg cache slot for key d3 (slot<<8|char); returns d4 = slot+1
+ 800               	* skips slots still referenced by on-screen cells; title mode may use the
+ 801               	* overflow slots; clobbers d1/d5/a0/a1
+ 802               	fg_cache_alloc:
+ 803 0674 3F02      	    move.w  d2,-(a7)                            | caller's attr
+ 804 0676 323C 0080 	    move.w  #GFX_FG_CACHE_TILES,d1              | slot limit (action mode)
+ 805 067a 4A39 0000 	    tst.b   (md_menu)
+ 805      0000 
+ 806 0680 6704      	    beq.b   0f
+ 807 0682 323C 00E0 	    move.w  #FG_TOTAL_SLOTS,d1                  | menu screens: extended
+ 808 0686 3839 0000 	0:  move.w  (md_fg_ring),d4
+ 808      0000 
+ 809 068c 3A01      	    move.w  d1,d5
+ 810 068e 5345      	    subq.w  #1,d5
+ 811               	find_free_slot:
+ 812 0690 5244      	    addq.w  #1,d4
+ 813 0692 B841      	    cmp.w   d1,d4
+ 814 0694 6D02      	    blt.b   1f
+ 815 0696 7800      	    moveq   #0,d4                               | wrap
+ 816 0698 3404      	1:  move.w  d4,d2
+ 817 069a D442      	    add.w   d2,d2
+ 818 069c 41F9 0000 	    lea     md_fg_slot_refs,a0
+ 818      0000 
+ 819 06a2 4A70 2000 	    tst.w   (a0,d2.w)
+ 820 06a6 57CD FFE8 	    dbeq    d5,find_free_slot                   | until refs==0 (or all busy)
+ 821 06aa 341F      	    move.w  (a7)+,d2                            | restore attr
+ 822 06ac 33C4 0000 	    move.w  d4,(md_fg_ring)
+ 822      0000 
+ 823               	    * unmap evicted key
+ 824 06b2 43F9 0000 	    lea     md_fg_slot_key,a1
+ 824      0000 
+ 825 06b8 3A04      	    move.w  d4,d5
+ 826 06ba DA45      	    add.w   d5,d5
+ 827 06bc 43F1 5000 	    lea     (a1,d5.w),a1
+ 828 06c0 3A11      	    move.w  (a1),d5
+ 829 06c2 0C45 FFFF 	    cmpi.w  #0xFFFF,d5
+ 830 06c6 670A      	    beq.b   1f
+ 831 06c8 41F9 0000 	    lea     md_fg_key_slot,a0
+ 831      0000 
+ 832 06ce 4230 5000 	    clr.b   (a0,d5.w)
+ 833 06d2 3283      	1:  move.w  d3,(a1)                             | slot -> key
+ 834 06d4 41F9 0000 	    lea     md_fg_key_slot,a0
+ 834      0000 
+ 835 06da 3A04      	    move.w  d4,d5
+ 836 06dc 5245      	    addq.w  #1,d5
+ 837 06de 1185 3000 	    move.b  d5,(a0,d3.w)                        | key -> slot+1
+ 838               	    * expand 1bpp char to 4bpp tile in VRAM
+ 839               	    * key bit 12 = panel variant: background pixels use slot 15 (opaque
+ 840               	    * black) instead of transparency
+ 841 06e2 48E7 F600 	    movem.l d0-d3/d5/d6,-(a7)
+ 842 06e6 7C00      	    moveq   #0,d6                               | background pixel value
+ 843 06e8 0803 000C 	    btst    #12,d3
+68K GAS  src/megadrive/megadrive.68k 			page 23
+
+
+ 844 06ec 6702      	    beq.b   1f
+ 845 06ee 7C0F      	    moveq   #15,d6
+ 846 06f0 3203      	1:  move.w  d3,d1
+ 847 06f2 E049      	    lsr.w   #8,d1
+ 848 06f4 0241 000F 	    andi.w  #0x0F,d1                            | d1 = colour slot value
+ 849 06f8 0243 00FF 	    andi.w  #0xFF,d3                            | char
+ 850 06fc E74B      	    lsl.w   #3,d3
+ 851 06fe 41F9 0000 	    lea     gfx_fg_chars,a0
+ 851      0000 
+ 852 0704 41F0 3000 	    lea     (a0,d3.w),a0                        | char bitmap (8 bytes)
+ 853 0708 3A04      	    move.w  d4,d5
+ 854 070a 6100 0084 	    bsr     md_fg_slot_tile
+ 855 070e 3605      	    move.w  d5,d3
+ 856 0710 EB4B      	    lsl.w   #5,d3                               | dest vram addr (tile*32)
+ 857 0712 6100 FA0E 	    bsr     md_vram_cmd
+ 858 0716 40E7      	    move.w  sr,-(a7)
+ 859 0718 46FC 2700 	    move    #0x2700,sr
+ 860 071c 23C4 00C0 	    move.l  d4,(VDP_CTRL)
+ 860      0004 
+ 861 0722 7407      	    moveq   #8-1,d2                             | 8 rows
+ 862 0724 1618      	2:  move.b  (a0)+,d3                            | row bits
+ 863 0726 7A01      	    moveq   #2-1,d5                             | 2 words per row
+ 864 0728 7000      	3:  moveq   #0,d0
+ 865               	    .rept 4
+ 866               	    add.w   d0,d0
+ 867               	    add.w   d0,d0
+ 868               	    add.w   d0,d0
+ 869               	    add.w   d0,d0
+ 870               	    add.b   d3,d3                               | msb out
+ 871               	    bcc.b   .+6
+ 872               	    or.w    d1,d0                               | set pixel: colour slot
+ 873               	    bra.b   .+4
+ 874               	    or.w    d6,d0                               | clear pixel: background
+ 875 072a D040 D040 	    .endr
+ 875      D040 D040 
+ 875      D603 6404 
+ 875      8041 6002 
+ 875      8046 D040 
+ 876 0772 33C0 00C0 	    move.w  d0,(VDP_DATA)
+ 876      0000 
+ 877 0778 51CD FFAE 	    dbf     d5,3b
+ 878 077c 51CA FFA6 	    dbf     d2,2b
+ 879 0780 46DF      	    move.w  (a7)+,sr
+ 880 0782 4CDF 006F 	    movem.l (a7)+,d0-d3/d5/d6
+ 881 0786 3839 0000 	    move.w  (md_fg_ring),d4
+ 881      0000 
+ 882 078c 5244      	    addq.w  #1,d4                               | return slot+1
+ 883 078e 4E75      	    rts
+ 884               	
+ 885               	* d5 = cache slot -> d5 = VRAM tile index (handles overflow region)
+ 886               	md_fg_slot_tile:
+ 887 0790 0C45 0080 	    cmpi.w  #GFX_FG_CACHE_TILES,d5
+ 888 0794 6D06      	    blt.b   1f
+ 889 0796 0645 0420 	    addi.w  #FG_OVF_TILE-GFX_FG_CACHE_TILES,d5
+ 890 079a 4E75      	    rts
+ 891 079c 0645 0500 	1:  addi.w  #GFX_FG_CACHE_BASE,d5
+ 892 07a0 4E75      	    rts
+68K GAS  src/megadrive/megadrive.68k 			page 24
+
+
+ 893               	
+ 894               	***************************************************************
+ 895               	*** background layer (combo lookup)
+ 896               	***************************************************************
+ 897               	
+ 898               	* d0.w = byte offset, d1.b = tile code; preserve d0-d3/a0/a1
+ 899               	osd_w_bg_videoram:
+ 900               	    .ifeq OPT_DISABLE_BG_LAYER
+ 901 07a2 48E7 FCE0 	    movem.l d0-d5/a0-a2,-(a7)
+ 902 07a6 41F9 0000 	    lea     bg_videoram,a0
+ 902      0000 
+ 903 07ac 1181 0000 	    move.b  d1,(a0,d0.w)
+ 904 07b0 41F9 0000 	    lea     bg_colorram,a0
+ 904      0000 
+ 905 07b6 1430 0000 	    move.b  (a0,d0.w),d2                        | attr
+ 906 07ba 6128      	    bsr.b   bg_write
+ 907 07bc 4CDF 073F 	    movem.l (a7)+,d0-d5/a0-a2
+ 908               	    .endif
+ 909 07c0 4E75      	    rts
+ 910               	
+ 911               	* d0.w = byte offset, d1.b = attr; preserve d0-d4/a0/a1
+ 912               	osd_w_bg_colorram:
+ 913               	    .ifeq OPT_DISABLE_BG_LAYER
+ 914 07c2 48E7 FCE0 	    movem.l d0-d5/a0-a2,-(a7)
+ 915 07c6 1401      	    move.b  d1,d2                               | attr
+ 916 07c8 41F9 0000 	    lea     bg_colorram,a0
+ 916      0000 
+ 917 07ce 1182 0000 	    move.b  d2,(a0,d0.w)
+ 918 07d2 41F9 0000 	    lea     bg_videoram,a0
+ 918      0000 
+ 919 07d8 1230 0000 	    move.b  (a0,d0.w),d1                        | tile code
+ 920 07dc 6106      	    bsr.b   bg_write
+ 921 07de 4CDF 073F 	    movem.l (a7)+,d0-d5/a0-a2
+ 922               	    .endif
+ 923 07e2 4E75      	    rts
+ 924               	
+ 925               	* d0.w = offset, d1.b = code, d2.b = attr (d0-d5/a0-a2 saved by caller)
+ 926               	* clut7 = attr[5:2] | code[7]<<4 | attr[1:0]<<5 ; code9 = code | attr[0]<<8
+ 927               	bg_write:
+ 928 07e4 7600      	    moveq   #0,d3
+ 929 07e6 1602      	    move.b  d2,d3
+ 930 07e8 E44B      	    lsr.w   #2,d3
+ 931 07ea 0243 000F 	    andi.w  #0x0F,d3                            | attr[5:2]
+ 932 07ee 7800      	    moveq   #0,d4
+ 933 07f0 1802      	    move.b  d2,d4
+ 934 07f2 0244 0003 	    andi.w  #3,d4
+ 935 07f6 EB4C      	    lsl.w   #5,d4
+ 936 07f8 8644      	    or.w    d4,d3                               | + attr[1:0]<<5
+ 937 07fa 7800      	    moveq   #0,d4
+ 938 07fc 1801      	    move.b  d1,d4
+ 939 07fe 0244 0080 	    andi.w  #0x80,d4
+ 940 0802 E64C      	    lsr.w   #3,d4
+ 941 0804 8644      	    or.w    d4,d3                               | + code[7]<<4 -> clut7
+ 942 0806 7800      	    moveq   #0,d4
+ 943 0808 1801      	    move.b  d1,d4
+ 944 080a 0802 0000 	    btst    #0,d2
+ 945 080e 6704      	    beq.b   1f
+68K GAS  src/megadrive/megadrive.68k 			page 25
+
+
+ 946 0810 0044 0100 	    ori.w   #0x100,d4                           | code9
+ 947 0814 7A00      	1:  moveq   #0,d5
+ 948 0816 3A03      	    move.w  d3,d5
+ 949 0818 E18D      	    lsl.l   #8,d5
+ 950 081a DA85      	    add.l   d5,d5                               | clut<<9
+ 951 081c 8A84      	    or.l    d4,d5                               | combo index
+ 952 081e DA85      	    add.l   d5,d5
+ 953 0820 43F9 0000 	    lea     gfx_bg_combo_tbl,a1
+ 953      0000 
+ 954 0826 D3C5      	    adda.l  d5,a1
+ 955 0828 3811      	    move.w  (a1),d4                             | combo word (0 = unused)
+ 956               	    * arcade flips -> NT bits 11/12 (xor with combo flips)
+ 957 082a 7A00      	    moveq   #0,d5
+ 958 082c 1A02      	    move.b  d2,d5
+ 959 082e 0245 00C0 	    andi.w  #0xC0,d5
+ 960 0832 EB4D      	    lsl.w   #5,d5
+ 961 0834 BB44      	    eor.w   d5,d4
+ 962 0836 0244 1FFF 	    andi.w  #0x1FFF,d4
+ 963 083a 0044 2000 	    ori.w   #0x2000,d4                          | PAL1
+ 964               	    * write nametable cell
+ 965 083e 41F9 0000 	    lea     md_bg_cmd_tbl,a0
+ 965      0000 
+ 966 0844 3A00      	    move.w  d0,d5
+ 967 0846 DA45      	    add.w   d5,d5
+ 968 0848 DA45      	    add.w   d5,d5
+ 969 084a 2A30 5000 	    move.l  (a0,d5.w),d5
+ 970 084e 40E7      	    move.w  sr,-(a7)
+ 971 0850 46FC 2700 	    move    #0x2700,sr
+ 972 0854 23C5 00C0 	    move.l  d5,(VDP_CTRL)
+ 972      0004 
+ 973 085a 33C4 00C0 	    move.w  d4,(VDP_DATA)
+ 973      0000 
+ 974 0860 46DF      	    move.w  (a7)+,sr
+ 975 0862 4E75      	    rts
+ 976               	
+ 977               	***************************************************************
+ 978               	*** scroll
+ 979               	***************************************************************
+ 980               	
+ 981               	* d6.w = scroll register value (0-0x1FF); applied in vblank
+ 982               	osd_update_scroll_hw:
+ 983 0864 33C6 0000 	    move.w  d6,(md_scroll_shadow)
+ 983      0000 
+ 984 086a 4E75      	    rts
+ 985               	
+ 986               	***************************************************************
+ 987               	*** sprites (M3: shadow/hitbox data only; hardware sprites in M5)
+ 988               	***************************************************************
+ 989               	
+ 990               	* a5 = obj_tbl
+ 991               	osd_update_sprite_shadow:
+ 992 086c 48E7 C124 	    movem.l d0-d1/d7/a2/a5,-(a7)
+ 993 0870 45F9 0000 	    lea     sprite_shadow_msb,a2
+ 993      0000 
+ 994 0876 7E3F      	    moveq   #64-1,d7
+ 995 0878 1015      	1:  move.b  (_STATE,a5),d0
+ 996 087a 5300      	    subq.b  #1,d0
+68K GAS  src/megadrive/megadrive.68k 			page 26
+
+
+ 997 087c 672C      	    beq.b   3f                                  | inactive: skip
+ 998 087e 5200      	    addq.b  #1,d0
+ 999 0880 660E      	    bne.b   2f
+ 1000               	    * flagged inactive: zero coords, mark inactive
+ 1001 0882 426D 0008 	    clr.w   (_X,a5)
+ 1002 0886 426D 000E 	    clr.w   (_Y,a5)
+ 1003 088a 1ABC 0001 	    move.b  #1,(_STATE,a5)
+ 1004 088e 601A      	    bra.b   3f
+ 1005               	2:  * active: update hitbox shadow (MANDATORY format)
+ 1006 0890 302D 000E 	    move.w  (_Y,a5),d0
+ 1007 0894 EA48      	    lsr.w   #5,d0
+ 1008 0896 72EF      	    moveq   #-0x11,d1                           | 0xEF
+ 1009 0898 9200      	    sub.b   d0,d1
+ 1010 089a 1481      	    move.b  d1,(a2)
+ 1011 089c 302D 0008 	    move.w  (_X,a5),d0
+ 1012 08a0 EA48      	    lsr.w   #5,d0
+ 1013 08a2 5040      	    addq.w  #8,d0
+ 1014 08a4 E248      	    lsr.w   #1,d0
+ 1015 08a6 1540 0001 	    move.b  d0,(1,a2)
+ 1016 08aa 548A      	3:  addq.l  #2,a2
+ 1017 08ac 4BED 0020 	    lea     (_OBJSIZE,a5),a5
+ 1018 08b0 51CF FFC6 	    dbf     d7,1b
+ 1019 08b4 4CDF 2483 	    movem.l (a7)+,d0-d1/d7/a2/a5
+ 1020 08b8 4E75      	    rts
+ 1021               	
+ 1022               	* d0.w = base sprite number (0/32) - hardware update lands in M5
+ 1023               	osd_update_32_sprite_hw:
+ 1024 08ba 4E75      	    rts
+ 1025               	
+ 1026               	***************************************************************
+ 1027               	*** inputs (M3 stubs - M6 implements pads)
+ 1028               	***************************************************************
+ 1029               	
+ 1030               	* d0 = DSWA, d1 = DSWB
+ 1031               	osd_read_dipswitches:
+ 1032 08bc 303C 007F 	    move.w  #0x7F,d0                            | lives 3, bonus 20K/60K
+ 1033 08c0 323C 007F 	    move.w  #0x7F,d1                            | difficulty normal, flags award, no bomb
+ 1034 08c4 4E75      	    rts
+ 1035               	
+ 1036               	osd_read_p1_inputs:
+ 1037               	osd_read_p2_inputs:
+ 1038 08c6 103C 00F8 	    move.b  #0xF8,d0                            | no direction, no fire
+ 1039 08ca 4E75      	    rts
+ 1040               	
+ 1041               	osd_read_coin:
+ 1042 08cc 7000      	    moveq   #0,d0
+ 1043 08ce 4E75      	    rts
+ 1044               	
+ 1045               	osd_read_start:
+ 1046 08d0 7000      	    moveq   #0,d0
+ 1047 08d2 4E75      	    rts
+ 1048               	
+ 1049               	***************************************************************
+ 1050               	*** sound (M7)
+ 1051               	***************************************************************
+ 1052               	
+ 1053               	osd_sound_start:
+68K GAS  src/megadrive/megadrive.68k 			page 27
+
+
+ 1054               	osd_sound_stop:
+ 1055               	osd_sound_mute:
+ 1056               	osd_sound_unmute:
+ 1057 08d4 4E75      	    rts
+ 1058               	
+ 1059               	***************************************************************
+ 1060               	*** high scores (M8)
+ 1061               	***************************************************************
+ 1062               	
+ 1063               	osd_read_high_scores:
+ 1064               	osd_write_high_scores:
+ 1065 08d6 4E75      	    rts
+ 1066               	
+ 1067               	***************************************************************
+ 1068               	*** OSD state
+ 1069               	***************************************************************
+ 1070               	
+ 1071               	    .bss
+ 1072               	    .align 2
+ 1073 0000 0000      	md_vb_count:        ds.w    1
+ 1074 0002 0000      	md_scroll_shadow:   ds.w    1
+ 1075 0004 0000      	md_vbias:           ds.w    1
+ 1076 0006 0000      	md_fg_vscroll:      ds.w    1
+ 1077 0008 00        	md_mode:            ds.b    1
+ 1078 0009 00        	md_menu:            ds.b    1
+ 1079               	    .align 2
+ 1080 000a 0000      	md_menu_cnt:        ds.w    1
+ 1081 000c 0000      	md_fg_ring:         ds.w    1
+ 1082 000e 0000 0000 	md_fg_key_slot:     ds.b    8192                | (panel<<12|slot<<8|char) -> slot+1
+ 1082      0000 0000 
+ 1082      0000 0000 
+ 1082      0000 0000 
+ 1082      0000 0000 
+ 1083 200e 0000 0000 	md_fg_slot_key:     ds.w    FG_TOTAL_SLOTS      | cache slot -> key
+ 1083      0000 0000 
+ 1083      0000 0000 
+ 1083      0000 0000 
+ 1083      0000 0000 
+ 1084 21ce 0000 0000 	md_fg_slot_refs:    ds.w    FG_TOTAL_SLOTS      | on-screen refs per slot
+ 1084      0000 0000 
+ 1084      0000 0000 
+ 1084      0000 0000 
+ 1084      0000 0000 
+ 1085               	* cell->slot tables: keep contiguous (purge scans both at once)
+ 1086 238e 0000 0000 	md_fg_cell_slot:    ds.w    0x800               | arcade cell -> slot+1 in use
+ 1086      0000 0000 
+ 1086      0000 0000 
+ 1086      0000 0000 
+ 1086      0000 0000 
+ 1087 338e 0000 0000 	md_panel_cell_slot: ds.w    PANEL_W*PANEL_ROWS  | panel cell -> slot+1 in use
+ 1087      0000 0000 
+ 1087      0000 0000 
+ 1087      0000 0000 
+ 1087      0000 0000 
+ 1088 34de 0000      	    .align 4
+ 1089 34e0 0000 0000 	md_panel_cmd_tbl:   ds.l    PANEL_W*PANEL_ROWS  | panel cell -> window NT cmd
+ 1089      0000 0000 
+68K GAS  src/megadrive/megadrive.68k 			page 28
+
+
+ 1089      0000 0000 
+ 1089      0000 0000 
+ 1089      0000 0000 
+ 1090               	    .align 4
+ 1091 3780 0000 0000 	md_fg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane A VDP cmd
+ 1091      0000 0000 
+ 1091      0000 0000 
+ 1091      0000 0000 
+ 1091      0000 0000 
+ 1092 5780 0000 0000 	md_bg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane B VDP cmd
+ 1092      0000 0000 
+ 1092      0000 0000 
+ 1092      0000 0000 
+ 1092      0000 0000 
+ 1093               	    .ifdef DIAG_DUMP
+ 1094               	    .align 2
+ 1095               	md_diag_frame:      ds.w    1
+ 1096               	md_diag_buf:        ds.b    0x2000
+ 1097               	md_diag_buf2:       ds.b    0x1000
+ 1098               	    .endif
+68K GAS  src/megadrive/megadrive.68k 			page 29
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000001 RELEASE
+                            *ABS*:00000001 __megadrive__
+src/megadrive/vdpregs.inc:6      *ABS*:00000000 ROM_BASE
+src/megadrive/vdpregs.inc:7      *ABS*:00200001 SRAM_BASE
+src/megadrive/vdpregs.inc:8      *ABS*:002003ff SRAM_END
+src/megadrive/vdpregs.inc:9      *ABS*:00a00000 Z80_RAM
+src/megadrive/vdpregs.inc:10     *ABS*:00a11100 Z80_BUSREQ
+src/megadrive/vdpregs.inc:11     *ABS*:00a11200 Z80_RESET
+src/megadrive/vdpregs.inc:12     *ABS*:00a10001 IO_VERSION
+src/megadrive/vdpregs.inc:13     *ABS*:00a10003 IO_DATA1
+src/megadrive/vdpregs.inc:14     *ABS*:00a10005 IO_DATA2
+src/megadrive/vdpregs.inc:15     *ABS*:00a10009 IO_CTRL1
+src/megadrive/vdpregs.inc:16     *ABS*:00a1000b IO_CTRL2
+src/megadrive/vdpregs.inc:17     *ABS*:00a14000 TMSS_REG
+src/megadrive/vdpregs.inc:18     *ABS*:00a130f1 SRAM_CTRL
+src/megadrive/vdpregs.inc:19     *ABS*:00ff0000 RAM_BASE
+src/megadrive/vdpregs.inc:22     *ABS*:00c00000 VDP_DATA
+src/megadrive/vdpregs.inc:23     *ABS*:00c00004 VDP_CTRL
+src/megadrive/vdpregs.inc:24     *ABS*:00c00008 VDP_HV
+src/megadrive/vdpregs.inc:25     *ABS*:00c00011 PSG_PORT
+src/megadrive/vdpregs.inc:32     *ABS*:0000b000 VRAM_WINDOW_NT
+src/megadrive/vdpregs.inc:33     *ABS*:0000bc00 VRAM_SAT
+src/megadrive/vdpregs.inc:34     *ABS*:0000bf00 VRAM_HSCROLL
+src/megadrive/vdpregs.inc:35     *ABS*:0000c000 VRAM_PLANE_A
+src/megadrive/vdpregs.inc:36     *ABS*:0000e000 VRAM_PLANE_B
+src/megadrive/vdpregs.inc:40     *ABS*:00008004 VDPR00
+src/megadrive/vdpregs.inc:41     *ABS*:00008134 VDPR01_OFF
+src/megadrive/vdpregs.inc:42     *ABS*:00008174 VDPR01_ON
+src/megadrive/vdpregs.inc:43     *ABS*:00008230 VDPR02
+src/megadrive/vdpregs.inc:44     *ABS*:0000832c VDPR03
+src/megadrive/vdpregs.inc:45     *ABS*:00008407 VDPR04
+src/megadrive/vdpregs.inc:46     *ABS*:0000855e VDPR05
+src/megadrive/vdpregs.inc:47     *ABS*:00008600 VDPR06
+src/megadrive/vdpregs.inc:48     *ABS*:00008700 VDPR07
+src/megadrive/vdpregs.inc:49     *ABS*:00008800 VDPR08
+src/megadrive/vdpregs.inc:50     *ABS*:00008900 VDPR09
+src/megadrive/vdpregs.inc:51     *ABS*:00008aff VDPR10
+src/megadrive/vdpregs.inc:52     *ABS*:00008b00 VDPR11
+src/megadrive/vdpregs.inc:53     *ABS*:00008c81 VDPR12
+src/megadrive/vdpregs.inc:54     *ABS*:00008d2f VDPR13
+src/megadrive/vdpregs.inc:55     *ABS*:00008e00 VDPR14
+src/megadrive/vdpregs.inc:56     *ABS*:00008f02 VDPR15
+src/megadrive/vdpregs.inc:57     *ABS*:00009011 VDPR16
+src/megadrive/vdpregs.inc:58     *ABS*:00009191 VDPR17
+src/megadrive/vdpregs.inc:59     *ABS*:00009200 VDPR18
+     src/xevious.inc:9      *ABS*:00000000 OPT_DISABLE_FG_LAYER
+     src/xevious.inc:10     *ABS*:00000000 OPT_DISABLE_BG_LAYER
+     src/xevious.inc:11     *ABS*:00000000 OPT_DISABLE_SPRITES
+     src/xevious.inc:12     *ABS*:00000000 OPT_DISABLE_DISPLAY_MASKS
+     src/xevious.inc:15     *ABS*:00000001 OPT_SUB_HAS_IRQ
+     src/xevious.inc:17     *ABS*:00000001 OPT_START_AREA
+     src/xevious.inc:18     *ABS*:00000000 OPT_LOOP_AREA
+     src/xevious.inc:19     *ABS*:00000000 OPT_INVINCIBLE
+     src/xevious.inc:20     *ABS*:00000000 OPT_INFINITE_LIVES
+     src/xevious.inc:22     *ABS*:00000000 OPT_START_SCORE
+     src/xevious.inc:23     *ABS*:00000001 OPT_ENABLE_HIGH_SCORE_IO
+68K GAS  src/megadrive/megadrive.68k 			page 30
+
+
+     src/xevious.inc:24     *ABS*:00000001 OPT_TCDEV_EASTER_EGG
+     src/xevious.inc:25     *ABS*:00000000 OPT_REVEAL_SOL_TOWER
+     src/xevious.inc:26     *ABS*:00000000 OPT_REVEAL_BONUS_FLAG
+     src/xevious.inc:27     *ABS*:00000000 OPT_DISPLAY_AREA
+     src/xevious.inc:28     *ABS*:00000000 OPT_SKIP_SPLASH
+     src/xevious.inc:29     *ABS*:00000000 OPT_SKIP_ATTRACT
+     src/xevious.inc:61     *ABS*:00000000 _STATE
+     src/xevious.inc:62     *ABS*:00000001 _ATTR
+     src/xevious.inc:63     *ABS*:00000004 _EXTRA
+     src/xevious.inc:64     *ABS*:00000008 _X
+     src/xevious.inc:65     *ABS*:0000000a _dX
+     src/xevious.inc:66     *ABS*:0000000c _ddX
+     src/xevious.inc:67     *ABS*:0000000e _Y
+     src/xevious.inc:68     *ABS*:00000010 _dY
+     src/xevious.inc:69     *ABS*:00000012 _ddY
+     src/xevious.inc:70     *ABS*:00000014 _CODE
+     src/xevious.inc:71     *ABS*:00000015 _COLOUR
+     src/xevious.inc:72     *ABS*:00000016 _PTS
+     src/xevious.inc:73     *ABS*:00000018 _TIMER
+     src/xevious.inc:74     *ABS*:00000019 _TIMER1
+     src/xevious.inc:75     *ABS*:00000019 _NVEC
+     src/xevious.inc:76     *ABS*:0000001a _TIMER2
+     src/xevious.inc:77     *ABS*:0000001a _VECLEN
+     src/xevious.inc:78     *ABS*:0000001c _FFREQ
+     src/xevious.inc:79     *ABS*:0000001e _TYPE
+     src/xevious.inc:81     *ABS*:00000020 _OBJSIZE
+     src/xevious.inc:84     *ABS*:00000000 BANK_FG_COLORRAM
+     src/xevious.inc:85     *ABS*:00000004 BANK_BG_COLORRAM
+     src/xevious.inc:86     *ABS*:00000008 BANK_FG_VIDEORAM
+     src/xevious.inc:87     *ABS*:0000000c BANK_BG_VIDEORAM
+     src/xevious.inc:91     *ABS*:00000001 MAIN_THEME_SND
+     src/xevious.inc:92     *ABS*:00000002 HIGHEST_SCORE_SND
+     src/xevious.inc:93     *ABS*:00000003 HIGH_SCORE_SND
+     src/xevious.inc:94     *ABS*:00000004 EXTRA_SOLVALOU_SND
+     src/xevious.inc:95     *ABS*:00000005 FLYING_ENEMY_HIT_SND
+     src/xevious.inc:96     *ABS*:00000006 GARU_ZAKATO_SND
+     src/xevious.inc:97     *ABS*:00000007 ANDOR_GENESIS_SND
+     src/xevious.inc:98     *ABS*:00000008 SHEONITE_SND
+     src/xevious.inc:99     *ABS*:00000009 TELEPORT_SND
+     src/xevious.inc:100    *ABS*:0000000a BACURA_HIT_SND
+     src/xevious.inc:101    *ABS*:0000000b SHOT_SND
+     src/xevious.inc:102    *ABS*:0000000c BOMB_SND
+     src/xevious.inc:103    *ABS*:0000000d BONUS_FLAG_SND
+     src/xevious.inc:104    *ABS*:0000000e SOLVALOU_SND
+     src/xevious.inc:106    *ABS*:00000010 COIN_SND
+     src/xevious.inc:107    *ABS*:00000011 GROUND_EXPLOSION_SND
+     src/xevious.inc:108    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
+src/megadrive/graphics_md.68k:12     *ABS*:00000001 GFX_BG_BASE_TILE
+src/megadrive/graphics_md.68k:13     *ABS*:00000397 GFX_N_BG
+src/megadrive/graphics_md.68k:14     *ABS*:00000398 GFX_POOL_BASE_TILE
+src/megadrive/graphics_md.68k:15     *ABS*:00000168 GFX_POOL_TILES
+src/megadrive/graphics_md.68k:16     *ABS*:0000005a GFX_POOL_FRAMES
+src/megadrive/graphics_md.68k:17     *ABS*:00000083 GFX_N_TITLE
+src/megadrive/graphics_md.68k:18     *ABS*:000002b7 GFX_N_FRAMES
+src/megadrive/graphics_md.68k:19     *ABS*:00000500 GFX_FG_CACHE_BASE
+src/megadrive/graphics_md.68k:20     *ABS*:00000080 GFX_FG_CACHE_TILES
+src/megadrive/graphics_md.68k:35     .rodata:00000000 gfx_palettes_game
+68K GAS  src/megadrive/megadrive.68k 			page 31
+
+
+src/megadrive/graphics_md.68k:40     .rodata:0000007c gfx_palette_title
+src/megadrive/graphics_md.68k:44     .rodata:0000009c gfx_bg_combo_tbl
+src/megadrive/graphics_md.68k:47     .rodata:0002009c gfx_bg_patterns
+src/megadrive/graphics_md.68k:50     .rodata:0002737c gfx_title_patterns
+src/megadrive/graphics_md.68k:53     .rodata:000283dc gfx_sprite_combo_tbl
+src/megadrive/graphics_md.68k:56     .rodata:000483dc gfx_sprite_frames
+src/megadrive/graphics_md.68k:59     .rodata:0005df5c gfx_fg_chars
+src/megadrive/graphics_md.68k:62     .rodata:0005e75c gfx_fg_color_map
+src/megadrive/megadrive.68k:102    .text:00000000 md_main
+src/megadrive/megadrive.68k:254    .text:0000013c md_vblank
+src/megadrive/megadrive.68k:660    .text:0000055e osd_enable_vblank_interrupt
+src/megadrive/megadrive.68k:664    .text:00000564 osd_ack_vblank_interrupt
+src/megadrive/megadrive.68k:668    .text:0000056c osd_disable_vblank_interrupt
+src/megadrive/megadrive.68k:672    .text:00000572 osd_kick_wdog
+src/megadrive/megadrive.68k:708    .text:00000596 osd_w_fg_colorram
+src/megadrive/megadrive.68k:912    .text:000007c2 osd_w_bg_colorram
+src/megadrive/megadrive.68k:695    .text:00000576 osd_w_fg_videoram
+src/megadrive/megadrive.68k:899    .text:000007a2 osd_w_bg_videoram
+src/megadrive/megadrive.68k:982    .text:00000864 osd_update_scroll_hw
+src/megadrive/megadrive.68k:991    .text:0000086c osd_update_sprite_shadow
+src/megadrive/megadrive.68k:1023   .text:000008ba osd_update_32_sprite_hw
+src/megadrive/megadrive.68k:1031   .text:000008bc osd_read_dipswitches
+src/megadrive/megadrive.68k:1036   .text:000008c6 osd_read_p1_inputs
+src/megadrive/megadrive.68k:1037   .text:000008c6 osd_read_p2_inputs
+src/megadrive/megadrive.68k:1041   .text:000008cc osd_read_coin
+src/megadrive/megadrive.68k:1045   .text:000008d0 osd_read_start
+src/megadrive/megadrive.68k:1053   .text:000008d4 osd_sound_start
+src/megadrive/megadrive.68k:1054   .text:000008d4 osd_sound_stop
+src/megadrive/megadrive.68k:1055   .text:000008d4 osd_sound_mute
+src/megadrive/megadrive.68k:1056   .text:000008d4 osd_sound_unmute
+src/megadrive/megadrive.68k:1063   .text:000008d6 osd_read_high_scores
+src/megadrive/megadrive.68k:1064   .text:000008d6 osd_write_high_scores
+src/megadrive/megadrive.68k:677    .text:00000574 osd_debug_hook
+src/megadrive/megadrive.68k:41     *ABS*:00000006 MD_LEFT_COL
+src/megadrive/megadrive.68k:42     *ABS*:0000002c FG_DUMP_ROW
+src/megadrive/megadrive.68k:49     *ABS*:00000020 FGV_GAME
+src/megadrive/megadrive.68k:50     *ABS*:00000038 FGV_TITLE
+src/megadrive/megadrive.68k:51     *ABS*:000001e8 VBIAS_GAME
+src/megadrive/megadrive.68k:52     *ABS*:00000000 VBIAS_TITLE
+src/megadrive/megadrive.68k:55     *ABS*:00000022 PANEL_COL
+src/megadrive/megadrive.68k:56     *ABS*:00000006 PANEL_W
+src/megadrive/megadrive.68k:57     *ABS*:0000001c PANEL_ROWS
+src/megadrive/megadrive.68k:58     *ABS*:0000007f SOLID_SLOT
+src/megadrive/megadrive.68k:63     *ABS*:00000060 FG_OVF_SLOTS
+src/megadrive/megadrive.68k:64     *ABS*:000000e0 FG_TOTAL_SLOTS
+src/megadrive/megadrive.68k:65     *ABS*:000004a0 FG_OVF_TILE
+src/megadrive/megadrive.68k:68     *ABS*:00000013 PANEL_GLYPHS
+src/megadrive/megadrive.68k:69     *ABS*:0000048d PANEL_TILE
+src/megadrive/megadrive.68k:71     *ABS*:0000000a PG_U
+src/megadrive/megadrive.68k:72     *ABS*:0000000b PG_P
+src/megadrive/megadrive.68k:73     *ABS*:0000000c PG_H
+src/megadrive/megadrive.68k:74     *ABS*:0000000d PG_I
+src/megadrive/megadrive.68k:75     *ABS*:0000000e PG_A
+src/megadrive/megadrive.68k:76     *ABS*:0000000f PG_C
+src/megadrive/megadrive.68k:77     *ABS*:00000010 PG_R
+src/megadrive/megadrive.68k:78     *ABS*:00000011 PG_SHIP
+src/megadrive/megadrive.68k:79     *ABS*:00000012 PG_SOLID
+68K GAS  src/megadrive/megadrive.68k 			page 32
+
+
+src/megadrive/megadrive.68k:81     *ABS*:0000003d PCOL_TEXT
+src/megadrive/megadrive.68k:82     *ABS*:00000026 PCOL_LABEL
+src/megadrive/megadrive.68k:83     *ABS*:0000002a PCOL_ICON
+src/megadrive/megadrive.68k:85     *ABS*:00000024 CH_SPACE
+src/megadrive/megadrive.68k:86     *ABS*:00000025 CH_SHIP
+src/megadrive/megadrive.68k:137    .text:0000000a md_platform_init
+src/megadrive/megadrive.68k:1091   .bss:00003780 md_fg_cmd_tbl
+src/megadrive/megadrive.68k:1092   .bss:00005780 md_bg_cmd_tbl
+src/megadrive/megadrive.68k:239    .text:00000122 md_vram_cmd
+src/megadrive/megadrive.68k:1083   .bss:0000200e md_fg_slot_key
+src/megadrive/megadrive.68k:1089   .bss:000034e0 md_panel_cmd_tbl
+src/megadrive/megadrive.68k:440    .text:00000304 md_panel_init
+src/megadrive/megadrive.68k:1077   .bss:00000008 md_mode
+src/megadrive/megadrive.68k:1078   .bss:00000009 md_menu
+src/megadrive/megadrive.68k:1080   .bss:0000000a md_menu_cnt
+src/megadrive/megadrive.68k:1074   .bss:00000002 md_scroll_shadow
+src/megadrive/megadrive.68k:1075   .bss:00000004 md_vbias
+src/megadrive/megadrive.68k:1076   .bss:00000006 md_fg_vscroll
+src/megadrive/megadrive.68k:323    .text:0000019c md_check_mode
+src/megadrive/megadrive.68k:363    .text:0000021a md_check_menu
+src/megadrive/megadrive.68k:597    .text:000004b4 md_update_panel
+src/megadrive/megadrive.68k:356    .text:00000218 mode_done
+src/megadrive/megadrive.68k:349    .text:000001fc enter_game_mode
+src/megadrive/megadrive.68k:334    .text:000001be enter_title_mode
+src/megadrive/megadrive.68k:390    .text:00000274 in_action
+src/megadrive/megadrive.68k:376    .text:00000240 menu_idle
+src/megadrive/megadrive.68k:1084   .bss:000021ce md_fg_slot_refs
+src/megadrive/megadrive.68k:1082   .bss:0000000e md_fg_key_slot
+src/megadrive/megadrive.68k:1086   .bss:0000238e md_fg_cell_slot
+src/megadrive/megadrive.68k:430    .text:000002de panel_glyph_tbl
+src/megadrive/megadrive.68k:500    .text:0000038a md_panel_render_glyph
+src/megadrive/megadrive.68k:542    .text:0000042e md_panel_putg
+src/megadrive/megadrive.68k:480    .text:00000364 panel_str_1up
+src/megadrive/megadrive.68k:488    .text:00000374 md_panel_puts
+src/megadrive/megadrive.68k:481    .text:00000368 panel_str_hi
+src/megadrive/megadrive.68k:482    .text:0000036b panel_str_2up
+src/megadrive/megadrive.68k:483    .text:0000036f panel_str_a
+src/megadrive/megadrive.68k:484    .text:00000371 panel_str_cr
+src/megadrive/megadrive.68k:562    .text:00000466 md_panel_bcd
+src/megadrive/megadrive.68k:584    .text:0000049a md_panel_digit
+src/megadrive/megadrive.68k:722    .text:000005b8 fg_write
+src/megadrive/megadrive.68k:796    .text:00000672 fg_skip
+src/megadrive/megadrive.68k:802    .text:00000674 fg_cache_alloc
+src/megadrive/megadrive.68k:886    .text:00000790 md_fg_slot_tile
+src/megadrive/megadrive.68k:1081   .bss:0000000c md_fg_ring
+src/megadrive/megadrive.68k:811    .text:00000690 find_free_slot
+src/megadrive/megadrive.68k:927    .text:000007e4 bg_write
+src/megadrive/megadrive.68k:1073   .bss:00000000 md_vb_count
+src/megadrive/megadrive.68k:1087   .bss:0000338e md_panel_cell_slot
+
+UNDEFINED SYMBOLS
+xevious_reset
+vb_ticks_count
+xevious_im1_irq
+bg_videoram
+is_real_game
+scroll_disabled
+68K GAS  src/megadrive/megadrive.68k 			page 33
+
+
+obj_tbl
+curr_player_score_msb
+other_player_score_msb
+curr_player
+RAM_high_score
+area
+num_credits
+curr_player_solvalou_left
+fg_videoram
+fg_colorram
+bg_colorram
+sprite_shadow_msb

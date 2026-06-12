@@ -1,0 +1,98 @@
+*
+* Mega Drive startup: TMSS, VDP/Z80/PSG init, RAM clear
+*
+
+    .include "vdpregs.inc"
+
+    .global md_error
+    .global md_ext_irq
+    .global md_hblank
+    .global _start
+
+    .text
+
+_start:
+    move    #0x2700,sr                          | interrupts off
+
+* TMSS: write 'SEGA' on model 1 VA4+ hardware
+    move.b  (IO_VERSION),d0
+    andi.b  #0x0F,d0
+    beq.b   1f
+    move.l  #0x53454741,(TMSS_REG)              | 'SEGA'
+1:
+
+* stop the Z80: request bus and release reset (bus is only granted with
+* reset deasserted); keep BUSREQ held so the Z80 stays parked until the
+* sound driver is uploaded
+    move.w  #0x100,(Z80_BUSREQ)                 | request bus
+    move.w  #0x100,(Z80_RESET)                  | deassert reset
+2:  btst    #0,(Z80_BUSREQ)
+    bne.b   2b
+
+* silence PSG
+    lea     (PSG_PORT),a0
+    move.b  #0x9F,(a0)
+    move.b  #0xBF,(a0)
+    move.b  #0xDF,(a0)
+    move.b  #0xFF,(a0)
+
+* init VDP registers (display off)
+    lea     (VDP_CTRL),a0
+    move.w  (a0),d0                             | clear latched state
+    lea     vdp_init_regs(pc),a1
+    moveq   #(vdp_init_regs_end-vdp_init_regs)/2-1,d7
+3:  move.w  (a1)+,(a0)
+    dbf     d7,3b
+
+* clear VRAM (64KB) via data port
+    VDP_W_VRAM 0
+    lea     (VDP_DATA),a1
+    move.w  #0x8000-1,d7
+    moveq   #0,d0
+4:  move.l  d0,(a1)
+    dbf     d7,4b
+
+* clear CRAM (64 entries)
+    VDP_W_CRAM 0
+    moveq   #32-1,d7
+5:  move.l  d0,(a1)
+    dbf     d7,5b
+
+* clear VSRAM (40 entries)
+    VDP_W_VSRAM 0
+    moveq   #20-1,d7
+6:  move.l  d0,(a1)
+    dbf     d7,6b
+
+* clear work RAM (64KB) except nothing is live yet; SP reloaded after
+    lea     (RAM_BASE).l,a1
+    move.w  #0x4000-1,d7
+7:  move.l  d0,(a1)+
+    dbf     d7,7b
+    lea     (0x00FFFE00).l,sp
+
+* set up controller ports: TH output, rest input
+    move.b  #0x40,(IO_CTRL1)
+    move.b  #0x40,(IO_CTRL2)
+    move.b  #0x40,(IO_DATA1)
+    move.b  #0x40,(IO_DATA2)
+
+    jmp     md_main
+
+vdp_init_regs:
+    .word   VDPR00,VDPR01_OFF,VDPR02,VDPR03,VDPR04,VDPR05,VDPR06,VDPR07
+    .word   VDPR08,VDPR09,VDPR10,VDPR11,VDPR12,VDPR13,VDPR14,VDPR15
+    .word   VDPR16,VDPR17,VDPR18
+vdp_init_regs_end:
+
+* fatal exception: red screen, halt
+md_error:
+    move    #0x2700,sr
+    lea     (VDP_CTRL),a0
+    VDP_W_CRAM 0
+    move.w  #0x000E,(VDP_DATA)                  | red backdrop
+1:  bra.b   1b
+
+md_ext_irq:
+md_hblank:
+    rte

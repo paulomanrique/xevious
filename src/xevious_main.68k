@@ -2119,9 +2119,17 @@ update_solvalou_sprite_XY: | $15C1
     cmp.w     #144*32,d0                        | too small?
     jcc     1f                                | no, skip
     move.w    #144*32,d0                        | set to 144
+    .ifdef __megadrive__
+    * MD shows a 224-line window of the 288-line field: limit downward
+    * travel so the ship stays inside the visible window
+1:  cmp.w     #264*32,d0                        | too big?
+    jcs     2f                                | no, skip
+    move.w    #264*32,d0                        | set to 264
+    .else
 1:  cmp.w     #304*32,d0                        | too jig?
     jcs     2f                                | no, skip
     move.w    #304*32,d0                        | set to 304
+    .endif
 2:  move.w    d0,(_X,a5)
     move.w    (_Y,a5),d0
     move.w    (_dY,a5),d1

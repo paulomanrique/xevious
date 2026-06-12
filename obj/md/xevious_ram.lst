@@ -1,0 +1,655 @@
+68K GAS  src/xevious_ram.68k 			page 1
+
+
+   1               	.include "xevious.inc"
+   1               	
+   2               	* xevious.inc
+   3               	
+   4               	***    
+   5               	*** BUILD OPTIONS
+   6               	***
+   7               		.ifdef	RELEASE
+   8               	    * hardware options
+   9               	    OPT_DISABLE_FG_LAYER=0              | don't change values here!
+  10               	    OPT_DISABLE_BG_LAYER=0              | don't change values here!
+  11               	    OPT_DISABLE_SPRITES=0               | don't change values here!
+  12               	    OPT_DISABLE_DISPLAY_MASKS=0         | don't change values here!
+  13               											| don't change values here!
+  14               	    * optimisation options              | don't change values here!
+  15               	    OPT_SUB_HAS_IRQ=1                   | don't change values here!
+  16               	    * game test options                 | don't change values here!
+  17               	    OPT_START_AREA=1    | 1-16          | don't change values here!
+  18               	    OPT_LOOP_AREA=0                     | don't change values here!
+  19               	    OPT_INVINCIBLE=0                    | don't change values here!
+  20               	    OPT_INFINITE_LIVES=0                | don't change values here!
+  21               	    * score is BCD format               | don't change values here!
+  22               	    OPT_START_SCORE=0x0000000           | don't change values here!
+  23               	    OPT_ENABLE_HIGH_SCORE_IO=1          | don't change values here!
+  24               	    OPT_TCDEV_EASTER_EGG=1              | don't change values here!
+  25               	    OPT_REVEAL_SOL_TOWER=0              | don't change values here!
+  26               	    OPT_REVEAL_BONUS_FLAG=0             | don't change values here!
+  27               	    OPT_DISPLAY_AREA=0                  | don't change values here!
+  28               	    OPT_SKIP_SPLASH=0                   | don't change values here!
+  29               	    OPT_SKIP_ATTRACT=0                  | don't change values here!
+  30               		.else
+  31               		* dev/debug mode: changes here won't reflect on release version!
+  32               	    * hardware options
+  33               	    OPT_DISABLE_FG_LAYER=0
+  34               	    OPT_DISABLE_BG_LAYER=0
+  35               	    OPT_DISABLE_SPRITES=0
+  36               	    OPT_DISABLE_DISPLAY_MASKS=0
+  37               	
+  38               	    * optimisation options
+  39               	    OPT_SUB_HAS_IRQ=1
+  40               	    * game test options    
+  41               	    OPT_START_AREA=1    | 1-16
+  42               	    OPT_LOOP_AREA=0
+  43               	    OPT_INVINCIBLE=0
+  44               	    OPT_INFINITE_LIVES=0
+  45               	    * score is BCD format
+  46               	    OPT_START_SCORE=0x0000000
+  47               	    OPT_ENABLE_HIGH_SCORE_IO=1
+  48               	    OPT_TCDEV_EASTER_EGG=1
+  49               	    OPT_REVEAL_SOL_TOWER=0
+  50               	    OPT_REVEAL_BONUS_FLAG=0
+  51               	    OPT_DISPLAY_AREA=0
+  52               	    OPT_SKIP_SPLASH=0
+  53               	    OPT_SKIP_ATTRACT=0
+  54               		.endif
+  55               		
+  56               	***
+68K GAS  src/xevious_ram.68k 			page 2
+
+
+  57               	*** end of BUILD OPTIONS
+  58               	***
+  59               	
+  60               	* offsets into object table
+  61               	    .equ  _STATE,     0
+  62               	    .equ  _ATTR,      1
+  63               	    .equ  _EXTRA,     4
+  64               	    .equ  _X,         8
+  65               	    .equ  _dX,        10
+  66               	    .equ  _ddX,       12
+  67               	    .equ  _Y,         14
+  68               	    .equ  _dY,        16
+  69               	    .equ  _ddY,       18
+  70               	    .equ  _CODE,      20
+  71               	    .equ  _COLOUR,    21
+  72               	    .equ  _PTS,       22
+  73               	    .equ  _TIMER,     24
+  74               	    .equ  _TIMER1,    25
+  75               	      .equ  _NVEC,    25
+  76               	    .equ  _TIMER2,    26
+  77               	      .equ  _VECLEN,  26
+  78               	    .equ  _FFREQ,     28
+  79               	    .equ  _TYPE,      30
+  80               	
+  81               	    .equ  _OBJSIZE,   32
+  82               	
+  83               	* video functions
+  84               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  85               	    .equ  BANK_BG_COLORRAM,   (1<<2)
+  86               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
+  87               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
+  88               	
+  89               	* sound ordinals
+  90               	
+  91               	    .equ  MAIN_THEME_SND,         0x01
+  92               	    .equ  HIGHEST_SCORE_SND,      0x02
+  93               	    .equ  HIGH_SCORE_SND,         0x03
+  94               	    .equ  EXTRA_SOLVALOU_SND,     0x04
+  95               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+  96               	    .equ  GARU_ZAKATO_SND,        0x06
+  97               	    .equ  ANDOR_GENESIS_SND,      0x07
+  98               	    .equ  SHEONITE_SND,           0x08
+  99               	    .equ  TELEPORT_SND,           0x09
+ 100               	    .equ  BACURA_HIT_SND,         0x0a
+ 101               	    .equ  SHOT_SND,               0x0b
+ 102               	    .equ  BOMB_SND,               0x0c
+ 103               	    .equ  BONUS_FLAG_SND,         0x0d
+ 104               	    .equ  SOLVALOU_SND,           0x0e
+ 105               	    * 60XX (noise chip?)
+ 106               	    .equ  COIN_SND,               0x10
+ 107               	    .equ  GROUND_EXPLOSION_SND,   0x11
+ 108               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
+ 109               	    
+ 110               	
+ 111               	
+   2               	
+   3               	    .global main_2_fn_tbl_1
+68K GAS  src/xevious_ram.68k 			page 3
+
+
+   4               	    .global main_30_fn_tbl
+   5               	    .global main_2_fn_tbl_2
+   6               	    .global obj_tbl
+   7               	    .global watermark_0x8000
+   8               	    .global vb_semaphore_main
+   9               	    .global countup_timer_1
+  10               	    .global vb_ticks_count
+  11               	    .global pseudo_random_seed
+  12               	    .global bg_scroll_x_shadow
+  13               	    .global scroll_cntr
+  14               	    .global area_offset_in_map
+  15               	    .global scroll_delta
+  16               	    .global dswa
+  17               	    .global dswb
+  18               	    .global P1_inputs
+  19               	    .global P2_inputs
+  20               	    .global start_pressed
+  21               	    .global pulsing_colour_1
+  22               	    .global curr_player
+  23               	    .global two_player_game
+  24               	    .global is_real_game
+  25               	    .global RAM_high_score
+  26               	    .global high_score_msb
+  27               	    .global attract_mode_stage
+  28               	    .global num_credits
+  29               	    .global scroll_disabled
+  30               	    .global num_flying_enemies
+  31               	    .global flying_enemy_type_tbl_offset
+  32               	    .global num_bacura
+  33               	    .global sheonite_end_flag
+  34               	    .global andor_genesis_end_flag
+  35               	    .global shot_flag
+  36               	    .global shot_timer_init_value
+  37               	    .global shot_timer
+  38               	    .global andor_genesis_colour
+  39               	    .global countdown_timer_1
+  40               	    .global next_domogram
+  41               	    .global pulsing_colour_2
+  42               	    .global solvalou_exploding
+  43               	    .global new_high_score_entry_index
+  44               	    .global name_entry_char_cnt
+  45               	    .global name_entry_curr_char_screen_offset
+  46               	    .global name_entry_ptr_curr_char
+  47               	    .global curr_player_score_msb
+  48               	    .global curr_player_score_Ks
+  49               	    .global curr_player_score_lsb
+  50               	    .global curr_player_solvalou_left
+  51               	    .global area_obj_ptr
+  52               	    .global area
+  53               	    .global enemy_AI_level
+  54               	    .global next_bonus_life_Ks
+  55               	    .global solvalou_number
+  56               	    .global bonus_life_none
+  57               	    .global ffreq_mask_derota
+  58               	    .global ffreq_mask_kapi
+  59               	    .global ffreq_mask_terrazi
+  60               	    .global ffreq_mask_logram
+68K GAS  src/xevious_ram.68k 			page 4
+
+
+  61               	    .global ffreq_mask_zoshi
+  62               	    .global ffreq_mask_boza_logram
+  63               	    .global ffreq_mask_domogram
+  64               	    .global ffreq_mask_andor_genesis
+  65               	    .global gnd_stop_firing_row
+  66               	    .global curr_player_filler
+  67               	    .global other_player_score_msb
+  68               	    .global other_player_solvalou_left
+  69               	    .global other_player_filler
+  70               	    .global main_fn_tbl_RAM
+  71               	    .global watermark_0x8400
+  72               	    .global area_object_tbl_tbl_RAM
+  73               	    .global bacura_inc_cnt
+  74               	    .global one_second_cntr
+  75               	    .global str_decrypt_buf
+  76               	    .global RAM_test_result_final_score
+  77               	    .global name_buffer
+  78               	    .global high_score_1st_msb
+  79               	    .global high_score_1st_name
+  80               	    .global high_score_2nd_msb
+  81               	    .global high_score_2nd_name
+  82               	    .global high_score_3rd_msb
+  83               	    .global high_score_3rd_name
+  84               	    .global high_score_4th_msb
+  85               	    .global high_score_4th_name
+  86               	    .global high_score_5th_msb
+  87               	    .global high_score_5th_name
+  88               	    .global maincpu_inited
+  89               	    .global domogram_tbl
+  90               	    .global fg_colorram
+  91               	    .global bg_colorram
+  92               	    .global fg_videoram
+  93               	    .global bg_videoram
+  94               	    .global sprite_shadow_msb
+  95               	
+  96               	    .bss
+  97               	    
+  98               	* RAM and variables
+  99               	
+ 100               	* $7800-
+ 101               	
+ 102 0000 0000 0000 	main_2_fn_tbl_1:                        ds.l  32          | 32 objects
+ 102      0000 0000 
+ 102      0000 0000 
+ 102      0000 0000 
+ 102      0000 0000 
+ 103 0080 0000 0000 	                                        ds.l  4           | solvalou
+ 103      0000 0000 
+ 103      0000 0000 
+ 103      0000 0000 
+ 104 0090 0000 0000 	main_30_fn_tbl:                         ds.l  3           | player shots
+ 104      0000 0000 
+ 104      0000 0000 
+ 105 009c 0000 0000 	main_2_fn_tbl_2:                        ds.l  25          | 25 objects
+ 105      0000 0000 
+ 105      0000 0000 
+ 105      0000 0000 
+68K GAS  src/xevious_ram.68k 			page 5
+
+
+ 105      0000 0000 
+ 106               	
+ 107               	* $7900-
+ 108               	
+ 109 0100 0000 0000 	    .align 0x1000
+ 109      0000 0000 
+ 109      0000 0000 
+ 109      0000 0000 
+ 109      0000 0000 
+ 110               	* 64 objects, 32 bytes per object
+ 111 1000 0000 0000 	obj_tbl:                                ds.b  _OBJSIZE*64
+ 111      0000 0000 
+ 111      0000 0000 
+ 111      0000 0000 
+ 111      0000 0000 
+ 112               	
+ 113               	* $8000-$83FF
+ 114               	
+ 115               	watermark_0x8000:
+ 116 1800 00        	vb_semaphore_main:                      ds.b  1
+ 117 1801 00        	countup_timer_1:                        ds.b  1
+ 118 1802 00        	vb_ticks_count:                       	ds.b  1
+ 119 1803 00        	    .align 2
+ 120 1804 0000      	pseudo_random_seed:                     ds.w  1
+ 121 1806 0000      	bg_scroll_x_shadow:                     ds.w  1
+ 122 1808 0000      	scroll_cntr:                            ds.w  1
+ 123 180a 00        	area_offset_in_map:                     ds.b  1
+ 124 180b 00        	    .align 2
+ 125 180c 0000      	scroll_delta:                           ds.w  1
+ 126 180e 00        	dswa:                                   ds.b  1
+ 127 180f 00        	dswb:                                   ds.b  1
+ 128 1810 00        	P1_inputs:                              ds.b  1
+ 129 1811 00        	P2_inputs:                              ds.b  1   | must follow P1_inputs
+ 130 1812 00        	start_pressed:                          ds.b  1
+ 131 1813 00        	pulsing_colour_1:                       ds.b  1
+ 132 1814 00        	curr_player:                            ds.b  1
+ 133 1815 00        	two_player_game:                        ds.b  1
+ 134 1816 00        	is_real_game:                           ds.b  1
+ 135               	RAM_high_score:
+ 136 1817 0000 00   	high_score_msb:                         ds.b  3
+ 137               	    .align 2
+ 138 181a 0000      	attract_mode_stage:                     ds.w  1
+ 139 181c 00        	num_credits:                            ds.b  1
+ 140 181d 00        	scroll_disabled:                        ds.b  1
+ 141 181e 00        	num_flying_enemies:                     ds.b  1
+ 142 181f 00        	flying_enemy_type_tbl_offset:           ds.b  1
+ 143 1820 00        	num_bacura:                             ds.b  1
+ 144 1821 00        	sheonite_end_flag:                      ds.b  1
+ 145 1822 00        	andor_genesis_end_flag:                 ds.b  1
+ 146 1823 00        	shot_flag:                              ds.b  1
+ 147 1824 00        	shot_timer_init_value:                  ds.b  1
+ 148 1825 00        	shot_timer:                             ds.b  1
+ 149 1826 00        	andor_genesis_colour:                   ds.b  1
+ 150 1827 00        	countdown_timer_1:                      ds.b  1
+ 151               	    .align 2
+ 152 1828 0000      	next_domogram:                          ds.w  1
+ 153 182a 00        	pulsing_colour_2:                       ds.b  1
+68K GAS  src/xevious_ram.68k 			page 6
+
+
+ 154 182b 00        	solvalou_exploding:                     ds.b  1
+ 155 182c 00        	new_high_score_entry_index:             ds.b  1
+ 156 182d 00        	name_entry_char_cnt:                    ds.b  1
+ 157               	    .align 2
+ 158 182e 0000      	name_entry_curr_char_screen_offset:     ds.w  1
+ 159 1830 0000 0000 	name_entry_ptr_curr_char:               ds.l  1
+ 160               	*** SPRITERAM_1_SHADOW was here ***
+ 161               	* current player state information
+ 162               	* - needs to be at least 64 ($40) bytes
+ 163               	* - 'other' (below) needs to be the same
+ 164               	* need to read msb,Ks as a word
+ 165               	    .align 2
+ 166 1834 00        	curr_player_score_msb:                  ds.b  1
+ 167 1835 00        	curr_player_score_Ks:                   ds.b  1
+ 168 1836 00        	curr_player_score_lsb:                  ds.b  1
+ 169 1837 00        	curr_player_solvalou_left:              ds.b  1
+ 170               	    .align 2                            
+ 171 1838 0000 0000 	area_obj_ptr:                           ds.l  1
+ 172 183c 0000      	area:                                   ds.w  1
+ 173 183e 00        	enemy_AI_level:                         ds.b  1
+ 174 183f 00        	    .align 2                            
+ 175 1840 0000      	next_bonus_life_Ks:                     ds.w  1
+ 176 1842 00        	solvalou_number:                        ds.b  1
+ 177 1843 00        	bonus_life_none:                        ds.b  1
+ 178               	* this value is set from the object table
+ 179               	* in the SUB CPU as the map is generated
+ 180               	* used for both Derota & Garu Derota
+ 181               	* area01=$0F, area03=$03, area05=$07,$0F, area06=$07
+ 182 1844 00        	ffreq_mask_derota:                      ds.b  1
+ 183               	* this value is set from the object table
+ 184               	* in the SUB CPU as the map is generated
+ 185               	* area01=$07, area12=$03
+ 186 1845 00        	ffreq_mask_kapi:                        ds.b  1
+ 187               	* this value is set from the object table
+ 188               	* in SUB CPU as map is generated
+ 189               	* area01=$07 area12=$03
+ 190 1846 00        	ffreq_mask_terrazi:                     ds.b  1
+ 191               	* this value is set from the object table
+ 192               	* in SUB CPU as map is generated
+ 193               	* area01=$FF,$1F area05=$0F
+ 194 1847 00        	ffreq_mask_logram:                      ds.b  1
+ 195               	* this value is set from the object table
+ 196               	* in SUB CPU as map is generated
+ 197               	* area01=$1F area12=$0F
+ 198 1848 00        	ffreq_mask_zoshi:                      ds.b 1
+ 199               	* this value is set from the object table
+ 200               	* in SUB CPU as map is generated
+ 201               	* area01=$1F area05=$0F area07=$07
+ 202 1849 00        	ffreq_mask_boza_logram:                 ds.b  1
+ 203               	* this value is set from the object table
+ 204               	* in SUB CPU as map is generated
+ 205               	* area01=$1F area05=$0F area06=$FF,$0F area07=$3F
+ 206               	* area08=$FF, area10=$3F, area12=$0F, area16=$1F
+ 207 184a 00        	ffreq_mask_domogram:                    ds.b  1
+ 208               	* this value is set from the object table
+ 209               	* in SUB CPU as map is generated
+ 210               	* area04=$2F area09=$0F area14=$0F
+68K GAS  src/xevious_ram.68k 			page 7
+
+
+ 211 184b 00        	ffreq_mask_andor_genesis:               ds.b  1
+ 212 184c 00        	gnd_stop_firing_row:                    ds.b  1
+ 213 184d 0000 0000 	curr_player_filler:                     ds.b  64
+ 213      0000 0000 
+ 213      0000 0000 
+ 213      0000 0000 
+ 213      0000 0000 
+ 214               	* other player state information
+ 215               	* - needs to be at least 64 ($40) bytes
+ 216 188d 0000 00   	other_player_score_msb:                 ds.b  3
+ 217 1890 00        	other_player_solvalou_left:             ds.b  1
+ 218 1891 0000 0000 	other_player_filler:                    ds.b  64
+ 218      0000 0000 
+ 218      0000 0000 
+ 218      0000 0000 
+ 218      0000 0000 
+ 219               	*** SPRITERAM_2_SHADOW was here ***
+ 220 18d1 0000 00   	    .align 4                            
+ 221 18d4 0000 0000 	main_fn_tbl_RAM:                        ds.l  32
+ 221      0000 0000 
+ 221      0000 0000 
+ 221      0000 0000 
+ 221      0000 0000 
+ 222               	*** SPRITERAM_3_SHADOW was here ***
+ 223               	
+ 224               	* $8400-
+ 225               	                                        
+ 226               	watermark_0x8400:
+ 227               	.align 4
+ 228 1954 0000 0000 	area_object_tbl_tbl_RAM:                ds.b  16*4
+ 228      0000 0000 
+ 228      0000 0000 
+ 228      0000 0000 
+ 228      0000 0000 
+ 229 1994 00        	bacura_inc_cnt:                         ds.b  1
+ 230 1995 00        	one_second_cntr:                        ds.b  1
+ 231               	* buffer for decrypting easter egg messsages
+ 232 1996 0000 0000 	str_decrypt_buf:                        ds.b  32
+ 232      0000 0000 
+ 232      0000 0000 
+ 232      0000 0000 
+ 232      0000 0000 
+ 233               	
+ 234               	* $8500-
+ 235               	
+ 236               	* name_buffer MUST follow RAM_test_result_final_score
+ 237 19b6 0000 00   	RAM_test_result_final_score:            ds.b  3
+ 238 19b9 0000 0000 	name_buffer:                            ds.b  10
+ 238      0000 0000 
+ 238      0000 
+ 239 19c3 0000 00   	                                        ds.b  3
+ 240 19c6 0000 00   	high_score_1st_msb:                     ds.b  3
+ 241 19c9 0000 0000 	high_score_1st_name:                    ds.b  10
+ 241      0000 0000 
+ 241      0000 
+ 242 19d3 0000 00   	                                        ds.b  3
+ 243 19d6 0000 00   	high_score_2nd_msb:                     ds.b  3
+68K GAS  src/xevious_ram.68k 			page 8
+
+
+ 244 19d9 0000 0000 	high_score_2nd_name:                    ds.b  10
+ 244      0000 0000 
+ 244      0000 
+ 245 19e3 0000 00   	                                        ds.b  3
+ 246 19e6 0000 00   	high_score_3rd_msb:                     ds.b  3
+ 247 19e9 0000 0000 	high_score_3rd_name:                    ds.b  10
+ 247      0000 0000 
+ 247      0000 
+ 248 19f3 0000 00   	                                        ds.b  3
+ 249 19f6 0000 00   	high_score_4th_msb:                     ds.b  3
+ 250 19f9 0000 0000 	high_score_4th_name:                    ds.b  10
+ 250      0000 0000 
+ 250      0000 
+ 251 1a03 0000 00   	                                        ds.b  3
+ 252 1a06 0000 00   	high_score_5th_msb:                     ds.b  3
+ 253 1a09 0000 0000 	high_score_5th_name:                    ds.b  10
+ 253      0000 0000 
+ 253      0000 
+ 254 1a13 0000 00   	                                        ds.b  3
+ 255 1a16 00        	maincpu_inited:                         ds.b  1
+ 256               	
+ 257               	* $9380-
+ 258               	
+ 259               	* 12 entries, 64 bytes per entry
+ 260 1a17 0000 0000 	domogram_tbl:                           ds.b  64*12
+ 260      0000 0000 
+ 260      0000 0000 
+ 260      0000 0000 
+ 260      0000 0000 
+ 261               	
+ 262 1d17 0000 0000 	    .align 0x800
+ 262      0000 0000 
+ 262      0000 0000 
+ 262      0000 0000 
+ 262      0000 0000 
+ 263 2000 0000 0000 	fg_colorram:                            ds.b  0x800
+ 263      0000 0000 
+ 263      0000 0000 
+ 263      0000 0000 
+ 263      0000 0000 
+ 264 2800 0000 0000 	bg_colorram:                            ds.b  0x800
+ 264      0000 0000 
+ 264      0000 0000 
+ 264      0000 0000 
+ 264      0000 0000 
+ 265 3000 0000 0000 	fg_videoram:                            ds.b  0x800
+ 265      0000 0000 
+ 265      0000 0000 
+ 265      0000 0000 
+ 265      0000 0000 
+ 266 3800 0000 0000 	bg_videoram:                            ds.b  0x800
+ 266      0000 0000 
+ 266      0000 0000 
+ 266      0000 0000 
+ 266      0000 0000 
+ 267               	
+ 268               	* hitbox routines use sprite shadow register values
+68K GAS  src/xevious_ram.68k 			page 9
+
+
+ 269               	* - but for efficiency they're in OSD format
+ 270               	* - so maintain a 'raw' copy of (X{8:0]+8)>>1 & ($EF-Y[7:0])
+ 271               	* - layout is 64x Y,X pairs
+ 272 4000 0000 0000 	sprite_shadow_msb:                      ds.b  64*2
+ 272      0000 0000 
+ 272      0000 0000 
+ 272      0000 0000 
+ 272      0000 0000 
+68K GAS  src/xevious_ram.68k 			page 10
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000001 RELEASE
+                            *ABS*:00000001 __megadrive__
+     src/xevious.inc:9      *ABS*:00000000 OPT_DISABLE_FG_LAYER
+     src/xevious.inc:10     *ABS*:00000000 OPT_DISABLE_BG_LAYER
+     src/xevious.inc:11     *ABS*:00000000 OPT_DISABLE_SPRITES
+     src/xevious.inc:12     *ABS*:00000000 OPT_DISABLE_DISPLAY_MASKS
+     src/xevious.inc:15     *ABS*:00000001 OPT_SUB_HAS_IRQ
+     src/xevious.inc:17     *ABS*:00000001 OPT_START_AREA
+     src/xevious.inc:18     *ABS*:00000000 OPT_LOOP_AREA
+     src/xevious.inc:19     *ABS*:00000000 OPT_INVINCIBLE
+     src/xevious.inc:20     *ABS*:00000000 OPT_INFINITE_LIVES
+     src/xevious.inc:22     *ABS*:00000000 OPT_START_SCORE
+     src/xevious.inc:23     *ABS*:00000001 OPT_ENABLE_HIGH_SCORE_IO
+     src/xevious.inc:24     *ABS*:00000001 OPT_TCDEV_EASTER_EGG
+     src/xevious.inc:25     *ABS*:00000000 OPT_REVEAL_SOL_TOWER
+     src/xevious.inc:26     *ABS*:00000000 OPT_REVEAL_BONUS_FLAG
+     src/xevious.inc:27     *ABS*:00000000 OPT_DISPLAY_AREA
+     src/xevious.inc:28     *ABS*:00000000 OPT_SKIP_SPLASH
+     src/xevious.inc:29     *ABS*:00000000 OPT_SKIP_ATTRACT
+     src/xevious.inc:61     *ABS*:00000000 _STATE
+     src/xevious.inc:62     *ABS*:00000001 _ATTR
+     src/xevious.inc:63     *ABS*:00000004 _EXTRA
+     src/xevious.inc:64     *ABS*:00000008 _X
+     src/xevious.inc:65     *ABS*:0000000a _dX
+     src/xevious.inc:66     *ABS*:0000000c _ddX
+     src/xevious.inc:67     *ABS*:0000000e _Y
+     src/xevious.inc:68     *ABS*:00000010 _dY
+     src/xevious.inc:69     *ABS*:00000012 _ddY
+     src/xevious.inc:70     *ABS*:00000014 _CODE
+     src/xevious.inc:71     *ABS*:00000015 _COLOUR
+     src/xevious.inc:72     *ABS*:00000016 _PTS
+     src/xevious.inc:73     *ABS*:00000018 _TIMER
+     src/xevious.inc:74     *ABS*:00000019 _TIMER1
+     src/xevious.inc:75     *ABS*:00000019 _NVEC
+     src/xevious.inc:76     *ABS*:0000001a _TIMER2
+     src/xevious.inc:77     *ABS*:0000001a _VECLEN
+     src/xevious.inc:78     *ABS*:0000001c _FFREQ
+     src/xevious.inc:79     *ABS*:0000001e _TYPE
+     src/xevious.inc:81     *ABS*:00000020 _OBJSIZE
+     src/xevious.inc:84     *ABS*:00000000 BANK_FG_COLORRAM
+     src/xevious.inc:85     *ABS*:00000004 BANK_BG_COLORRAM
+     src/xevious.inc:86     *ABS*:00000008 BANK_FG_VIDEORAM
+     src/xevious.inc:87     *ABS*:0000000c BANK_BG_VIDEORAM
+     src/xevious.inc:91     *ABS*:00000001 MAIN_THEME_SND
+     src/xevious.inc:92     *ABS*:00000002 HIGHEST_SCORE_SND
+     src/xevious.inc:93     *ABS*:00000003 HIGH_SCORE_SND
+     src/xevious.inc:94     *ABS*:00000004 EXTRA_SOLVALOU_SND
+     src/xevious.inc:95     *ABS*:00000005 FLYING_ENEMY_HIT_SND
+     src/xevious.inc:96     *ABS*:00000006 GARU_ZAKATO_SND
+     src/xevious.inc:97     *ABS*:00000007 ANDOR_GENESIS_SND
+     src/xevious.inc:98     *ABS*:00000008 SHEONITE_SND
+     src/xevious.inc:99     *ABS*:00000009 TELEPORT_SND
+     src/xevious.inc:100    *ABS*:0000000a BACURA_HIT_SND
+     src/xevious.inc:101    *ABS*:0000000b SHOT_SND
+     src/xevious.inc:102    *ABS*:0000000c BOMB_SND
+     src/xevious.inc:103    *ABS*:0000000d BONUS_FLAG_SND
+68K GAS  src/xevious_ram.68k 			page 11
+
+
+     src/xevious.inc:104    *ABS*:0000000e SOLVALOU_SND
+     src/xevious.inc:106    *ABS*:00000010 COIN_SND
+     src/xevious.inc:107    *ABS*:00000011 GROUND_EXPLOSION_SND
+     src/xevious.inc:108    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
+ src/xevious_ram.68k:102    .bss:00000000 main_2_fn_tbl_1
+ src/xevious_ram.68k:104    .bss:00000090 main_30_fn_tbl
+ src/xevious_ram.68k:105    .bss:0000009c main_2_fn_tbl_2
+ src/xevious_ram.68k:111    .bss:00001000 obj_tbl
+ src/xevious_ram.68k:115    .bss:00001800 watermark_0x8000
+ src/xevious_ram.68k:116    .bss:00001800 vb_semaphore_main
+ src/xevious_ram.68k:117    .bss:00001801 countup_timer_1
+ src/xevious_ram.68k:118    .bss:00001802 vb_ticks_count
+ src/xevious_ram.68k:120    .bss:00001804 pseudo_random_seed
+ src/xevious_ram.68k:121    .bss:00001806 bg_scroll_x_shadow
+ src/xevious_ram.68k:122    .bss:00001808 scroll_cntr
+ src/xevious_ram.68k:123    .bss:0000180a area_offset_in_map
+ src/xevious_ram.68k:125    .bss:0000180c scroll_delta
+ src/xevious_ram.68k:126    .bss:0000180e dswa
+ src/xevious_ram.68k:127    .bss:0000180f dswb
+ src/xevious_ram.68k:128    .bss:00001810 P1_inputs
+ src/xevious_ram.68k:129    .bss:00001811 P2_inputs
+ src/xevious_ram.68k:130    .bss:00001812 start_pressed
+ src/xevious_ram.68k:131    .bss:00001813 pulsing_colour_1
+ src/xevious_ram.68k:132    .bss:00001814 curr_player
+ src/xevious_ram.68k:133    .bss:00001815 two_player_game
+ src/xevious_ram.68k:134    .bss:00001816 is_real_game
+ src/xevious_ram.68k:135    .bss:00001817 RAM_high_score
+ src/xevious_ram.68k:136    .bss:00001817 high_score_msb
+ src/xevious_ram.68k:138    .bss:0000181a attract_mode_stage
+ src/xevious_ram.68k:139    .bss:0000181c num_credits
+ src/xevious_ram.68k:140    .bss:0000181d scroll_disabled
+ src/xevious_ram.68k:141    .bss:0000181e num_flying_enemies
+ src/xevious_ram.68k:142    .bss:0000181f flying_enemy_type_tbl_offset
+ src/xevious_ram.68k:143    .bss:00001820 num_bacura
+ src/xevious_ram.68k:144    .bss:00001821 sheonite_end_flag
+ src/xevious_ram.68k:145    .bss:00001822 andor_genesis_end_flag
+ src/xevious_ram.68k:146    .bss:00001823 shot_flag
+ src/xevious_ram.68k:147    .bss:00001824 shot_timer_init_value
+ src/xevious_ram.68k:148    .bss:00001825 shot_timer
+ src/xevious_ram.68k:149    .bss:00001826 andor_genesis_colour
+ src/xevious_ram.68k:150    .bss:00001827 countdown_timer_1
+ src/xevious_ram.68k:152    .bss:00001828 next_domogram
+ src/xevious_ram.68k:153    .bss:0000182a pulsing_colour_2
+ src/xevious_ram.68k:154    .bss:0000182b solvalou_exploding
+ src/xevious_ram.68k:155    .bss:0000182c new_high_score_entry_index
+ src/xevious_ram.68k:156    .bss:0000182d name_entry_char_cnt
+ src/xevious_ram.68k:158    .bss:0000182e name_entry_curr_char_screen_offset
+ src/xevious_ram.68k:159    .bss:00001830 name_entry_ptr_curr_char
+ src/xevious_ram.68k:166    .bss:00001834 curr_player_score_msb
+ src/xevious_ram.68k:167    .bss:00001835 curr_player_score_Ks
+ src/xevious_ram.68k:168    .bss:00001836 curr_player_score_lsb
+ src/xevious_ram.68k:169    .bss:00001837 curr_player_solvalou_left
+ src/xevious_ram.68k:171    .bss:00001838 area_obj_ptr
+ src/xevious_ram.68k:172    .bss:0000183c area
+ src/xevious_ram.68k:173    .bss:0000183e enemy_AI_level
+ src/xevious_ram.68k:175    .bss:00001840 next_bonus_life_Ks
+ src/xevious_ram.68k:176    .bss:00001842 solvalou_number
+68K GAS  src/xevious_ram.68k 			page 12
+
+
+ src/xevious_ram.68k:177    .bss:00001843 bonus_life_none
+ src/xevious_ram.68k:182    .bss:00001844 ffreq_mask_derota
+ src/xevious_ram.68k:186    .bss:00001845 ffreq_mask_kapi
+ src/xevious_ram.68k:190    .bss:00001846 ffreq_mask_terrazi
+ src/xevious_ram.68k:194    .bss:00001847 ffreq_mask_logram
+ src/xevious_ram.68k:198    .bss:00001848 ffreq_mask_zoshi
+ src/xevious_ram.68k:202    .bss:00001849 ffreq_mask_boza_logram
+ src/xevious_ram.68k:207    .bss:0000184a ffreq_mask_domogram
+ src/xevious_ram.68k:211    .bss:0000184b ffreq_mask_andor_genesis
+ src/xevious_ram.68k:212    .bss:0000184c gnd_stop_firing_row
+ src/xevious_ram.68k:213    .bss:0000184d curr_player_filler
+ src/xevious_ram.68k:216    .bss:0000188d other_player_score_msb
+ src/xevious_ram.68k:217    .bss:00001890 other_player_solvalou_left
+ src/xevious_ram.68k:218    .bss:00001891 other_player_filler
+ src/xevious_ram.68k:221    .bss:000018d4 main_fn_tbl_RAM
+ src/xevious_ram.68k:226    .bss:00001954 watermark_0x8400
+ src/xevious_ram.68k:228    .bss:00001954 area_object_tbl_tbl_RAM
+ src/xevious_ram.68k:229    .bss:00001994 bacura_inc_cnt
+ src/xevious_ram.68k:230    .bss:00001995 one_second_cntr
+ src/xevious_ram.68k:232    .bss:00001996 str_decrypt_buf
+ src/xevious_ram.68k:237    .bss:000019b6 RAM_test_result_final_score
+ src/xevious_ram.68k:238    .bss:000019b9 name_buffer
+ src/xevious_ram.68k:240    .bss:000019c6 high_score_1st_msb
+ src/xevious_ram.68k:241    .bss:000019c9 high_score_1st_name
+ src/xevious_ram.68k:243    .bss:000019d6 high_score_2nd_msb
+ src/xevious_ram.68k:244    .bss:000019d9 high_score_2nd_name
+ src/xevious_ram.68k:246    .bss:000019e6 high_score_3rd_msb
+ src/xevious_ram.68k:247    .bss:000019e9 high_score_3rd_name
+ src/xevious_ram.68k:249    .bss:000019f6 high_score_4th_msb
+ src/xevious_ram.68k:250    .bss:000019f9 high_score_4th_name
+ src/xevious_ram.68k:252    .bss:00001a06 high_score_5th_msb
+ src/xevious_ram.68k:253    .bss:00001a09 high_score_5th_name
+ src/xevious_ram.68k:255    .bss:00001a16 maincpu_inited
+ src/xevious_ram.68k:260    .bss:00001a17 domogram_tbl
+ src/xevious_ram.68k:263    .bss:00002000 fg_colorram
+ src/xevious_ram.68k:264    .bss:00002800 bg_colorram
+ src/xevious_ram.68k:265    .bss:00003000 fg_videoram
+ src/xevious_ram.68k:266    .bss:00003800 bg_videoram
+ src/xevious_ram.68k:272    .bss:00004000 sprite_shadow_msb
+
+NO UNDEFINED SYMBOLS
