@@ -920,12 +920,15 @@ fg_write:
     bsr     md_fg_slot_tile
     move.w  d5,d4
     ori.w   #0x8000,d4                          | priority, PAL0
-    * arcade flips -> NT bits 11/12
+    * arcade flips (rotated screen): attr b7 -> MD Hflip (b11), b6 -> Vflip (b12)
     moveq   #0,d5
-    move.b  d2,d5
-    andi.w  #0xC0,d5
-    lsl.w   #5,d5
-    or.w    d5,d4
+    btst    #7,d2
+    beq.b   6f
+    bset    #11,d5
+6:  btst    #6,d2
+    beq.b   7f
+    bset    #12,d5
+7:  or.w    d5,d4
     * write nametable cell
     lea     md_fg_cmd_tbl,a0
     move.w  d0,d5
@@ -1093,12 +1096,17 @@ bg_write:
     lea     gfx_bg_combo_tbl,a1
     adda.l  d5,a1
     move.w  (a1),d4                             | combo word (0 = unused)
-    * arcade flips -> NT bits 11/12 (xor with combo flips)
+    * arcade colorram flips: screen is rotated 90 vs this upright display, so
+    * attr b7 ("yflip") = MD Hflip (b11), b6 ("xflip") = MD Vflip (b12). XOR onto
+    * the combo's dedup flips. (Same axis convention as the sprite path / Amiga.)
     moveq   #0,d5
-    move.b  d2,d5
-    andi.w  #0xC0,d5
-    lsl.w   #5,d5
-    eor.w   d5,d4
+    btst    #7,d2
+    beq.b   4f
+    bset    #11,d5
+4:  btst    #6,d2
+    beq.b   5f
+    bset    #12,d5
+5:  eor.w   d5,d4
     andi.w  #0x1FFF,d4
     ori.w   #0x2000,d4                          | PAL1
     * compute plane B VDP command from the arcade offset (no cached table):

@@ -234,11 +234,15 @@ def main():
                   f"split {len(bins[0])}/{len(bins[1])}")
 
     def build_sp_pal(cols):
+        # slot 0 is the hardware-transparent entry, colours start at slot 1, so
+        # the emitted palette MUST lead with black -> 16 words total. Without it
+        # every slot is off by one (and PAL3 lands a CRAM entry early), which
+        # turns e.g. the silver Toroid ring red. (Mirrors build_pal for bg.)
         cols = sorted(cols)
         slot = {}
         for i, c in enumerate(cols, start=1):
             slot[c] = i
-        return slot, cols + [black] * (15 - len(cols))
+        return slot, [black] + cols + [black] * (15 - len(cols))
 
     sslot = [None, None]
     spal = [None, None]
