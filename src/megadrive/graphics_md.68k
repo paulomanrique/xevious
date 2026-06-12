@@ -7,7 +7,7 @@
 * sprites: 50 colors -> 21 quantized, split 15/11
 * sprites: 1030 combos -> 695 frames (88960 bytes)
 * fg: 54 distinct colors -> 14 slots
-* VRAM: bg 919 tiles @1, pool 360 tiles @920 (90 frames), fg cache @1280
+* VRAM: bg 919 tiles @1, pool 360 tiles @920 (90 frames), fg cache @1408
 
     .equ GFX_BG_BASE_TILE, 1
     .equ GFX_N_BG, 919
@@ -16,8 +16,8 @@
     .equ GFX_POOL_FRAMES, 90
     .equ GFX_N_TITLE, 131
     .equ GFX_N_FRAMES, 695
-    .equ GFX_FG_CACHE_BASE, 1280
-    .equ GFX_FG_CACHE_TILES, 128
+    .equ GFX_FG_CACHE_BASE, 1408
+    .equ GFX_FG_CACHE_TILES, 96
 
     .global gfx_palettes_game
     .global gfx_palette_title
@@ -52,7 +52,7 @@ gfx_title_patterns:
     .align 2
 gfx_sprite_combo_tbl:
     .incbin "gfx_sprite_combo.bin"
-    .align 2
+    .balign 128
 gfx_sprite_frames:
     .incbin "gfx_sprite_frames.bin"
     .align 2

@@ -220,6 +220,25 @@ md_platform_init:
     cmpi.w  #PANEL_W*PANEL_ROWS,d7
     blt.b   7b
 
+* SAT shadow static fields: 2x2 size, link chain, hidden positions
+    lea     md_sat_shadow,a0
+    moveq   #0,d0
+8:  clr.w   (a0)+                               | Y = 0 (hidden)
+    addq.w  #1,d0
+    move.w  d0,d1
+    cmpi.w  #80,d1
+    blt.b   9f
+    moveq   #0,d1                               | last entry ends the chain
+9:  ori.w   #0x0500,d1                          | size = 2x2 tiles
+    move.w  d1,(a0)+
+    clr.w   (a0)+                               | attr
+    move.w  #1,(a0)+                            | X = 1
+    cmpi.w  #80,d0
+    blt.b   8b
+
+* sprite frame residency: empty
+    bsr     md_spr_invalidate
+
 * fill the panel with the opaque tile and draw static labels
     bsr     md_panel_init
 
@@ -233,6 +252,44 @@ md_platform_init:
 
 * enable display (interrupts stay off until core enables them)
     move.w  #VDPR01_ON,(VDP_CTRL)
+    rts
+
+* DMA d2.w words from 68K address d0.l to VRAM address d1.w
+* (interrupts must already be masked; autoincrement assumed 2)
+md_dma:
+    move.l  d3,-(a7)
+    move.w  #0x9300,d3
+    move.b  d2,d3
+    move.w  d3,(VDP_CTRL)
+    lsr.w   #8,d2
+    move.w  #0x9400,d3
+    move.b  d2,d3
+    move.w  d3,(VDP_CTRL)
+    lsr.l   #1,d0
+    move.w  #0x9500,d3
+    move.b  d0,d3
+    move.w  d3,(VDP_CTRL)
+    lsr.l   #8,d0
+    move.w  #0x9600,d3
+    move.b  d0,d3
+    move.w  d3,(VDP_CTRL)
+    lsr.l   #8,d0
+    andi.w  #0x7F,d0
+    move.w  #0x9700,d3
+    or.w    d0,d3
+    move.w  d3,(VDP_CTRL)
+    * destination command: first word direct, second word from RAM
+    move.w  d1,d3
+    andi.w  #0x3FFF,d3
+    ori.w   #0x4000,d3
+    move.w  d3,(VDP_CTRL)
+    move.w  d1,d3
+    rol.w   #2,d3
+    andi.w  #3,d3
+    ori.w   #0x80,d3                            | CD5: DMA
+    move.w  d3,(md_dma_low)
+    move.w  (md_dma_low),(VDP_CTRL)
+    move.l  (a7)+,d3
     rts
 
 * d3.w = vram address -> d4.l = VDP write command
@@ -265,6 +322,30 @@ md_vblank:
     VDP_W_VSRAM 0
     move.w  (md_fg_vscroll),d0
     move.w  d0,(VDP_DATA)
+
+* upload freshly requested sprite frames, then the sprite table
+    move.w  (md_q_count),d7
+    beq.b   sat_dma
+    subq.w  #1,d7
+    lea     md_q,a1
+q_loop:
+    moveq   #0,d1
+    move.w  (a1)+,d1                            | slot
+    moveq   #0,d0
+    move.w  (a1)+,d0                            | frame id
+    lsl.l   #7,d0
+    addi.l  #gfx_sprite_frames,d0               | src
+    lsl.w   #7,d1
+    addi.w  #GFX_POOL_BASE_TILE*32,d1           | dest vram
+    moveq   #64,d2
+    bsr     md_dma
+    dbf     d7,q_loop
+    clr.w   (md_q_count)
+sat_dma:
+    move.l  #md_sat_shadow,d0
+    move.w  #VRAM_SAT,d1
+    move.w  #320,d2
+    bsr     md_dma
 
     bsr     md_check_mode
     bsr     md_check_menu
@@ -329,7 +410,7 @@ md_check_mode:
     beq     mode_done
     move.b  d0,(md_mode)
     tst.b   d0
-    beq.b   enter_game_mode
+    beq     enter_game_mode
 
 enter_title_mode:
 * PAL1 = title palette
@@ -338,12 +419,33 @@ enter_title_mode:
     moveq   #16-1,d7
 1:  move.w  (a0)+,(VDP_DATA)
     dbf     d7,1b
-* copy title bg patterns into the sprite pool area
+* copy title bg patterns into the sprite pool area (sprite residency is
+* invalidated: those tiles now hold title graphics)
     lea     gfx_title_patterns,a0
     VDP_W_VRAM (GFX_POOL_BASE_TILE*32)
     move.l  #GFX_N_TITLE*16-1,d7
 2:  move.w  (a0)+,(VDP_DATA)
     dbf     d7,2b
+    bsr     md_spr_invalidate
+    rts
+
+* drop all cached sprite frames
+md_spr_invalidate:
+    movem.l d7/a0,-(a7)
+    lea     md_frame_slot,a0
+    move.w  #GFX_N_FRAMES-1,d7
+1:  clr.w   (a0)+
+    dbf     d7,1b
+    lea     md_slot_frame,a0
+    move.w  #SPR_SLOTS-1,d7
+2:  move.w  #0xFFFF,(a0)+
+    dbf     d7,2b
+    lea     md_slot_stamp,a0
+    move.w  #SPR_SLOTS-1,d7
+3:  clr.w   (a0)+
+    dbf     d7,3b
+    clr.w   (md_q_count)
+    movem.l (a7)+,d7/a0
     rts
 
 enter_game_mode:
@@ -984,43 +1086,287 @@ osd_update_scroll_hw:
     rts
 
 ***************************************************************
-*** sprites (M3: shadow/hitbox data only; hardware sprites in M5)
+*** sprites
 ***************************************************************
 
-* a5 = obj_tbl
+* coordinate mapping (arcade -> MD screen):
+*   screen y(top)  = X_px - 32 - FGV          (SAT Y = +128 -> bias 96-FGV)
+*   screen x(left) = 272 - Y_px               (SAT X = +128 -> 400 - Y_px)
+    .equ    SPR_X_BIAS,     400
+    .equ    SPR_SLOTS,      (PANEL_TILE-GFX_POOL_BASE_TILE)/4
+
+* a5 = obj_tbl: build the full SAT shadow + the core's hitbox shadow
 osd_update_sprite_shadow:
-    movem.l d0-d1/d7/a2/a5,-(a7)
+    movem.l d0-d7/a0-a6,-(a7)
+    addq.w  #1,(md_frame_stamp)
     lea     sprite_shadow_msb,a2
+    lea     md_sat_shadow,a3
+    lea     md_sat_shadow+64*8,a4               | overflow entries for doubles
+    moveq   #96,d0
+    sub.w   (md_fg_vscroll),d0
+    move.w  d0,(md_sat_bias)
+* hide all overflow entries; doubles re-claim them each frame
+    moveq   #16-1,d0
+    move.l  a4,a6
+0:  clr.w   (a6)
+    move.w  #1,(6,a6)                           | x=1 (avoid mask quirk)
+    addq.l  #8,a6
+    dbf     d0,0b
     moveq   #64-1,d7
-1:  move.b  (_STATE,a5),d0
+obj_loop:
+    move.b  (_STATE,a5),d0
     subq.b  #1,d0
-    beq.b   3f                                  | inactive: skip
+    beq     obj_next                            | state 1 (inactive): skip
     addq.b  #1,d0
-    bne.b   2f
-    * flagged inactive: zero coords, mark inactive
+    bne.b   obj_active
+    * flagged inactive: zero coords, mark inactive, hide sprite
     clr.w   (_X,a5)
     clr.w   (_Y,a5)
     move.b  #1,(_STATE,a5)
-    bra.b   3f
-2:  * active: update hitbox shadow (MANDATORY format)
+    clr.w   (a3)                                | SAT y=0 (hidden)
+    move.w  #1,(6,a3)
+    bra     obj_next
+
+obj_active:
+    * hitbox shadow (MANDATORY format, see OSD spec)
     move.w  (_Y,a5),d0
     lsr.w   #5,d0
     moveq   #-0x11,d1                           | 0xEF
     sub.b   d0,d1
     move.b  d1,(a2)
-    move.w  (_X,a5),d0
-    lsr.w   #5,d0
-    addq.w  #8,d0
-    lsr.w   #1,d0
-    move.b  d0,(1,a2)
-3:  addq.l  #2,a2
+    move.w  (_X,a5),d1
+    lsr.w   #5,d1
+    andi.w  #0x1FF,d1
+    move.w  d1,d2                               | d2 = X_px (long axis)
+    addq.w  #8,d1
+    lsr.w   #1,d1
+    move.b  d1,(1,a2)
+    * gather object fields
+    moveq   #0,d3
+    move.b  (_COLOUR,a5),d3
+    andi.w  #0x7F,d3                            | clut
+    moveq   #0,d4
+    move.b  (_CODE,a5),d4
+    moveq   #0,d5
+    move.b  (_ATTR,a5),d5                       | b7 bank, b3 yflip, b2 xflip, b1 dh, b0 dw
+    btst    #7,d5
+    beq.b   1f
+    ori.w   #0x100,d4                           | bank -> code bit 8
+1:  move.w  (_Y,a5),d6
+    lsr.w   #5,d6
+    andi.w  #0xFF,d6                            | d6 = Y_px (short axis, 0-255)
+    move.w  d5,d0
+    andi.w  #3,d0
+    bne     obj_double
+    * single 16x16 sprite
+    move.l  a3,a6
+    moveq   #0,d0                               | dlong = 0
+    moveq   #0,d1                               | dshort = 0
+    bsr     spr_emit
+    bra     obj_next
+
+obj_inactive:
+obj_next:
+    addq.l  #2,a2
+    lea     (8,a3),a3
     lea     (_OBJSIZE,a5),a5
-    dbf     d7,1b
-    movem.l (a7)+,d0-d1/d7/a2/a5
+    dbf     d7,obj_loop
+    movem.l (a7)+,d0-d7/a0-a6
     rts
 
-* d0.w = base sprite number (0/32) - hardware update lands in M5
+* composite sprites: 2 or 4 parts of 16x16
+* code offsets (per OSD spec): short-axis halves differ by +1 (double width),
+* long-axis halves differ by +2 (double height); per-object flips swap the
+* halves by xoring the offset (NeoGeo model), masked to the doubled axes
+* part index: bit0 = short-axis half, bit1 = long-axis half (== code offset)
+obj_double:
+    move.w  d0,-(a7)                            | (4,a7) after next pushes: size
+    move.w  d0,d1
+    not.w   d1
+    and.w   d1,d4                               | code &= ~size
+    move.w  d5,d1
+    lsr.w   #2,d1
+    andi.w  #3,d1
+    and.w   d0,d1
+    move.w  d1,-(a7)                            | (2,a7): swap bits
+    clr.w   -(a7)                               | (a7): part index
+dpart_loop:
+    move.w  (a7),d0
+    move.w  (4,a7),d1
+    not.w   d1
+    and.w   d0,d1                               | part & ~size
+    bne.b   dpart_next
+    * pick SAT entry: part 0 uses the object's own; others from overflow
+    move.l  a3,a6
+    tst.w   d0
+    beq.b   1f
+    move.l  a4,a6
+    lea     (8,a4),a4
+    cmpa.l  #md_sat_shadow+80*8,a4
+    bls.b   1f
+    lea     (-8,a4),a4                          | overflow full: drop part
+    bra.b   dpart_next
+1:  move.w  d4,-(a7)                            | save base code
+    move.w  (2,a7),d1                           | part (stack moved by 2)
+    move.w  (4,a7),d0                           | swap
+    eor.w   d0,d1
+    add.w   d1,d4                               | part code
+    move.w  (2,a7),d0
+    move.w  d0,d1
+    andi.w  #2,d0
+    lsl.w   #3,d0                               | dlong = (part&2)*8
+    andi.w  #1,d1
+    lsl.w   #4,d1                               | dshort = (part&1)*16
+    bsr     spr_emit
+    move.w  (a7)+,d4
+dpart_next:
+    addq.w  #1,(a7)
+    cmpi.w  #4,(a7)
+    blt.b   dpart_loop
+    addq.l  #6,a7
+    bra     obj_next
+
+* emit one 16x16 hardware sprite
+* in: d0 = dlong, d1 = dshort, d2 = X_px, d3 = clut, d4 = code9,
+*     d5 = attr (flips), d6 = Y_px, a6 = SAT shadow entry
+spr_emit:
+    movem.l d0-d4/a0,-(a7)
+    .ifdef DIAG_NO_SPR
+    bra     emit_hide
+    .endif
+    * SAT Y = X_px + dlong + bias; cull outside (112,351)
+    add.w   d2,d0
+    add.w   (md_sat_bias),d0
+    cmpi.w  #113,d0
+    blt     emit_hide
+    cmpi.w  #351,d0
+    bgt     emit_hide
+    * SAT X = 400 - (Y_px + dshort); cull sprites outside the playfield
+    * (the arcade HUD flag/bonus sprites live in the masked side columns)
+    add.w   d6,d1
+    neg.w   d1
+    addi.w  #SPR_X_BIAS,d1
+    cmpi.w  #161,d1
+    blt     emit_hide
+    cmpi.w  #384,d1
+    bgt     emit_hide
+    * combo lookup: descriptor = tbl[(clut<<9 | code)*2]
+    move.w  d3,-(a7)
+    lsl.w   #8,d3
+    add.w   d3,d3                               | clut<<9 (combo is 16 bits)
+    or.w    d4,d3
+    moveq   #0,d4
+    move.w  d3,d4
+    add.l   d4,d4
+    lea     gfx_sprite_combo_tbl,a0
+    adda.l  d4,a0
+    move.w  (a0),d3                             | descriptor
+    cmpi.w  #0xFFFF,d3
+    beq.b   emit_hide_pop
+    * resolve frame -> VRAM tile index (0 = upload pending, hide this frame)
+    move.w  d3,d4
+    andi.w  #0x0FFF,d4
+    bsr     spr_resolve_frame
+    tst.w   d4
+    beq.b   emit_hide_pop
+    * attr: palette (desc b13: 0->PAL2, 1->PAL3), flips (desc b15/b14 xor obj)
+    move.w  d3,d2                               | d2 free (X_px saved in movem)
+    andi.w  #0xC000,d2
+    lsr.w   #3,d2                               | desc vf/hf -> NT bits 12/11
+    or.w    d2,d4
+    move.w  d3,d2
+    andi.w  #0x2000,d2
+    add.w   #0x4000,d2                          | palette field
+    or.w    d2,d4
+    move.w  d5,d2
+    andi.w  #0x0C,d2
+    lsl.w   #8,d2
+    add.w   d2,d2                               | obj flips -> bits 11/12
+    eor.w   d2,d4
+    * write SAT entry
+    move.w  (a7)+,d3
+    move.w  d0,(a6)                             | Y
+    move.w  d4,(4,a6)                           | attr/tile
+    move.w  d1,(6,a6)                           | X
+    movem.l (a7)+,d0-d4/a0
+    rts
+emit_hide_pop:
+    move.w  (a7)+,d3
+emit_hide:
+    clr.w   (a6)
+    move.w  #1,(6,a6)
+    movem.l (a7)+,d0-d4/a0
+    rts
+
+* d0 = base sprite number (0/32). The whole SAT shadow is rebuilt by
+* osd_update_sprite_shadow and DMA'd at vblank, so nothing to do here.
 osd_update_32_sprite_hw:
+    rts
+
+* d4 = frame id -> d4 = VRAM tile index (0 = not resident, upload queued)
+spr_resolve_frame:
+    movem.l d0-d3/a0-a1,-(a7)
+    lea     md_frame_slot,a0
+    move.w  d4,d0
+    add.w   d0,d0
+    move.w  (a0,d0.w),d1                        | slot+1
+    bne     rf_hit
+    * miss: need a free queue entry
+    cmpi.w  #8,(md_q_count)
+    bge     rf_fail
+    * allocate a slot not used this frame
+    move.w  (md_frame_stamp),d3
+    lea     md_slot_stamp,a1
+    move.w  (md_spr_ring),d1
+    move.w  #SPR_SLOTS-1,d2
+rf_scan:
+    addq.w  #1,d1
+    cmpi.w  #SPR_SLOTS,d1
+    blt.b   1f
+    moveq   #0,d1
+1:  move.w  d1,d0
+    add.w   d0,d0
+    cmp.w   (a1,d0.w),d3
+    dbne    d2,rf_scan                          | loop while slot used this frame
+    beq.b   rf_fail                             | every slot in use
+    move.w  d1,(md_spr_ring)
+    * evict the frame previously cached there
+    lea     md_slot_frame,a0
+    move.w  (a0,d0.w),d2                        | old frame id
+    move.w  d4,(a0,d0.w)
+    cmpi.w  #0xFFFF,d2
+    beq.b   2f
+    add.w   d2,d2
+    lea     md_frame_slot,a0
+    clr.w   (a0,d2.w)
+2:  * map + enqueue upload {slot, frame}
+    move.w  d4,d2
+    add.w   d2,d2
+    lea     md_frame_slot,a0
+    move.w  d1,d0
+    addq.w  #1,d0
+    move.w  d0,(a0,d2.w)
+    move.w  (md_q_count),d2
+    lsl.w   #2,d2
+    lea     md_q,a0
+    move.w  d1,(a0,d2.w)
+    move.w  d4,(2,a0,d2.w)
+    addq.w  #1,(md_q_count)
+    addq.w  #1,d1                               | slot+1, fall through
+rf_hit:
+    subq.w  #1,d1                               | slot
+    move.w  d1,d0
+    add.w   d0,d0
+    lea     md_slot_stamp,a1
+    move.w  (md_frame_stamp),(a1,d0.w)
+    lsl.w   #2,d1
+    addi.w  #GFX_POOL_BASE_TILE,d1
+    move.w  d1,d4
+    movem.l (a7)+,d0-d3/a0-a1
+    rts
+rf_fail:
+    moveq   #0,d4
+    movem.l (a7)+,d0-d3/a0-a1
     rts
 
 ***************************************************************
@@ -1090,6 +1436,19 @@ md_panel_cmd_tbl:   ds.l    PANEL_W*PANEL_ROWS  | panel cell -> window NT cmd
     .align 4
 md_fg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane A VDP cmd
 md_bg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane B VDP cmd
+* sprite machinery
+    .align 2
+md_sat_shadow:      ds.b    80*8                | full SAT image, DMA'd per frame
+md_sat_bias:        ds.w    1
+md_frame_stamp:     ds.w    1
+md_spr_ring:        ds.w    1
+md_q_count:         ds.w    1
+md_q:               ds.w    2*8                 | upload queue {slot, frame}
+md_dma_low:         ds.w    1                   | DMA trigger low word (from RAM)
+md_frame_slot:      ds.w    GFX_N_FRAMES        | frame id -> pool slot+1
+md_slot_frame:      ds.w    SPR_SLOTS           | pool slot -> frame id
+md_slot_stamp:      ds.w    SPR_SLOTS           | last frame counter that used slot
+
     .ifdef DIAG_DUMP
     .align 2
 md_diag_frame:      ds.w    1

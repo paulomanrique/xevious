@@ -289,11 +289,12 @@ def main():
     BG_BASE_TILE = N_BLANK
     n_bg = len(g_patterns)
     POOL_BASE_TILE = BG_BASE_TILE + n_bg
-    FG_CACHE_TILES = 128
-    # patterns area ends at window NT (0xB000)
-    total_tiles = 0xB000 // 32
-    pool_tiles = total_tiles - POOL_BASE_TILE - FG_CACHE_TILES
-    FG_CACHE_BASE = total_tiles - FG_CACHE_TILES
+    # patterns area ends at the window NT (0xA000); the fg dynamic cache
+    # lives separately at 0xB000-0xBBFF (96 tiles, below the SAT)
+    FG_CACHE_TILES = 96
+    total_tiles = 0xA000 // 32
+    pool_tiles = total_tiles - POOL_BASE_TILE
+    FG_CACHE_BASE = 0xB000 // 32
     assert pool_tiles >= len(t_patterns), (pool_tiles, len(t_patterns))
     assert pool_tiles >= 4 * 80, f"sprite pool too small: {pool_tiles} tiles"
     report.append(f"VRAM: bg {n_bg} tiles @{BG_BASE_TILE}, pool {pool_tiles} tiles "
@@ -365,7 +366,8 @@ def main():
         f.write("    .align 2\ngfx_bg_patterns:\n    .incbin \"gfx_bg_patterns.bin\"\n")
         f.write("    .align 2\ngfx_title_patterns:\n    .incbin \"gfx_title_patterns.bin\"\n")
         f.write("    .align 2\ngfx_sprite_combo_tbl:\n    .incbin \"gfx_sprite_combo.bin\"\n")
-        f.write("    .align 2\ngfx_sprite_frames:\n    .incbin \"gfx_sprite_frames.bin\"\n")
+        # 128-byte alignment: frame DMA must not cross a 128KB source boundary
+        f.write("    .balign 128\ngfx_sprite_frames:\n    .incbin \"gfx_sprite_frames.bin\"\n")
         f.write("    .align 2\ngfx_fg_chars:\n    .incbin \"gfx_fg_chars.bin\"\n")
         f.write("    .align 2\ngfx_fg_color_map:\n    .incbin \"gfx_fg_color_map.bin\"\n")
 

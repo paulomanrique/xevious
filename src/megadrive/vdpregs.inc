@@ -25,11 +25,12 @@
     .equ    PSG_PORT,       0xC00011
 
 * VRAM layout
-* tile patterns: 0x0000-0xAFFF (tile 0 = blank)
+* tile patterns: 0x0000-0x9FFF (tile 0 = blank)
 *   bg game patterns   from 0x0020 (generated, see graphics_md.68k)
-*   sprite pool        after bg    (generated bound)
-*   fg dynamic cache   below window NT
-    .equ    VRAM_WINDOW_NT, 0xB000              | 64x32 window nametable (4KB)
+*   sprite pool        after bg    (generated bound; panel glyphs + fg
+*                      overflow live at the pool tail)
+* fg dynamic cache: 96 tiles at 0xB000-0xBBFF (tiles 1408-1503)
+    .equ    VRAM_WINDOW_NT, 0xA000              | 64x32 window nametable (4KB)
     .equ    VRAM_SAT,       0xBC00              | sprite attribute table (640B)
     .equ    VRAM_HSCROLL,   0xBF00              | hscroll table
     .equ    VRAM_PLANE_A,   0xC000              | 64x64 nametable (8KB)

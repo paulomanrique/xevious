@@ -33,58 +33,59 @@
   25               	    .equ    PSG_PORT,       0xC00011
   26               	
   27               	* VRAM layout
-  28               	* tile patterns: 0x0000-0xAFFF (tile 0 = blank)
+  28               	* tile patterns: 0x0000-0x9FFF (tile 0 = blank)
   29               	*   bg game patterns   from 0x0020 (generated, see graphics_md.68k)
-  30               	*   sprite pool        after bg    (generated bound)
-  31               	*   fg dynamic cache   below window NT
-  32               	    .equ    VRAM_WINDOW_NT, 0xB000              | 64x32 window nametable (4KB)
-  33               	    .equ    VRAM_SAT,       0xBC00              | sprite attribute table (640B)
-  34               	    .equ    VRAM_HSCROLL,   0xBF00              | hscroll table
-  35               	    .equ    VRAM_PLANE_A,   0xC000              | 64x64 nametable (8KB)
-  36               	    .equ    VRAM_PLANE_B,   0xE000              | 64x64 nametable (8KB)
-  37               	
-  38               	* VDP register values
-  39               	* NOTE: '|' is the comment char in MIT syntax: use '+' in expressions!
-  40               	    .equ    VDPR00, 0x8004                      | mode 1: no hint, normal ops
-  41               	    .equ    VDPR01_OFF, 0x8134                  | mode 2: display off, vint, dma, V28, mode5
-  42               	    .equ    VDPR01_ON,  0x8174                  | mode 2: display on
-  43               	    .equ    VDPR02, 0x8200+(VRAM_PLANE_A>>10)   | plane A nametable
-  44               	    .equ    VDPR03, 0x8300+(VRAM_WINDOW_NT>>10) | window nametable
-  45               	    .equ    VDPR04, 0x8400+(VRAM_PLANE_B>>13)   | plane B nametable
-  46               	    .equ    VDPR05, 0x8500+(VRAM_SAT>>9)        | sprite attribute table
-  47               	    .equ    VDPR06, 0x8600
-  48               	    .equ    VDPR07, 0x8700                      | backdrop colour = pal0 idx0
-  49               	    .equ    VDPR08, 0x8800
-  50               	    .equ    VDPR09, 0x8900
-  51               	    .equ    VDPR10, 0x8AFF                      | hint counter
-  52               	    .equ    VDPR11, 0x8B00                      | full-screen scroll
+  30               	*   sprite pool        after bg    (generated bound; panel glyphs + fg
+  31               	*                      overflow live at the pool tail)
+  32               	* fg dynamic cache: 96 tiles at 0xB000-0xBBFF (tiles 1408-1503)
+  33               	    .equ    VRAM_WINDOW_NT, 0xA000              | 64x32 window nametable (4KB)
+  34               	    .equ    VRAM_SAT,       0xBC00              | sprite attribute table (640B)
+  35               	    .equ    VRAM_HSCROLL,   0xBF00              | hscroll table
+  36               	    .equ    VRAM_PLANE_A,   0xC000              | 64x64 nametable (8KB)
+  37               	    .equ    VRAM_PLANE_B,   0xE000              | 64x64 nametable (8KB)
+  38               	
+  39               	* VDP register values
+  40               	* NOTE: '|' is the comment char in MIT syntax: use '+' in expressions!
+  41               	    .equ    VDPR00, 0x8004                      | mode 1: no hint, normal ops
+  42               	    .equ    VDPR01_OFF, 0x8134                  | mode 2: display off, vint, dma, V28, mode5
+  43               	    .equ    VDPR01_ON,  0x8174                  | mode 2: display on
+  44               	    .equ    VDPR02, 0x8200+(VRAM_PLANE_A>>10)   | plane A nametable
+  45               	    .equ    VDPR03, 0x8300+(VRAM_WINDOW_NT>>10) | window nametable
+  46               	    .equ    VDPR04, 0x8400+(VRAM_PLANE_B>>13)   | plane B nametable
+  47               	    .equ    VDPR05, 0x8500+(VRAM_SAT>>9)        | sprite attribute table
+  48               	    .equ    VDPR06, 0x8600
+  49               	    .equ    VDPR07, 0x8700                      | backdrop colour = pal0 idx0
+  50               	    .equ    VDPR08, 0x8800
+  51               	    .equ    VDPR09, 0x8900
+  52               	    .equ    VDPR10, 0x8AFF                      | hint counter
 68K GAS  src/megadrive/startup.68k 			page 2
 
 
-  53               	    .equ    VDPR12, 0x8C81                      | H40, no shadow/hilite, no interlace
-  54               	    .equ    VDPR13, 0x8D00+(VRAM_HSCROLL>>10)   | hscroll table
-  55               	    .equ    VDPR14, 0x8E00
-  56               	    .equ    VDPR15, 0x8F02                      | autoincrement 2
-  57               	    .equ    VDPR16, 0x9011                      | plane size 64x64
-  58               	    .equ    VDPR17, 0x9191                      | window: right side, x>=272 (17*16)
-  59               	    .equ    VDPR18, 0x9200                      | window Y: full height
-  60               	
-  61               	* VDP command address macros (control port longword formats)
-  62               	* vram write:  0x40000000 + (a&0x3FFF)<<16 + (a&0xC000)>>14
-  63               	* cram write:  0xC0000000 + ...
-  64               	* vsram write: 0x40000010 + ...
-  65               	
-  66               	    .macro  VDP_W_VRAM   addr
-  67               	    move.l  #0x40000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
-  68               	    .endm
-  69               	
-  70               	    .macro  VDP_W_CRAM   addr
-  71               	    move.l  #0xC0000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
-  72               	    .endm
-  73               	
-  74               	    .macro  VDP_W_VSRAM  addr
-  75               	    move.l  #0x40000010+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
-  76               	    .endm
+  53               	    .equ    VDPR11, 0x8B00                      | full-screen scroll
+  54               	    .equ    VDPR12, 0x8C81                      | H40, no shadow/hilite, no interlace
+  55               	    .equ    VDPR13, 0x8D00+(VRAM_HSCROLL>>10)   | hscroll table
+  56               	    .equ    VDPR14, 0x8E00
+  57               	    .equ    VDPR15, 0x8F02                      | autoincrement 2
+  58               	    .equ    VDPR16, 0x9011                      | plane size 64x64
+  59               	    .equ    VDPR17, 0x9191                      | window: right side, x>=272 (17*16)
+  60               	    .equ    VDPR18, 0x9200                      | window Y: full height
+  61               	
+  62               	* VDP command address macros (control port longword formats)
+  63               	* vram write:  0x40000000 + (a&0x3FFF)<<16 + (a&0xC000)>>14
+  64               	* cram write:  0xC0000000 + ...
+  65               	* vsram write: 0x40000010 + ...
+  66               	
+  67               	    .macro  VDP_W_VRAM   addr
+  68               	    move.l  #0x40000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  69               	    .endm
+  70               	
+  71               	    .macro  VDP_W_CRAM   addr
+  72               	    move.l  #0xC0000000+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  73               	    .endm
+  74               	
+  75               	    .macro  VDP_W_VSRAM  addr
+  76               	    move.l  #0x40000010+((\addr&0x3FFF)<<16)+((\addr)>>14),(VDP_CTRL)
+  77               	    .endm
    6               	
    7               	    .global md_error
    8               	    .global md_ext_irq
@@ -117,10 +118,10 @@
   29      00A1 1100 
   30 0032 66F6      	    bne.b   2b
   31               	
-  32               	* silence PSG
 68K GAS  src/megadrive/startup.68k 			page 3
 
 
+  32               	* silence PSG
   33 0034 41F9 00C0 	    lea     (PSG_PORT),a0
   33      0011 
   34 003a 10BC 009F 	    move.b  #0x9F,(a0)
@@ -177,10 +178,10 @@
   75 00b4 13FC 0040 	    move.b  #0x40,(IO_CTRL1)
   75      00A1 0009 
   76 00bc 13FC 0040 	    move.b  #0x40,(IO_CTRL2)
-  76      00A1 000B 
 68K GAS  src/megadrive/startup.68k 			page 4
 
 
+  76      00A1 000B 
   77 00c4 13FC 0040 	    move.b  #0x40,(IO_DATA1)
   77      00A1 0003 
   78 00cc 13FC 0040 	    move.b  #0x40,(IO_DATA2)
@@ -191,7 +192,7 @@
   81               	
   82               	vdp_init_regs:
   83 00da 8004 8134 	    .word   VDPR00,VDPR01_OFF,VDPR02,VDPR03,VDPR04,VDPR05,VDPR06,VDPR07
-  83      8230 832C 
+  83      8230 8328 
   83      8407 855E 
   83      8600 8700 
   84 00ea 8800 8900 	    .word   VDPR08,VDPR09,VDPR10,VDPR11,VDPR12,VDPR13,VDPR14,VDPR15
@@ -241,31 +242,31 @@ src/megadrive/vdpregs.inc:22     *ABS*:00c00000 VDP_DATA
 src/megadrive/vdpregs.inc:23     *ABS*:00c00004 VDP_CTRL
 src/megadrive/vdpregs.inc:24     *ABS*:00c00008 VDP_HV
 src/megadrive/vdpregs.inc:25     *ABS*:00c00011 PSG_PORT
-src/megadrive/vdpregs.inc:32     *ABS*:0000b000 VRAM_WINDOW_NT
-src/megadrive/vdpregs.inc:33     *ABS*:0000bc00 VRAM_SAT
-src/megadrive/vdpregs.inc:34     *ABS*:0000bf00 VRAM_HSCROLL
-src/megadrive/vdpregs.inc:35     *ABS*:0000c000 VRAM_PLANE_A
-src/megadrive/vdpregs.inc:36     *ABS*:0000e000 VRAM_PLANE_B
-src/megadrive/vdpregs.inc:40     *ABS*:00008004 VDPR00
-src/megadrive/vdpregs.inc:41     *ABS*:00008134 VDPR01_OFF
-src/megadrive/vdpregs.inc:42     *ABS*:00008174 VDPR01_ON
-src/megadrive/vdpregs.inc:43     *ABS*:00008230 VDPR02
-src/megadrive/vdpregs.inc:44     *ABS*:0000832c VDPR03
-src/megadrive/vdpregs.inc:45     *ABS*:00008407 VDPR04
-src/megadrive/vdpregs.inc:46     *ABS*:0000855e VDPR05
-src/megadrive/vdpregs.inc:47     *ABS*:00008600 VDPR06
-src/megadrive/vdpregs.inc:48     *ABS*:00008700 VDPR07
-src/megadrive/vdpregs.inc:49     *ABS*:00008800 VDPR08
-src/megadrive/vdpregs.inc:50     *ABS*:00008900 VDPR09
-src/megadrive/vdpregs.inc:51     *ABS*:00008aff VDPR10
-src/megadrive/vdpregs.inc:52     *ABS*:00008b00 VDPR11
-src/megadrive/vdpregs.inc:53     *ABS*:00008c81 VDPR12
-src/megadrive/vdpregs.inc:54     *ABS*:00008d2f VDPR13
-src/megadrive/vdpregs.inc:55     *ABS*:00008e00 VDPR14
-src/megadrive/vdpregs.inc:56     *ABS*:00008f02 VDPR15
-src/megadrive/vdpregs.inc:57     *ABS*:00009011 VDPR16
-src/megadrive/vdpregs.inc:58     *ABS*:00009191 VDPR17
-src/megadrive/vdpregs.inc:59     *ABS*:00009200 VDPR18
+src/megadrive/vdpregs.inc:33     *ABS*:0000a000 VRAM_WINDOW_NT
+src/megadrive/vdpregs.inc:34     *ABS*:0000bc00 VRAM_SAT
+src/megadrive/vdpregs.inc:35     *ABS*:0000bf00 VRAM_HSCROLL
+src/megadrive/vdpregs.inc:36     *ABS*:0000c000 VRAM_PLANE_A
+src/megadrive/vdpregs.inc:37     *ABS*:0000e000 VRAM_PLANE_B
+src/megadrive/vdpregs.inc:41     *ABS*:00008004 VDPR00
+src/megadrive/vdpregs.inc:42     *ABS*:00008134 VDPR01_OFF
+src/megadrive/vdpregs.inc:43     *ABS*:00008174 VDPR01_ON
+src/megadrive/vdpregs.inc:44     *ABS*:00008230 VDPR02
+src/megadrive/vdpregs.inc:45     *ABS*:00008328 VDPR03
+src/megadrive/vdpregs.inc:46     *ABS*:00008407 VDPR04
+src/megadrive/vdpregs.inc:47     *ABS*:0000855e VDPR05
+src/megadrive/vdpregs.inc:48     *ABS*:00008600 VDPR06
+src/megadrive/vdpregs.inc:49     *ABS*:00008700 VDPR07
+src/megadrive/vdpregs.inc:50     *ABS*:00008800 VDPR08
+src/megadrive/vdpregs.inc:51     *ABS*:00008900 VDPR09
+src/megadrive/vdpregs.inc:52     *ABS*:00008aff VDPR10
+src/megadrive/vdpregs.inc:53     *ABS*:00008b00 VDPR11
+src/megadrive/vdpregs.inc:54     *ABS*:00008c81 VDPR12
+src/megadrive/vdpregs.inc:55     *ABS*:00008d2f VDPR13
+src/megadrive/vdpregs.inc:56     *ABS*:00008e00 VDPR14
+src/megadrive/vdpregs.inc:57     *ABS*:00008f02 VDPR15
+src/megadrive/vdpregs.inc:58     *ABS*:00009011 VDPR16
+src/megadrive/vdpregs.inc:59     *ABS*:00009191 VDPR17
+src/megadrive/vdpregs.inc:60     *ABS*:00009200 VDPR18
 src/megadrive/startup.68k:89     .text:00000100 md_error
 src/megadrive/startup.68k:96     .text:0000011e md_ext_irq
 src/megadrive/startup.68k:97     .text:0000011e md_hblank
