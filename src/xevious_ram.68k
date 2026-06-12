@@ -93,8 +93,18 @@
     .global bg_videoram
     .global sprite_shadow_msb
 
+* __megadrive__: these three table pointers are written at runtime by the core
+* (xevious_sub_reset, main gameplay loop). The upstream defines them inline in
+* .text, which works on the Amiga (program runs from RAM) but not on a ROM
+* cartridge, so on Mega Drive they are relocated here into work RAM.
+    .ifdef  __megadrive__
+    .global area_object_tbl_tbl_pointer
+    .global flying_enemy_type_offset_tbl_pointer
+    .global flying_enemy_type_tbl_pointer
+    .endif
+
     .bss
-    
+
 * RAM and variables
 
 * $7800-
@@ -270,3 +280,10 @@ bg_videoram:                            ds.b  0x800
 * - so maintain a 'raw' copy of (X{8:0]+8)>>1 & ($EF-Y[7:0])
 * - layout is 64x Y,X pairs
 sprite_shadow_msb:                      ds.b  64*2
+
+    .ifdef  __megadrive__
+    .align 4
+area_object_tbl_tbl_pointer:            ds.l  1
+flying_enemy_type_offset_tbl_pointer:   ds.l  1
+flying_enemy_type_tbl_pointer:          ds.l  1
+    .endif

@@ -61,6 +61,9 @@
 	.ifdef	MD_INVINCIBLE
 	.set	OPT_INVINCIBLE, 1
 	.endif
+	.ifdef	MD_START_AREA
+	.set	OPT_START_AREA, MD_START_AREA
+	.endif
 
 ***
 *** end of BUILD OPTIONS

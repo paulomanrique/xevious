@@ -6137,9 +6137,13 @@ reveal_sol_tower_flag:
 reveal_bonus_flag_flag:
 	.byte	0
 	.align	2
+* __megadrive__: this pointer is written at runtime, so on a ROM cartridge
+* it must live in RAM (see xevious_ram.68k); .text would be read-only.
+	.ifndef	__megadrive__
 flying_enemy_type_tbl_pointer:
 	.long	0
-	
+	.endif
+
 * table of flying enemy types
 
 flying_enemy_type_tbl_normal: | $3C03
