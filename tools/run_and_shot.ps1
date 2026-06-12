@@ -9,7 +9,9 @@ param(
     [double]$Delay = 3.0,
     [string]$Emu = "C:\Games\Sega - Mega Drive\Blastem\blastem.exe",
     [string]$EmuArgs = "",
-    [string]$KeySeq = "",      # only used with -Focus (SendKeys needs focus)
+    [string]$KeySeq = "",
+    [int]$Burst = 1,           # number of screenshots (suffix _0, _1, ...)
+    [double]$BurstGap = 0.8,
     [switch]$Focus,
     [switch]$Keep
 )
@@ -23,9 +25,27 @@ public class Win32 {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
     public struct RECT { public int Left, Top, Right, Bottom; }
 }
 "@
+
+$script:targetHwnd = [IntPtr]::Zero
+
+function Press-Key([uint32]$vk, [int]$holdMs = 120) {
+    $scan = [Win32]::MapVirtualKey($vk, 0)
+    $down = [IntPtr]((($scan -band 0xFF) -shl 16) -bor 1)
+    $up   = [IntPtr][int64](((($scan -band 0xFF) -shl 16) -bor 1) -bor 0xC0000000L)
+    [Win32]::PostMessage($script:targetHwnd, 0x100, [UIntPtr]$vk, $down) | Out-Null
+    Start-Sleep -Milliseconds $holdMs
+    [Win32]::PostMessage($script:targetHwnd, 0x101, [UIntPtr]$vk, $up) | Out-Null
+}
+
+$vkMap = @{
+    "ret" = 0x0D; "a" = 0x41; "s" = 0x53; "d" = 0x44
+    "up" = 0x26; "down" = 0x28; "left" = 0x25; "right" = 0x27
+}
 
 $romPath = (Resolve-Path $Rom).Path
 $argList = @()
@@ -47,22 +67,16 @@ if ($hwnd -eq [IntPtr]::Zero) {
     exit 1
 }
 
-if ($Focus) {
-    [Win32]::SetForegroundWindow($hwnd) | Out-Null
-    Start-Sleep -Milliseconds 300
-    if ($KeySeq -ne "") {
-        foreach ($step in $KeySeq.Split(",")) {
-            $parts = $step.Split(":")
-            $key = $parts[0]
-            $wait = if ($parts.Length -gt 1) { [double]$parts[1] } else { 0.5 }
-            $sk = switch ($key) {
-                "ret"   { "{ENTER}" }
-                "space" { " " }
-                default { $key }
-            }
-            [System.Windows.Forms.SendKeys]::SendWait($sk)
-            Start-Sleep -Seconds $wait
+$script:targetHwnd = $hwnd
+if ($KeySeq -ne "") {
+    foreach ($step in $KeySeq.Split(",")) {
+        $parts = $step.Split(":")
+        $key = $parts[0]
+        $wait = if ($parts.Length -gt 1) { [double]$parts[1] } else { 0.5 }
+        if ($vkMap.ContainsKey($key)) {
+            Press-Key $vkMap[$key]
         }
+        Start-Sleep -Seconds $wait
     }
 }
 
@@ -76,16 +90,23 @@ if ($w -le 0 -or $h -le 0) {
     exit 1
 }
 
-$bmp = New-Object System.Drawing.Bitmap($w, $h)
-$gfx = [System.Drawing.Graphics]::FromImage($bmp)
-$hdc = $gfx.GetHdc()
-# 2 = PW_RENDERFULLCONTENT (captures GPU-composited content on Win8.1+)
-[Win32]::PrintWindow($hwnd, $hdc, 2) | Out-Null
-$gfx.ReleaseHdc($hdc)
 $outDir = Split-Path $Out -Parent
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Force $outDir | Out-Null }
-$bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
-$gfx.Dispose(); $bmp.Dispose()
+for ($i = 0; $i -lt $Burst; $i++) {
+    $bmp = New-Object System.Drawing.Bitmap($w, $h)
+    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+    $hdc = $gfx.GetHdc()
+    # 2 = PW_RENDERFULLCONTENT (captures GPU-composited content on Win8.1+)
+    [Win32]::PrintWindow($hwnd, $hdc, 2) | Out-Null
+    $gfx.ReleaseHdc($hdc)
+    $file = $Out
+    if ($Burst -gt 1) {
+        $file = $Out -replace "\.png$", ("_{0}.png" -f $i)
+    }
+    $bmp.Save($file, [System.Drawing.Imaging.ImageFormat]::Png)
+    $gfx.Dispose(); $bmp.Dispose()
+    if ($i -lt $Burst - 1) { Start-Sleep -Seconds $BurstGap }
+}
 
 if (-not $Keep) { Stop-Process -Id $proc.Id -Force }
-Write-Output "SHOT ${w}x${h} -> $Out"
+Write-Output "SHOT ${w}x${h} -> $Out (x$Burst)"

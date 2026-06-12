@@ -153,7 +153,6 @@ md_platform_init:
 * arcade offset = col*64 + row (col 0-31, row 0-63)
 * md col = 6 + ((29 - col) & 31)
     lea     md_fg_cmd_tbl,a0
-    lea     md_bg_cmd_tbl,a1
     moveq   #0,d7                               | offset
 3:  move.w  d7,d0
     andi.w  #0x3F,d0                            | row
@@ -165,7 +164,8 @@ md_platform_init:
     addq.w  #MD_LEFT_COL,d2                     | md col
     * fg row: only rows 6..38 can ever be displayed (both window modes);
     * others (incl. the arcade's own HUD rows 4,5,39) get a null command
-    * so they never consume fg cache slots
+    * so they never consume fg cache slots. (bg commands are computed on the
+    * fly in bg_write - the bg layer maps every cell, no culling, so no table)
     move.w  d0,d3
     subq.w  #6,d3
     cmpi.w  #33,d3
@@ -182,14 +182,6 @@ md_platform_init:
     bsr     md_vram_cmd
     move.l  d4,(a0)+
 8:
-    * bg row (direct)
-    move.w  d0,d3
-    lsl.w   #6,d3
-    add.w   d2,d3
-    add.w   d3,d3
-    addi.w  #VRAM_PLANE_B,d3                    | max 0xE000+0x1FFE = 0xFFFE, fits
-    bsr     md_vram_cmd
-    move.l  d4,(a1)+
     addq.w  #1,d7
     cmpi.w  #0x800,d7
     blt.b   3b
@@ -311,6 +303,17 @@ md_vram_cmd:
 md_vblank:
     movem.l d0-d7/a0-a6,-(a7)
     tst.w   (VDP_CTRL)                          | ack vint (clear F flag)
+* stack sanity net: if the interrupted SP dipped into .bss (below _end) the
+* game overflowed its stack into core data - halt cleanly instead of later
+* returning through a corrupted pointer (turns the wild jump into a red screen)
+    .ifndef DIAG_DUMP
+    move.l  sp,d0
+    cmpi.l  #_end,d0
+    blo     md_error
+    cmpi.l  #0x00FFFE00,d0
+    bhi     md_error
+    .endif
+    bsr     md_read_pads
 
 * flush plane B vscroll (window bias - game scroll: scroll moves terrain down)
     move.w  (md_vbias),d0
@@ -373,7 +376,7 @@ sat_dma:
     addq.w  #1,(md_diag_frame)
     cmpi.w  #600,(md_diag_frame)
     bne.b   no_diag
-    move.l  #0x00000003,(VDP_CTRL)              | VRAM READ @0xC000 (CD=0000)
+    move.l  #0x00000003,(VDP_CTRL)              | VRAM READ @0xC000 (plane A)
     lea     (md_diag_buf),a0
     move.w  #0x1000-1,d0
 diag_rd:
@@ -937,15 +940,11 @@ find_free_slot:
     move.w  d4,d5
     addq.w  #1,d5
     move.b  d5,(a0,d3.w)                        | key -> slot+1
-    * expand 1bpp char to 4bpp tile in VRAM
-    * key bit 12 = panel variant: background pixels use slot 15 (opaque
-    * black) instead of transparency
+    * expand 1bpp char to 4bpp tile in VRAM (in-field fg is transparent:
+    * cleared pixels = palette index 0 = shows the bg layer behind)
     movem.l d0-d3/d5/d6,-(a7)
-    moveq   #0,d6                               | background pixel value
-    btst    #12,d3
-    beq.b   1f
-    moveq   #15,d6
-1:  move.w  d3,d1
+    moveq   #0,d6                               | background pixel = transparent
+    move.w  d3,d1
     lsr.w   #8,d1
     andi.w  #0x0F,d1                            | d1 = colour slot value
     andi.w  #0xFF,d3                            | char
@@ -1063,12 +1062,28 @@ bg_write:
     eor.w   d5,d4
     andi.w  #0x1FFF,d4
     ori.w   #0x2000,d4                          | PAL1
-    * write nametable cell
-    lea     md_bg_cmd_tbl,a0
-    move.w  d0,d5
-    add.w   d5,d5
-    add.w   d5,d5
-    move.l  (a0,d5.w),d5
+    * compute plane B VDP command from the arcade offset (no cached table):
+    * bg row = offset&0x3F, md col = MD_LEFT_COL + ((29 - offset>>6) & 31)
+    move.w  d0,d2
+    andi.w  #0x3F,d2                            | bg row
+    lsl.w   #6,d2                               | row*64
+    move.w  d0,d3
+    lsr.w   #6,d3                               | arcade col
+    moveq   #29,d1
+    sub.w   d3,d1
+    andi.w  #0x1F,d1
+    addi.w  #MD_LEFT_COL,d1
+    add.w   d1,d2                               | row*64 + md col
+    add.w   d2,d2                               | cell byte offset
+    addi.w  #VRAM_PLANE_B,d2                    | plane B address
+    moveq   #0,d5
+    move.w  d2,d5
+    andi.w  #0x3FFF,d5
+    swap    d5
+    move.w  d2,d5
+    rol.w   #2,d5
+    andi.w  #3,d5
+    ori.l   #0x40000000,d5                      | VDP VRAM-write command
     move.w  sr,-(a7)
     move    #0x2700,sr
     move.l  d5,(VDP_CTRL)
@@ -1370,26 +1385,129 @@ rf_fail:
     rts
 
 ***************************************************************
-*** inputs (M3 stubs - M6 implements pads)
+*** inputs
 ***************************************************************
+* 3-button pads, read once per vblank into md_pad1/md_pad2:
+*   bit7 Start, bit6 A, bit5 C, bit4 B, bit3 Right, bit2 Left,
+*   bit1 Down, bit0 Up  (1 = pressed)
+* controls: B = zap, A = blaster (bomb), C = insert coin, Start = start
 
-* d0 = DSWA, d1 = DSWB
-osd_read_dipswitches:
-    move.w  #0x7F,d0                            | lives 3, bonus 20K/60K
-    move.w  #0x7F,d1                            | difficulty normal, flags award, no bomb
+md_read_pads:
+    lea     (IO_DATA1),a0
+    bsr.b   md_read_one_pad
+    move.b  d0,(md_pad1)
+    lea     (IO_DATA2),a0
+    bsr.b   md_read_one_pad
+    move.b  d0,(md_pad2)
     rts
+
+md_read_one_pad:
+    move.b  #0x40,(a0)                          | TH=1
+    nop
+    nop
+    move.b  (a0),d0                             | CBRLDU
+    andi.b  #0x3F,d0
+    move.b  #0x00,(a0)                          | TH=0
+    nop
+    nop
+    move.b  (a0),d1                             | SA00DU
+    move.b  #0x40,(a0)                          | leave TH=1
+    andi.b  #0x30,d1
+    lsl.b   #2,d1                               | Start,A -> bits 7,6
+    or.b    d1,d0
+    not.b   d0                                  | active high
+    rts
+
+* d0 = DSWA, d1 = DSWB (live bomb buttons merged in, active low)
+osd_read_dipswitches:
+    move.w  #0x7F,d0                            | lives 3, bonus 20K/60K e60K
+    move.w  #0x7F,d1                            | difficulty normal, flags=yes
+    move.b  (md_pad1),d2
+    andi.b  #0x40,d2                            | A = bomb
+    beq.b   1f
+    bclr    #0,d1                               | P1 bomb (active low)
+1:  move.b  (md_pad2),d2
+    andi.b  #0x40,d2
+    beq.b   2f
+    bclr    #4,d1                               | P2 bomb (active low)
+2:  rts
+
+* direction ordinal table indexed by UDLR nibble
+* (arcade: bit0 U, bit1 D, bit2 L, bit3 R)
+md_dir_tbl:
+    .byte   0xF8                                | none
+    .byte   0xF0                                | U
+    .byte   0xF4                                | D
+    .byte   0xF8                                | U+D invalid
+    .byte   0xF6                                | L
+    .byte   0xF7                                | U+L
+    .byte   0xF5                                | D+L
+    .byte   0xF8                                | invalid
+    .byte   0xF2                                | R
+    .byte   0xF1                                | U+R
+    .byte   0xF3                                | D+R
+    .byte   0xF8                                | invalid
+    .byte   0xF8,0xF8,0xF8,0xF8                 | L+R combos invalid
+    .align 2
 
 osd_read_p1_inputs:
+    move.b  (md_pad1),d1
+    lea     md_p1_prev,a0
+    bra.b   read_inputs_common
 osd_read_p2_inputs:
-    move.b  #0xF8,d0                            | no direction, no fire
+    move.b  (md_pad2),d1
+    lea     md_p2_prev,a0
+read_inputs_common:
+    moveq   #0,d0
+    * pad UDLR (bits 0,1,2,3) happens to match the arcade nibble order
+    move.b  d1,d0
+    andi.w  #0x0F,d0
+    lea     md_dir_tbl(pc),a1
+    move.b  (a1,d0.w),d0
+    ori.b   #0xF0,d0                            | bits 4/5 inactive (high)
+    btst    #4,d1                               | B = zap
+    beq.b   1f
+    bclr    #5,d0                               | fire held (active low)
+    btst    #4,(a0)
+    bne.b   1f
+    bclr    #4,d0                               | fire edge (one-shot)
+1:  move.b  d1,(a0)
     rts
 
+* one-shot coin (d0 + Z flag on exit): C button edge always inserts;
+* Start edge also inserts while there are no credits (so a bare Start
+* press coins up and the next one starts the game)
 osd_read_coin:
     moveq   #0,d0
+    move.b  (md_pad1),d1
+    or.b    (md_pad2),d1
+    btst    #5,d1
+    beq.b   1f
+    btst    #5,(md_coin_prev)
+    bne.b   2f
+    moveq   #1,d0
+    bra.b   2f
+1:  tst.b   (num_credits)
+    bne.b   2f
+    btst    #7,d1
+    beq.b   2f
+    btst    #7,(md_coin_prev)
+    bne.b   2f
+    moveq   #1,d0
+2:  move.b  d1,(md_coin_prev)
+    tst.b   d0
     rts
 
+* bit0 = 1P start, bit1 = 2P start (caller tests the Z flag)
 osd_read_start:
     moveq   #0,d0
+    btst    #7,(md_pad1)
+    beq.b   1f
+    bset    #0,d0
+1:  btst    #7,(md_pad2)
+    beq.b   2f
+    bset    #1,d0
+2:  tst.b   d0
     rts
 
 ***************************************************************
@@ -1425,7 +1543,7 @@ md_menu:            ds.b    1
     .align 2
 md_menu_cnt:        ds.w    1
 md_fg_ring:         ds.w    1
-md_fg_key_slot:     ds.b    8192                | (panel<<12|slot<<8|char) -> slot+1
+md_fg_key_slot:     ds.b    4096                | (slot<<8|char) -> cache slot+1
 md_fg_slot_key:     ds.w    FG_TOTAL_SLOTS      | cache slot -> key
 md_fg_slot_refs:    ds.w    FG_TOTAL_SLOTS      | on-screen refs per slot
 * cell->slot tables: keep contiguous (purge scans both at once)
@@ -1435,7 +1553,13 @@ md_panel_cell_slot: ds.w    PANEL_W*PANEL_ROWS  | panel cell -> slot+1 in use
 md_panel_cmd_tbl:   ds.l    PANEL_W*PANEL_ROWS  | panel cell -> window NT cmd
     .align 4
 md_fg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane A VDP cmd
-md_bg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane B VDP cmd
+* pads
+md_pad1:            ds.b    1
+md_pad2:            ds.b    1
+md_p1_prev:         ds.b    1
+md_p2_prev:         ds.b    1
+md_coin_prev:       ds.b    1
+
 * sprite machinery
     .align 2
 md_sat_shadow:      ds.b    80*8                | full SAT image, DMA'd per frame
@@ -1452,6 +1576,6 @@ md_slot_stamp:      ds.w    SPR_SLOTS           | last frame counter that used s
     .ifdef DIAG_DUMP
     .align 2
 md_diag_frame:      ds.w    1
-md_diag_buf:        ds.b    0x2000
-md_diag_buf2:       ds.b    0x1000
+md_diag_buf:        ds.b    0x1000
+md_diag_buf2:       ds.b    0x800
     .endif

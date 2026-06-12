@@ -52,7 +52,16 @@
     OPT_SKIP_SPLASH=0
     OPT_SKIP_ATTRACT=0
 	.endif
-	
+
+* Mega Drive debug autoplay: start a real game immediately, no death,
+* so unattended runs exercise gameplay/area-transition code paths
+	.ifdef	MD_AUTOPLAY
+	.set	OPT_SKIP_ATTRACT, 1
+	.endif
+	.ifdef	MD_INVINCIBLE
+	.set	OPT_INVINCIBLE, 1
+	.endif
+
 ***
 *** end of BUILD OPTIONS
 ***

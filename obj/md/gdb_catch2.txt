@@ -1,0 +1,18 @@
+0x00000200 in _start ()
+Breakpoint 1 at 0x48c0
+Breakpoint 2 at 0x48e2
+Breakpoint 3 at 0x5d48
+Breakpoint 4 at 0x64aa
+Breakpoint 5 at 0x1308
+Breakpoint 6 at 0x140e
+
+Breakpoint 3, 0x00005d48 in main_fn_loop ()
+=== CAUGHT ===
+pc             0x5d48	0x5d48 <main_fn_loop+10>
+a0             0x6474	0x6474 <sub_fn_2.handle_objects>
+a1             0xffa954	0xffa954
+a5             0x0	0x0
+=> 0x5d48 <main_fn_loop+10>:	jsr %a0@
+   0x5d4a <main_fn_loop+12>:	moveml %sp@+,%d7/%fp
+   0x5d4e <main_fn_loop+16>:	addqw #4,%fp
+   0x5d50 <main_fn_loop+18>:	dbf %d7,0x5d3e <main_fn_loop>

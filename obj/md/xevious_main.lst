@@ -88,66 +88,75 @@
   52               	    OPT_SKIP_SPLASH=0
   53               	    OPT_SKIP_ATTRACT=0
   54               		.endif
-  55               		
-  56               	***
-  57               	*** end of BUILD OPTIONS
-  58               	***
-  59               	
-  60               	* offsets into object table
-  61               	    .equ  _STATE,     0
-  62               	    .equ  _ATTR,      1
-  63               	    .equ  _EXTRA,     4
-  64               	    .equ  _X,         8
-  65               	    .equ  _dX,        10
-  66               	    .equ  _ddX,       12
-  67               	    .equ  _Y,         14
-  68               	    .equ  _dY,        16
-  69               	    .equ  _ddY,       18
-  70               	    .equ  _CODE,      20
-  71               	    .equ  _COLOUR,    21
-  72               	    .equ  _PTS,       22
-  73               	    .equ  _TIMER,     24
-  74               	    .equ  _TIMER1,    25
-  75               	      .equ  _NVEC,    25
-  76               	    .equ  _TIMER2,    26
-  77               	      .equ  _VECLEN,  26
-  78               	    .equ  _FFREQ,     28
-  79               	    .equ  _TYPE,      30
-  80               	
-  81               	    .equ  _OBJSIZE,   32
-  82               	
-  83               	* video functions
-  84               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  55               	
+  56               	* Mega Drive debug autoplay: start a real game immediately, no death,
+  57               	* so unattended runs exercise gameplay/area-transition code paths
+  58               		.ifdef	MD_AUTOPLAY
+  59               		.set	OPT_SKIP_ATTRACT, 1
+  60               		.endif
+  61               		.ifdef	MD_INVINCIBLE
+  62               		.set	OPT_INVINCIBLE, 1
+  63               		.endif
+  64               	
+  65               	***
+  66               	*** end of BUILD OPTIONS
+  67               	***
+  68               	
+  69               	* offsets into object table
+  70               	    .equ  _STATE,     0
+  71               	    .equ  _ATTR,      1
+  72               	    .equ  _EXTRA,     4
+  73               	    .equ  _X,         8
+  74               	    .equ  _dX,        10
+  75               	    .equ  _ddX,       12
+  76               	    .equ  _Y,         14
+  77               	    .equ  _dY,        16
+  78               	    .equ  _ddY,       18
+  79               	    .equ  _CODE,      20
+  80               	    .equ  _COLOUR,    21
+  81               	    .equ  _PTS,       22
+  82               	    .equ  _TIMER,     24
+  83               	    .equ  _TIMER1,    25
+  84               	      .equ  _NVEC,    25
 68K GAS  src/xevious_main.68k 			page 3
 
 
-  85               	    .equ  BANK_BG_COLORRAM,   (1<<2)
-  86               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
-  87               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
-  88               	
-  89               	* sound ordinals
-  90               	
-  91               	    .equ  MAIN_THEME_SND,         0x01
-  92               	    .equ  HIGHEST_SCORE_SND,      0x02
-  93               	    .equ  HIGH_SCORE_SND,         0x03
-  94               	    .equ  EXTRA_SOLVALOU_SND,     0x04
-  95               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
-  96               	    .equ  GARU_ZAKATO_SND,        0x06
-  97               	    .equ  ANDOR_GENESIS_SND,      0x07
-  98               	    .equ  SHEONITE_SND,           0x08
-  99               	    .equ  TELEPORT_SND,           0x09
- 100               	    .equ  BACURA_HIT_SND,         0x0a
- 101               	    .equ  SHOT_SND,               0x0b
- 102               	    .equ  BOMB_SND,               0x0c
- 103               	    .equ  BONUS_FLAG_SND,         0x0d
- 104               	    .equ  SOLVALOU_SND,           0x0e
- 105               	    * 60XX (noise chip?)
- 106               	    .equ  COIN_SND,               0x10
- 107               	    .equ  GROUND_EXPLOSION_SND,   0x11
- 108               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
- 109               	    
- 110               	
- 111               	
+  85               	    .equ  _TIMER2,    26
+  86               	      .equ  _VECLEN,  26
+  87               	    .equ  _FFREQ,     28
+  88               	    .equ  _TYPE,      30
+  89               	
+  90               	    .equ  _OBJSIZE,   32
+  91               	
+  92               	* video functions
+  93               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  94               	    .equ  BANK_BG_COLORRAM,   (1<<2)
+  95               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
+  96               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
+  97               	
+  98               	* sound ordinals
+  99               	
+ 100               	    .equ  MAIN_THEME_SND,         0x01
+ 101               	    .equ  HIGHEST_SCORE_SND,      0x02
+ 102               	    .equ  HIGH_SCORE_SND,         0x03
+ 103               	    .equ  EXTRA_SOLVALOU_SND,     0x04
+ 104               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+ 105               	    .equ  GARU_ZAKATO_SND,        0x06
+ 106               	    .equ  ANDOR_GENESIS_SND,      0x07
+ 107               	    .equ  SHEONITE_SND,           0x08
+ 108               	    .equ  TELEPORT_SND,           0x09
+ 109               	    .equ  BACURA_HIT_SND,         0x0a
+ 110               	    .equ  SHOT_SND,               0x0b
+ 111               	    .equ  BOMB_SND,               0x0c
+ 112               	    .equ  BONUS_FLAG_SND,         0x0d
+ 113               	    .equ  SOLVALOU_SND,           0x0e
+ 114               	    * 60XX (noise chip?)
+ 115               	    .equ  COIN_SND,               0x10
+ 116               	    .equ  GROUND_EXPLOSION_SND,   0x11
+ 117               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
+ 118               	    
+ 119               	
+ 120               	
   31               		
   32               	.macro SET_REENTRY_ADDR_HERE
   33               	    move.l    #0f,(a6)
@@ -169,6 +178,9 @@
   46      0000 
   47 0014 660A      		jne	0f
   48 0016 41FA 47C0 		lea		flying_enemy_type_tbl_normal,a0
+68K GAS  src/xevious_main.68k 			page 4
+
+
   49 001a 43FA 1225 		lea		ROM_high_score_tbl_normal,a1
   50 001e 6008      		jra		1f
   51               	0:
@@ -178,9 +190,6 @@
   55 0028 23C8 0000 		move.l	a0,flying_enemy_type_tbl_pointer
   55      0000 
   56 002e 23C9 0000 		move.l	a1,ROM_high_score_tbl_pointer
-68K GAS  src/xevious_main.68k 			page 4
-
-
   56      0000 
   57 0034 6000 01A8 	    jra       start
   58               	
@@ -229,6 +238,9 @@
   97 0086 4E75      	9:  rts
   98               	
   99               	update_high_score: | $1329
+68K GAS  src/xevious_main.68k 			page 5
+
+
  100 0088 1091      	    move.b    (a1),(a0)                         | update high score byte
  101 008a 5288      	    addq.l    #1,a0                             | byte-swapped
  102 008c 5289      	    addq.l    #1,a1                             | byte_swapped
@@ -238,9 +250,6 @@
  105 0098 5200      	    addq.b    #1,d0
  106               	    *move.b    d0,(unk_8027)                    | appears unused by any CPU
  107 009a 4EFA 1576 	    jmp       display_high_score
-68K GAS  src/xevious_main.68k 			page 5
-
-
  108               	         
  109               	check_for_extra_solvalou: | $133A
  110 009e 6100 1502 	    jbsr       display_player_scores
@@ -289,6 +298,9 @@
  148               	    .endif
  149               	    * this handles the 20K, 60K, every 60K situation
  150               	    * when bonus is 20K, and addition is 60K,
+68K GAS  src/xevious_main.68k 			page 6
+
+
  151               	    * C is set so next bonus is set to 60K (not 20+60)    
  152 00f2 3039 0000 	    move.w    (next_bonus_life_Ks),d0
  152      0000 
@@ -298,9 +310,6 @@
  156               	    * this handles when there is only 2 bonuses    
  157 00fe 1439 0000 	    move.b    (dswa),d2
  157      0000 
-68K GAS  src/xevious_main.68k 			page 6
-
-
  158 0104 4602      	    not.b     d2
  159 0106 0242 0007 	    and.w     #7,d2
  160 010a 0C02 0006 	    cmp.b     #6,d2                             | only 2 bonuses?
@@ -349,6 +358,9 @@
  195      0000 
  196               	.endif    
  197 016a 303C 8000 	    move.w    #0x8000,d0                        | black
+68K GAS  src/xevious_main.68k 			page 7
+
+
  198 016e 4EB9 0000 	    jsr       osd_debug_hook
  198      0000 
  199 0174 4CDF 7FFF 	    movem.l   (a7)+,d0-d7/a0-a6
@@ -358,9 +370,6 @@
  203               	
  204               	xevious_nmi: | $0066
  205               	    *** this routine in no way resembles the Z80 equivalent
-68K GAS  src/xevious_main.68k 			page 7
-
-
  206               	    *** which accessed inputs via the 06XX custom chips
  207               	    *** - we just read inputs directly here
  208 017c 48E7 FFFE 	    movem.l   d0-d7/a0-a6,-(a7)
@@ -409,6 +418,9 @@
  238 01e6 B1FC 0000 	    cmpa.l    #watermark_0x8400,a0
  238      0000 
  239 01ec 66F6      	    jne     0b
+68K GAS  src/xevious_main.68k 			page 8
+
+
  240               	    * $0388 not interested in coinage information
  241               	    * $03F9 zeroes $8000-$81FF after tests 
  242               	    * - not required as we don't run self-tests
@@ -418,9 +430,6 @@
  245 01f4 41FA 007A 	    lea       main_fn_tbl_ROM,a0
  246 01f8 43F9 0000 	    lea       main_fn_tbl_RAM,a1
  246      0000 
-68K GAS  src/xevious_main.68k 			page 8
-
-
  247 01fe 7E1F      	    moveq     #32-1,d7                          | 32 functions to copy
  248 0200 22D8      	1:  move.l    (a0)+,(a1)+
  249 0202 51CF FFFC 	    dbf       d7,1b
@@ -469,6 +478,9 @@
  283 0248 670C      		jeq	1f
  284 024a 2040      		move.l	d0,a0                           | get jump address
  285 024c 48E7 0102 	    movem.l   d7/a6,-(a7)
+68K GAS  src/xevious_main.68k 			page 9
+
+
  286 0250 4E90      	    jsr       (a0)                              | call function
  287 0252 4CDF 4080 	    movem.l   (a7)+,d7/a6
  288               	1:
@@ -478,9 +490,6 @@
  292 025c 303C 8000 	    move.w    #0x8000,d0                        | black
  293 0260 4EB9 0000 	    jsr       osd_debug_hook
  293      0000 
-68K GAS  src/xevious_main.68k 			page 9
-
-
  294               	
  295 0266 4EB9 0000 	    jsr       osd_kick_wdog
  295      0000 
@@ -529,6 +538,9 @@
  338               	.ifne OPT_ENABLE_HIGH_SCORE_IO    
  339               	    * added for 68K transcode
  340 0300 41F9 0000 	    lea       high_score_1st_msb,a0
+68K GAS  src/xevious_main.68k 			page 10
+
+
  340      0000 
  341 0306 43F9 0000 	    lea       RAM_high_score,a1
  341      0000 
@@ -538,9 +550,6 @@
  344               	    * don't need to worry about cocktail mode
  345 0312 13FC 0001 	    move.b    #1,(scroll_disabled)
  345      0000 0000 
-68K GAS  src/xevious_main.68k 			page 10
-
-
  346 031a 33FC FFF8 	    move.w    #0xfff8,(scroll_delta)
  346      0000 0000 
  347               	    
@@ -589,6 +598,9 @@
  381      0000 0000 
  382 037e 6100 0308 	    jbsr       clear_fg_to_transparent
  383 0382 6100 032E 	    jbsr       clear_bg_to_black
+68K GAS  src/xevious_main.68k 			page 11
+
+
  384 0386 6100 051A 	    jbsr       display_push_start_button
  385 038a 6100 0C3E 	    jbsr       display_all_scores
  386 038e 6100 042C 	    jbsr       display_copyright_msgs
@@ -598,9 +610,6 @@
  390               	* loop here waiting for 1P or 2P start button
  391               	*
  392 039a 6100 049E 	    jbsr       display_credits   
-68K GAS  src/xevious_main.68k 			page 11
-
-
  393 039e 6100 04CC 	    jbsr       display_1_only_or_1_2_players
  394 03a2 4A39 0000 	    tst.b     (start_pressed)                   | set in SUB CPU
  394      0000 
@@ -649,6 +658,9 @@
  428 040c D040      	    add.w     d0,d0
  429 040e D040      	    add.w     d0,d0                             | table offset
  430 0410 2070 0000 	    move.l    (a0,d0.w),a0                      | get table address
+68K GAS  src/xevious_main.68k 			page 12
+
+
  431               	    .else
  432               	    move.l    (a0,d0.w*4),a0                      | get table address
  433               	    .endif
@@ -658,9 +670,6 @@
  436 041c E408      	    lsr.b     #2,d0
  437 041e 0240 0007 	    and.w     #7,d0                             | bonus life setting 
  438               	    .ifdef	NO68020
-68K GAS  src/xevious_main.68k 			page 12
-
-
  439 0422 D040      	    add.w     d0,d0
  440 0424 33F0 0000 	    move.w    (a0,d0.w),(next_bonus_life_Ks)
  440      0000 0000 
@@ -709,6 +718,9 @@
  473 0490 13F0 0000 	    move.b    (a0,d0.w),(area_offset_in_map)
  473      0000 0000 
  474 0498 33FC 0D00 	    move.w    #0xd00,(scroll_cntr)
+68K GAS  src/xevious_main.68k 			page 13
+
+
  474      0000 0000 
  475 04a0 2079 0000 	    move.l       area_object_tbl_tbl_pointer,a0
  475      0000 
@@ -718,9 +730,6 @@
  479 04aa 23F0 0000 	    move.l    (a0,d0.w),(area_obj_ptr)          | init area object ptr
  479      0000 0000 
  480               	    .else
-68K GAS  src/xevious_main.68k 			page 13
-
-
  481               	    * d0*4: offset for area in table
  482               	    move.l    (a0,d0.w*4),(area_obj_ptr)          | init area object ptr
  483               	    .endif
@@ -769,6 +778,9 @@
  513               	    * so not quite sure why this needs to be done here (as well)?
  514 053a 1039 0000 	    move.b    (scroll_cntr),d0                  | MSB
  514      0000 
+68K GAS  src/xevious_main.68k 			page 14
+
+
  515 0540 0400 000E 	    sub.b     #14,d0
  516 0544 0C00 0036 	    cmp.b     #54,d0                            | more than 70% thru?
  517 0548 6418      	    jcc     2f                                | no, skip
@@ -778,9 +790,6 @@
  519      0000 0000 
  520 0558 6608      	    jne     2f                                | no, skip
  521 055a 33FC 0006 	    move.w    #6,(area)                         | restart at area=7
-68K GAS  src/xevious_main.68k 			page 14
-
-
  521      0000 0000 
  522               	    * decrement the AI level according to the
  523               	    * STARTING LIVES dipswitch setting
@@ -829,6 +838,9 @@
  557 05da 6100 FB74 	    jbsr       save_PC_to_fn_tbl_and_ret
  558 05de 5339 0000 	    subq.b    #1,(countdown_timer_1)
  558      0000 
+68K GAS  src/xevious_main.68k 			page 15
+
+
  559 05e4 6702      	    jeq     1f
  560 05e6 4E75      	    rts
  561 05e8 6100 02D6 	1:  jbsr       wipe_game_over_player_1_2
@@ -838,9 +850,6 @@
  564 05f2 671C      	    jeq     game_over_1_player                | no, go
  565               	
  566               	next_player: | $0674
-68K GAS  src/xevious_main.68k 			page 15
-
-
  567 05f4 6100 012C 	    jbsr       swap_curr_other_player
  568 05f8 0A39 0001 	    eor.b     #1,(curr_player)                  | switch player
  568      0000 0000 
@@ -889,6 +898,9 @@
  604 0662 4BF9 0000 	    lea       obj_tbl,a5
  604      0000 
  605 0668 7E1F      	    moveq     #32-1,d7                          | 32 objects
+68K GAS  src/xevious_main.68k 			page 16
+
+
  606 066a 4255      	1:  clr.w     (_STATE,a5)                       | state,bank
  607 066c 4BED 0020 	    lea       (_OBJSIZE,a5),a5                  | next object
  608 0670 51CF FFF8 	    dbf       d7,1b
@@ -898,9 +910,6 @@
  611               	    *** which cleared 6 bytes, rather than 6 objects (12 bytes)
  612 067a 7E05      	    moveq     #6-1,d7
  613 067c 4255      	2:  clr.w     (_STATE,a5)                       | state,bank
-68K GAS  src/xevious_main.68k 			page 16
-
-
  614 067e 4BED 0020 	    lea       (_OBJSIZE,a5),a5                  | next object
  615 0682 51CF FFF8 	    dbf       d7,2b
  616 0686 4E75      	    rts
@@ -949,6 +958,9 @@
  654 06ec 51CF FFF6 	    dbf       d7,1b
  655 06f0 7000      	    moveq     #0,d0                             | offset
  656 06f2 323C 0088 	    move.w    #0x88,d1                          | starting tile
+68K GAS  src/xevious_main.68k 			page 17
+
+
  657 06f6 7E1B      	    moveq     #0x1c-1,d7                        | one column
  658 06f8 4EB9 0000 	2:  jsr       osd_w_bg_videoram
  658      0000 
@@ -958,9 +970,6 @@
  662 0706 41F9 0000 	    lea       bg_videoram,a0                    | start of copy
  662      0000 
  663 070c 3E3C 07E3 	    move.w    #0x7e4-1,d7                       | length
-68K GAS  src/xevious_main.68k 			page 17
-
-
  664 0710 7200      	    moveq     #0,d1
  665 0712 1218      	3:  move.b    (a0)+,d1
  666 0714 4EB9 0000 	    jsr       osd_w_bg_videoram                 | copy tile
@@ -1009,6 +1018,9 @@
  703 0774 303C 131B 	    move.w    #0x131B,d0                        | screen col,row
  704 0778 7E0D      	    moveq     #13,d7
  705 077a 7408      	    moveq     #BANK_FG_VIDEORAM,d2
+68K GAS  src/xevious_main.68k 			page 18
+
+
  706 077c 6100 0E16 	    jbsr       display_string
  707 0780 303C 151B 	    move.w    #0x151B,d0                        | screen col,row
  708 0784 1239 0000 	    move.b    (curr_player_solvalou_left),d1
@@ -1018,9 +1030,6 @@
  711               	    
  712               	wipe_player_start_msgs: | $07B7
  713 0790 303C 1217 	    move.w    #0x1217,d0                        | screen col,row
-68K GAS  src/xevious_main.68k 			page 18
-
-
  714 0794 7E0A      	    moveq     #10,d7                            | length
  715 0796 7224      	    moveq     #0x24,d1                          | tile
  716 0798 7408      	    moveq     #BANK_FG_VIDEORAM,d2
@@ -1069,6 +1078,9 @@
  758 0812 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  759 0814 6100 0D7E 	    jbsr       display_string
  760 0818 303C 1020 	    move.w    #0x1020,d0                        | screen col,row
+68K GAS  src/xevious_main.68k 			page 19
+
+
  761 081c 41FA 43E5 	    lea       strNAMCO,a0
  762 0820 7E07      	    moveq     #7,d7                            | string length
  763 0822 7408      	    moveq     #BANK_FG_VIDEORAM,d2
@@ -1078,9 +1090,6 @@
  767               		* color "namco" logo
  768 082c 7E07      	    moveq     #7,d7                             | length
  769 082e 323C 001A 	    move.w    #0x1a,d1                          | attr
-68K GAS  src/xevious_main.68k 			page 19
-
-
  770 0832 7400      	    moveq     #BANK_FG_COLORRAM,d2
  771 0834 6000 0DD2 	    jra       display_char_B_times              | this was a jsr
  772 0838 4E75      	    rts                                         | preseverved to document
@@ -1129,6 +1138,9 @@
  811 089a 7E12      	    moveq     #18,d7                            | string length
  812 089c 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  813 089e 6000 0CF4 	    jra       display_string        
+68K GAS  src/xevious_main.68k 			page 20
+
+
  814               	    
  815               	display_push_start_button: | $083C
  816 08a2 4A39 0000 		tst.b	is_super_xevious
@@ -1138,9 +1150,6 @@
  819 08ae 6004      		jra	1f
  820               	0:
  821 08b0 303C 1514 	    move.w    #0x1514,d0                        | screen col,row
-68K GAS  src/xevious_main.68k 			page 20
-
-
  822               	1:
  823 08b4 41FA 0444 	    lea       strPUSH_START_BUTTON,a0
  824 08b8 7E11      	    moveq     #17,d7                            | string length
@@ -1189,6 +1198,9 @@
  865 0920 4A39 0000 		tst.b	is_super_xevious
  865      0000 
  866 0926 6606      		jne	0f
+68K GAS  src/xevious_main.68k 			page 21
+
+
  867 0928 303C 121C 	    move.w    #0x121C,d0                        | offset
  868 092c 6004      		jra	1f
  869               	0:
@@ -1198,9 +1210,6 @@
  873 0936 7E0B      	    moveq     #11,d7                            | string length
  874 0938 343C 0008 	    move.w    #BANK_FG_VIDEORAM,d2
  875 093c 6000 0C56 	    jra       display_string
-68K GAS  src/xevious_main.68k 			page 21
-
-
  876 0940 4E75      	9:  rts
  877               	
  878               	wipe_insert_coin: | $089E
@@ -1249,6 +1258,9 @@
  918 09bc 303C 170E 	    move.w    #0x170E,d0                        | screen col,row
  919 09c0 41FA 0295 	    lea       xevious_logo_flashing_pt6,a0
  920 09c4 7E13      	    moveq     #19,d7                            | string length
+68K GAS  src/xevious_main.68k 			page 22
+
+
  921 09c6 6100 0BCC 	    jbsr       display_string
  922 09ca 303C 170F 	    move.w    #0x170F,d0                        | screen col,row
  923 09ce 41FA 029A 	    lea       xevious_logo_flashing_pt7,a0
@@ -1258,9 +1270,6 @@
  927 09dc 323C 00F9 	    move.w    #0xf9,d1                          | tile
  928 09e0 6100 0BFA 	    jbsr       display_char
  929 09e4 7404      	    moveq     #BANK_BG_COLORRAM,d2
-68K GAS  src/xevious_main.68k 			page 22
-
-
  930 09e6 303C 1509 	    move.w    #0x1509,d0                        | screen col,row
  931 09ea 720D      	    moveq     #0x0D,d1                          | attr
  932 09ec 7E12      	    moveq     #18,d7                            | string length
@@ -1309,6 +1318,9 @@
  975 0a6c 303C 170F 	    move.w    #0x170F,d0                        | screen col,row
  976 0a70 7218      	    moveq     #0x18,d1                          | attr
  977 0a72 7E02      	    moveq     #2,d7                             | string length
+68K GAS  src/xevious_main.68k 			page 23
+
+
  978 0a74 6100 0B92 	    jbsr       display_char_B_times
  979 0a78 7219      	    moveq     #0x19,d1                          | attr
  980 0a7a 6100 0B60 	    jbsr       display_char
@@ -1318,9 +1330,6 @@
  984 0a86 303C 1510 	    move.w    #0x1510,d0                        | screen col,row
  985 0a8a 7218      	    moveq     #0x18,d1                          | attr
  986 0a8c 6100 0B4E 	    jbsr       display_char
-68K GAS  src/xevious_main.68k 			page 23
-
-
  987 0a90 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  988 0a92 303C 150B 	    move.w    #0x150B,d0                        | screen col,row
  989 0a96 41FA 0122 	    lea       xevious_logo_flashing_pt8,a0
@@ -1369,6 +1378,9 @@
  1032 0b10 6000 0AF6 	    jra       display_char_B_times
  1033               	strSUPER:       
  1034 0b14 1C1E 190E 	    .byte 0x1C, 0x1E, 0x19, 0xE, 0x1B           | "SUPER"
+68K GAS  src/xevious_main.68k 			page 24
+
+
  1034      1B
  1035 0b19 00        	    .align 2
  1036               	display_xevious_logo_yellow: | $09E8
@@ -1378,9 +1390,6 @@
  1039 0b22 61D2      	    jbsr       display_SUPER
  1040               	0:
  1041 0b24 7408      	    moveq     #BANK_FG_VIDEORAM,d2
-68K GAS  src/xevious_main.68k 			page 24
-
-
  1042 0b26 303C 160A 	    move.w    #0x160A,d0                        | screen col,row
  1043 0b2a 41FA 014F 	    lea       xevious_logo_yellow_pt1,a0
  1044 0b2e 7E13      	    moveq     #19,d7                            | string length
@@ -1429,6 +1438,9 @@
  1087               	xevious_logo_flashing_pt8:
  1088 0bba 2A51 5253 	    .byte 0x2A, 0x51, 0x52, 0x53, 0x52, 0x54, 0x55, 0x56, 0x24, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C,
  1088      5254 5556 
+68K GAS  src/xevious_main.68k 			page 25
+
+
  1088      2457 5859 
  1088      5A5B 5C5D 
  1089 0bca 52        	    .byte 0x52
@@ -1438,9 +1450,6 @@
  1091      6566 6768 
  1091      696A 
  1092               	xevious_logo_flashing_pt10:
-68K GAS  src/xevious_main.68k 			page 25
-
-
  1093 0bd9 6B6C 6D6E 	    .byte 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,
  1093      6F70 7172 
  1093      7374 7576 
@@ -1489,6 +1498,9 @@
  1114               	xevious_logo_flashing_pt7:
  1115 0c6a F1F2 BBF3 	    .byte 0xF1, 0xF2, 0xBB, 0xF3, 0xF4, 0xF4, 0xF4, 0xF4, 0xF5, 0xF6, 0xF6, 0xF6, 0xF7, 0xF4, 0xF4,
  1115      F4F4 F4F4 
+68K GAS  src/xevious_main.68k 			page 26
+
+
  1115      F5F6 F6F6 
  1115      F7F4 F4F4 
  1116 0c7a F8        	    .byte 0xF8
@@ -1498,9 +1510,6 @@
  1118      8791 9293 
  1118      9487 9596 
  1119 0c8b 9798 99   	    .byte 0x97, 0x98, 0x99
-68K GAS  src/xevious_main.68k 			page 26
-
-
  1120               	xevious_logo_yellow_pt2:
  1121 0c8e 9A9B 9C9D 	    .byte 0x9A, 0x9B, 0x9C, 0x9D, 0x9C, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
  1121      9C9E 9FA0 
@@ -1549,6 +1558,9 @@
  1143 0d0a 17        	    .byte 0x17
  1144               	    
  1145 0d0b 00        	    .align 4
+68K GAS  src/xevious_main.68k 			page 27
+
+
  1146               	one_only_one_or_two_str_tbl:
  1147 0d0c 0000 0000 	    .long strONE_OR_TWO_PLAYERS
  1148 0d10 0000 0000 	    .long strONE_PLAYER_ONLY
@@ -1558,9 +1570,6 @@
  1150      220E 1B24 
  1150      1817 1522 
  1151 0d24 2424      	    .byte 0x24, 0x24
-68K GAS  src/xevious_main.68k 			page 27
-
-
  1152               	strONE_OR_TWO_PLAYERS:                          | "ONE OR TWO PLAYERS"
  1153 0d26 1817 0E24 	    .byte 0x18, 0x17, 0xE, 0x24, 0x18, 0x1B, 0x24, 0x1D, 0x20, 0x18, 0x24, 0x19, 0x15, 0xA, 0x22, 0
  1153      181B 241D 
@@ -1609,6 +1618,9 @@
  1185 0d80 0020      	    .word 0x20
  1186 0d82 0020      	    .word 0x20
  1187 0d84 0020      	    .word 0x20
+68K GAS  src/xevious_main.68k 			page 28
+
+
  1188 0d86 0030      	    .word 0x30
  1189 0d88 0020      	    .word 0x20
  1190 0d8a FFFF      	    .word 0xFFFF
@@ -1618,9 +1630,6 @@
  1194 0d90 0010      	    .word 0x10
  1195 0d92 0020      	    .word 0x20
  1196 0d94 0020      	    .word 0x20
-68K GAS  src/xevious_main.68k 			page 28
-
-
  1197 0d96 0020      	    .word 0x20
  1198 0d98 0020      	    .word 0x20
  1199 0d9a FFFF      	    .word 0xFFFF
@@ -1669,6 +1678,9 @@
  1234 0dfe 3ABC 0280 	    move.w    #0x0280,(_STATE,a5)               | state,attr
  1235 0e02 422D 0018 	    clr.b     (_TIMER,a5)                       | init timer
  1236 0e06 2CBC 0000 	    SET_REENTRY_ADDR_HERE
+68K GAS  src/xevious_main.68k 			page 29
+
+
  1236      0000 
  1237 0e0c 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x0f,a5          | sparkle object
  1237      0000 
@@ -1678,9 +1690,6 @@
  1240 0e1c 6716      	    jeq     animate_sparkle_moving            | yes, go
  1241 0e1e 102D 0018 	    move.b    (_TIMER,a5),d0
  1242 0e22 E208      	    lsr.b     #1,d0
-68K GAS  src/xevious_main.68k 			page 29
-
-
  1243 0e24 0200 0007 	    and.b     #7,d0
  1244 0e28 0600 0030 	    add.b     #0x30,d0                          | convert to sparkle sprite
  1245 0e2c 1B40 0014 	    move.b    d0,(_CODE,a5)
@@ -1729,6 +1738,9 @@
  1278 0ea6 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x0f,a5          | sparkle object
  1278      0000 
  1279 0eac 4215      	    clr.b     (_STATE,a5)                       | remove
+68K GAS  src/xevious_main.68k 			page 30
+
+
  1280 0eae 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  1280      0000 
  1281 0eb4 0839 0000 	    btst      #0,(countup_timer_1)              | timer expired?
@@ -1738,9 +1750,6 @@
  1283      0000 
  1284 0ec6 671A      	    jeq     exit_attract_mode_title_screen
  1285 0ec8 1039 0000 	    move.b    (countdown_timer_1),d0
-68K GAS  src/xevious_main.68k 			page 30
-
-
  1285      0000 
  1286 0ece 0240 0007 	    and.w     #7,d0                             | use timer for colour index
  1287 0ed2 41FA FECC 	    lea       xevious_flashing_logo_colour_tbl,a0
@@ -1789,6 +1798,9 @@
  1320      0000 
  1321 0f4e 4239 0000 	    clr.b     (flying_enemy_type_tbl_offset)
  1321      0000 
+68K GAS  src/xevious_main.68k 			page 31
+
+
  1322 0f54 4239 0000 	    clr.b     (num_bacura)
  1322      0000 
  1323 0f5a 4239 0000 	    clr.b     (bacura_inc_cnt)
@@ -1798,9 +1810,6 @@
  1325 0f66 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  1325      0000 
  1326 0f6c 4A39 0000 	    tst.b     (scroll_disabled)                 | disabled?
-68K GAS  src/xevious_main.68k 			page 31
-
-
  1326      0000 
  1327 0f72 6604      	    jne     exit_attract_mode_gameplay        | yes, done, exit
  1328 0f74 6000 F3E2 	    jra       flash_insert_coin_and_check_credits
@@ -1849,6 +1858,9 @@
  1363 0fd6 E149      	    lsl.w     #8,d1                             | shift smaller diff into high byte
  1364 0fd8 1400      	    move.b    d0,d2                             | save larger diff
  1365 0fda 7000      	    moveq     #0,d0
+68K GAS  src/xevious_main.68k 			page 32
+
+
  1366 0fdc 7E0F      	    moveq     #16-1,d7
  1367 0fde D241      	1:  add.w     d1,d1
  1368 0fe0 E310      	    roxl.b    #1,d0
@@ -1858,9 +1870,6 @@
  1372 0fe8 9002      	2:  sub.b     d2,d0
  1373 0fea 5241      	    addq.w    #1,d1
  1374 0fec 51CF FFF0 	3:  dbf       d7,1b
-68K GAS  src/xevious_main.68k 			page 32
-
-
  1375 0ff0 4E75      	    rts
  1376               	
  1377               	* *** UNUSED CODE/DATA $0E35-$EB1
@@ -1909,6 +1918,9 @@
  1419      0506 0809 
  1419      0A0B 0C0D 
  1419      0F10 1112 
+68K GAS  src/xevious_main.68k 			page 33
+
+
  1420 104c 1314 1516 	    .byte 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1D, 0x1E, 0x1F,
  1420      1718 1919 
  1420      1A1B 1C1D 
@@ -1918,9 +1930,6 @@
  1423               	
  1424               	* *** PROTECTION ROUTINTE $0F08-$0F4A
  1425               	* main_fn_6__protection
-68K GAS  src/xevious_main.68k 			page 33
-
-
  1426               	    
  1427               	* returns in d0
  1428               	pseudo_random_gen: | $0F4B
@@ -1969,6 +1978,9 @@
  1465               	flash_logo_and_high_score_table: | $1000
  1466 10c4 6100 F5C2 	    jbsr       clear_fg_to_transparent
  1467 10c8 6100 F5E8 	    jbsr       clear_bg_to_black
+68K GAS  src/xevious_main.68k 			page 34
+
+
  1468 10cc 6100 F892 	    jbsr       display_xevious_logo_flashing
  1469 10d0 6008      	    jra     display_high_score_table
  1470               	
@@ -1978,9 +1990,6 @@
  1474               	
  1475               	display_high_score_table: | $1011
  1476 10da 6100 04C6 	    jbsr       display_player_scores
-68K GAS  src/xevious_main.68k 			page 34
-
-
  1477 10de 6100 0460 	    jbsr       display_high_score_text
  1478 10e2 6100 052E 	    jbsr       display_high_score
  1479 10e6 303C 1615 	    move.w    #0x1615,d0                        | screen col,row
@@ -2029,6 +2038,9 @@
  1516 1172 6100 045E 	    jbsr       display_score
  1517 1176 303C 0B1C 	    move.w    #0x0B1C,d0                        | screen col,row
  1518 117a 41F9 0000 	    lea       high_score_3rd_name,a0
+68K GAS  src/xevious_main.68k 			page 35
+
+
  1518      0000 
  1519 1180 7E0A      	    moveq     #10,d7
  1520 1182 6100 0410 	    jbsr       display_string
@@ -2038,9 +2050,6 @@
  1524 1190 6100 0402 	    jbsr       display_string
  1525 1194 303C 141E 	    move.w    #0x141E,d0                        | screen col,row
  1526 1198 41F9 0000 	    lea       high_score_4th_msb,a0
-68K GAS  src/xevious_main.68k 			page 35
-
-
  1526      0000 
  1527 119e 6100 0432 	    jbsr       display_score
  1528 11a2 303C 0B1E 	    move.w    #0x0B1E,d0                        | screen col,row
@@ -2089,6 +2098,9 @@
  1561 120e 0549 3D   	    .byte 5, 0x49, 0x3D                         | "5th"
  1562               	    
  1563 1211 00        	    .align 2
+68K GAS  src/xevious_main.68k 			page 36
+
+
  1564               	
  1565               	init_high_score_table: | $10D9
  1566 1212 207A 0026 	    move.l    ROM_high_score_tbl_pointer(pc),a0
@@ -2098,9 +2110,6 @@
  1569 121e 12D8      	1:  move.b    (a0)+,(a1)+
  1570 1220 51CF FFFC 	    dbf       d7,1b
  1571 1224 41FA 0018 	    lea       ROM_high_score,a0
-68K GAS  src/xevious_main.68k 			page 36
-
-
  1572 1228 43F9 0000 	    lea       RAM_high_score,a1
  1572      0000 
  1573 122e 7E02      	    moveq     #3-1,d7
@@ -2149,6 +2158,9 @@
  1605      4339 4744 
  1605      3E39 
  1606 129b 0E1F 0E00 	    .byte 0xE, 0x1F, 0xE, 0, 0, 0
+68K GAS  src/xevious_main.68k 			page 37
+
+
  1606      0000 
  1607 12a1 0035 0016 	    .byte 0, 0x35, 0, 0x16, 0x3E, 0x48, 0x36, 0x49, 0x44, 0x24
  1607      3E48 3649 
@@ -2158,9 +2170,6 @@
  1609 12b1 0030 001C 	    .byte 0, 0x30, 0, 0x1C, 0x36, 0x4E, 0x36, 0x40, 0x36, 0x24
  1609      364E 3640 
  1609      3624 
-68K GAS  src/xevious_main.68k 			page 37
-
-
  1610 12bb 1650 2400 	    .byte 0x16, 0x50, 0x24, 0, 0, 0
  1610      0000 
  1611 12c1 0025 0016 	    .byte 0, 0x25, 0, 0x16, 0x3E, 0x44, 0x24, 0x1F, 0x3A, 0x3A
@@ -2209,6 +2218,9 @@
  1643 1328 6616      	    jne     move_high_score_entry_down        | higher, go
  1644 132a 5288      	    addq.l    #1,a0                         
  1645 132c 5289      	    addq.l    #1,a1                         
+68K GAS  src/xevious_main.68k 			page 38
+
+
  1646 132e 1211      	    move.b    (a1),d1                           
  1647 1330 B210      	    cmp.b     (a0),d1                           | next byte score higher?
  1648 1332 652A      	    jcs     score_lower_than_entry            | no, go
@@ -2218,9 +2230,6 @@
  1652 133a 1211      	    move.b    (a1),d1                           
  1653 133c B210      	    cmp.b     (a0),d1                           | LSB score higher?
  1654 133e 651E      	    jcs     score_lower_than_entry            | no, go
-68K GAS  src/xevious_main.68k 			page 38
-
-
  1655               	                                                
  1656               	move_high_score_entry_down: | $117E             
  1657 1340 41F9 0000 	    lea       RAM_test_result_final_score,a0    
@@ -2269,6 +2278,9 @@
  1695 13ba 41F9 0000 	    lea       high_score_1st_name,a0
  1695      0000 
  1696 13c0 7000      	    moveq     #0,d0
+68K GAS  src/xevious_main.68k 			page 39
+
+
  1697 13c2 1039 0000 	    move.b    (new_high_score_entry_index),d0
  1697      0000 
  1698 13c8 E948      	    lsl.w     #4,d0                             | x16
@@ -2278,9 +2290,6 @@
  1701 13d6 13FC 0080 	    move.b    #0x80,(countdown_timer_1)         | init timer
  1701      0000 0000 
  1702 13de 33C1 0000 	    move.w    d1,(name_entry_curr_char_screen_offset)
-68K GAS  src/xevious_main.68k 			page 39
-
-
  1702      0000 
  1703 13e4 23C8 0000 	    move.l    a0,(name_entry_ptr_curr_char)
  1703      0000 
@@ -2329,6 +2338,9 @@
  1738 1456 1010      	    move.b    (a0),d0                           | char
  1739 1458 5300      	    subq.b    #1,d0                             | dec
  1740 145a 0C00 0009 	    cmp.b     #9,d0                             | before 'A'?
+68K GAS  src/xevious_main.68k 			page 40
+
+
  1741 145e 6604      	    jne     2f                                | no, skip
  1742 1460 103C 0024 	    move.b    #0x24,d0                          | char=' '
  1743 1464 1080      	2:  move.b    d0,(a0)                           | save char
@@ -2338,9 +2350,6 @@
  1747 1468 6162      	    jbsr     check_lowercase
  1748 146a 10C1      	    move.b    d1,(a0)+                          | store new char
  1749 146c 23C8 0000 	    move.l    a0,(name_entry_ptr_curr_char)     | save ptr
-68K GAS  src/xevious_main.68k 			page 40
-
-
  1749      0000 
  1750 1472 3039 0000 	    move.w    (name_entry_curr_char_screen_offset),d0
  1750      0000 
@@ -2389,6 +2398,9 @@
  1785 14cc 1239 0000 	    move.b    (dswb),d1                         | inputs
  1785      0000 
  1786 14d2 7000      	    moveq     #0,d0
+68K GAS  src/xevious_main.68k 			page 41
+
+
  1787 14d4 E209      	    lsr.b     #1,d1                             | B2?
  1788 14d6 6504      	    jcs     1f                                | no, skip
  1789 14d8 103C 002C 	    move.b    #0x2c,d0                          | modififier for lowercase
@@ -2398,9 +2410,6 @@
  1792 14e4 D200      	    add.b     d0,d1                             | add modifier
  1793 14e6 4E75      	    rts
  1794               	
-68K GAS  src/xevious_main.68k 			page 41
-
-
  1795               	display_high_score_entry_screen: | $12A1
  1796 14e8 303C 1509 	    move.w    #0x1509,d0                        | screen col,row
  1797 14ec 41FA 0030 	    lea       strCONGRATULATIONS,a0
@@ -2449,6 +2458,9 @@
  1834               	* a1=1 byte beyond score
  1835               	* - still works with byte-swapped score
  1836               	set_score_to_9999990: | $1309
+68K GAS  src/xevious_main.68k 			page 42
+
+
  1837 155e 7E02      	    moveq     #3-1,d7
  1838 1560 133C 0099 	1:  move.b    #0x99,-(a1)
  1839 1564 51CF FFFA 	    dbf       d7,1b
@@ -2458,9 +2470,6 @@
  1843               	*check_1_2_for_new_high_score_and_update: | $1311
  1844               	*check_for_new_high_score_and_update: | $131A
  1845               	*check_new_high_score: | $131F
-68K GAS  src/xevious_main.68k 			page 42
-
-
  1846               	*update_high_score: | $1329
  1847               	*check_for_extra_solvalou: | $133A
  1848               	*award_extra_solvalou: | $1396
@@ -2509,6 +2518,9 @@
  1891 15a8 363C 0801 	    move.w    #0x0801,d3                        | screen col,row P2
  1892 15ac 4A39 0000 	    tst.b     (curr_player)                     | P1?
  1892      0000 
+68K GAS  src/xevious_main.68k 			page 43
+
+
  1893 15b2 6702      	    jeq     1f                                | yes, skip
  1894 15b4 C143      	    exg       d0,d3                             | use P2 offset
  1895 15b6 3F03      	1:  move.w    d3,-(a7)                          | save other offset
@@ -2518,9 +2530,6 @@
  1898 15c0 301F      	    move.w    (a7)+,d0                          | restore other offset
  1899 15c2 4A39 0000 	    tst.b     (two_player_game)                 | 2P game?
  1899      0000 
-68K GAS  src/xevious_main.68k 			page 43
-
-
  1900 15c8 6700 003A 	    jeq       display_7_spaces                  | no, skip
  1901 15cc 41F9 0000 	    lea       other_player_score_msb,a0
  1901      0000 
@@ -2569,6 +2578,9 @@
  1944               	display_high_score: | $1463
  1945 1612 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  1946 1614 303C 1101 	    move.w    #0x1101,d0                        | col,row
+68K GAS  src/xevious_main.68k 			page 44
+
+
  1947 1618 41F9 0000 	    lea       high_score_msb,a0
  1947      0000 
  1948 161e 60B2      	    jra       display_score
@@ -2578,9 +2590,6 @@
  1952 1620 7200      	    moveq     #0,d1
  1953 1622 1210      	    move.b    (a0),d1                           | byte
  1954 1624 E809      	    lsr.b     #4,d1                             | high nibble
-68K GAS  src/xevious_main.68k 			page 44
-
-
  1955 1626 6608      	    jne     1f
  1956 1628 7224      	    moveq     #0x24,d1                          | space
  1957 162a 5306      	    subq.b    #1,d6                             | dec pads
@@ -2629,6 +2638,9 @@
  1998 168a 3B7C 1420 	    move.w    #0x1420,(_CODE,a5)
  1998      0014 
  1999 1690 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x23,a5         | solvalou
+68K GAS  src/xevious_main.68k 			page 45
+
+
  1999      0000 
  2000 1696 3ABC 0200 	    move.w    #0x0200,(_STATE,a5)
  2001 169a 3B7C 5001 	    move.w    #0x5001,(_CODE,a5)
@@ -2638,9 +2650,6 @@
  2003 16a6 3B7C 0F00 	    move.w    #0x0F00,(_Y,a5)
  2003      000E 
  2004 16ac 6100 EAA2 	    jbsr       save_PC_to_fn_tbl_and_ret
-68K GAS  src/xevious_main.68k 			page 45
-
-
  2005 16b0 4A39 0000 	    tst.b     (scroll_disabled)
  2005      0000 
  2006 16b6 66BA      	    jne     main_fn_1__handle_solvalou
@@ -2689,6 +2698,9 @@
  2040 171c 1B7C 0030 	    move.b    #0x30,(_COLOUR,a5)
  2040      0015 
  2041 1722 6100 EA2C 	    jbsr       save_PC_to_fn_tbl_and_ret
+68K GAS  src/xevious_main.68k 			page 46
+
+
  2042 1726 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x23,a5          | solvalou
  2042      0000 
  2043 172c 4A39 0000 	    tst.b     (scroll_disabled)                 | disabled?
@@ -2698,9 +2710,6 @@
  2046 173a 5200      	    addq.b    #1,d0                             | inc timer    
  2047 173c 0240 0007 	    and.w     #7,d0                             | expired?
  2048 1740 1B40 0018 	    move.b    d0,(_TIMER,a5)
-68K GAS  src/xevious_main.68k 			page 46
-
-
  2049 1744 6634      	    jne     animate_solvalou_explosion        | no, go
  2050 1746 102D 0019 	    move.b    (_TIMER1,a5),d0
  2051 174a 5200      	    addq.b    #1,d0                             | inc timer1
@@ -2749,6 +2758,9 @@
  2088 17c6 4239 0000 	    clr.b     (solvalou_exploding)
  2088      0000 
  2089 17cc 6000 FEA4 	    jra       main_fn_1__handle_solvalou
+68K GAS  src/xevious_main.68k 			page 47
+
+
  2090 17d0 4E75      	9:  rts    
  2091               	
  2092               	* colour, sprite code
@@ -2758,9 +2770,6 @@
  2096 17d6 03C4      	    .byte 3, 0xC4
  2097 17d8 03C8      	    .byte 3, 0xC8
  2098 17da 00C2      	    .byte 0, 0xC2
-68K GAS  src/xevious_main.68k 			page 47
-
-
  2099 17dc 00C3      	    .byte 0, 0xC3
  2100 17de 03CC      	    .byte 3, 0xCC
  2101               	
@@ -2809,6 +2818,9 @@
  2142 183e 6504      	    jcs     4f                                | no, skip
  2143 1840 303C 1C00 	    move.w    #224*32,d0                        | set to 224
  2144 1844 3B40 000E 	4:  move.w    d0,(_Y,a5)        
+68K GAS  src/xevious_main.68k 			page 48
+
+
  2145 1848 4E75      	    rts
  2146               	
  2147               	handle_solvalou_inputs: | $15FE
@@ -2818,9 +2830,6 @@
  2150 1852 41F9 0000 	    lea       P1_inputs,a0
  2150      0000 
  2151 1858 7200      	    moveq     #0,d1
-68K GAS  src/xevious_main.68k 			page 48
-
-
  2152 185a 1239 0000 	    move.b    (curr_player),d1
  2152      0000 
  2153 1860 1030 1000 	    move.b    (a0,d1.w),d0                      | read inputs
@@ -2869,6 +2878,9 @@
  2191      0000 
  2192 18cc 1839 0000 	    move.b    (sprite_shadow_msb+2*0x23+1),d4   | solvalou spriteX
  2192      0000 
+68K GAS  src/xevious_main.68k 			page 49
+
+
  2193               	    
  2194 18d2 43F9 0000 	    lea       obj_tbl+_OBJSIZE*0x27,a1          | 1st bullet
  2194      0000 
@@ -2878,9 +2890,6 @@
  2197               	check_bullets_and_flying: | $1655
  2198 18e0 612A      	    jbsr     check_bullet_or_flying_hit_solvalou
  2199 18e2 6526      	    jcs     9f
-68K GAS  src/xevious_main.68k 			page 49
-
-
  2200 18e4 43E9 0020 	    lea       (_OBJSIZE,a1),a1                  | next object
  2201 18e8 548B      	    addq.l    #2,a3                             | next sprite coords
  2202 18ea 51CF FFF4 	    dbf       d7,check_bullets_and_flying
@@ -2929,6 +2938,9 @@
  2243 1948 5100      	    subq.b    #8,d0
  2244 194a 0600 0010 	    add.b     #16,d0
  2245 194e 4E75      	9:  rts
+68K GAS  src/xevious_main.68k 			page 50
+
+
  2246               	    
  2247               	handle_crosshairs: | $16B8
  2248 1950 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x21,a5          | bomb
@@ -2938,9 +2950,6 @@
  2251 195c 6702      	    jeq     1f                                | yes, skip
  2252 195e 7401      	    moveq     #1,d2
  2253 1960 0602 001F 	1:  add.b     #31,d2                            | save colour
-68K GAS  src/xevious_main.68k 			page 50
-
-
  2254 1964 7E00      	    moveq     #0,d7
  2255 1966 1239 0000 	    move.b    (countup_timer_1),d1
  2255      0000 
@@ -2989,6 +2998,9 @@
  2291               	check_targeted_ground_object: | $1704
  2292 19ca 0C15 0002 	    cmp.b     #2,(_STATE,a5)                    | object active?
  2293 19ce 66F6      	    jne     loc_1702                          | no, return
+68K GAS  src/xevious_main.68k 			page 51
+
+
  2294 19d0 1003      	    move.b    d3,d0                             | object spriteY shadow
  2295 19d2 9013      	    sub.b     (0,a3),d0                         | compare object spriteY
  2296 19d4 0400 000A 	    sub.b     #0x0a,d0
@@ -2998,9 +3010,6 @@
  2300 19e2 9004      	    sub.b     d4,d0
  2301 19e4 5B00      	    subq.b    #5,d0
  2302 19e6 0600 000A 	    add.b     #0x0a,d0                          | C = matches
-68K GAS  src/xevious_main.68k 			page 51
-
-
  2303 19ea 4E75      	9:  rts
  2304               	    
  2305               	main_fn_30__handle_shooting: | $1727
@@ -3049,6 +3058,9 @@
  2337 1a68 51CF FFEA 	    dbf       d7,3b                             | loop thru all bullets
  2338 1a6c 4239 0000 	    clr.b     (shot_flag)
  2338      0000 
+68K GAS  src/xevious_main.68k 			page 52
+
+
  2339 1a72 4E75      	9:  rts
  2340               	
  2341               	handle_shooting: | $1772
@@ -3058,9 +3070,6 @@
  2344 1a7c 43F9 0000 	    lea       P1_inputs,a1
  2344      0000 
  2345 1a82 0811 0005 	    btst.b    #5,(a1)                           | Button 1?
-68K GAS  src/xevious_main.68k 			page 52
-
-
  2346               	loc_1787:
  2347 1a86 41F9 0000 	    lea       shot_timer,a0
  2347      0000 
@@ -3109,6 +3118,9 @@
  2380               	* update shot
  2381 1af6 6100 01D2 	    jbsr       check_flying_enemies_shot
  2382 1afa 1039 0000 	    move.b    (countup_timer_1),d0
+68K GAS  src/xevious_main.68k 			page 53
+
+
  2382      0000 
  2383 1b00 1200      	    move.b    d0,d1                             | save a copy
  2384 1b02 0201 0001 	    and.b     #1,d1
@@ -3118,9 +3130,6 @@
  2388 1b10 1200      	    move.b    d0,d1                             | timer (again)
  2389 1b12 E209      	    lsr.b     #1,d1
  2390 1b14 0201 0001 	    and.b     #1,d1
-68K GAS  src/xevious_main.68k 			page 53
-
-
  2391 1b18 0601 0023 	    add.b     #0x23,d1
  2392 1b1c 1B41 0015 	    move.b    d1,(_COLOUR,a5)
  2393 1b20 E408      	    lsr.b     #2,d0                             | timer (again)
@@ -3169,6 +3178,9 @@
  2433               	    
  2434               	gen_random_bomb_press: | $185B
  2435 1b96 6100 F4C6 	    jbsr       pseudo_random_gen
+68K GAS  src/xevious_main.68k 			page 54
+
+
  2436 1b9a 6602      	    jne     9f
  2437 1b9c 6032      	    jra     init_bombing
  2438 1b9e 4E75      	9:  rts
@@ -3178,9 +3190,6 @@
  2442 1ba4 4A39 0000 	    tst.b     (scroll_disabled)                 | disabled?
  2442      0000 
  2443 1baa 6600 00F4 	    jne     9f                                | yes, return
-68K GAS  src/xevious_main.68k 			page 54
-
-
  2444 1bae 4A39 0000 	    tst.b     (solvalou_exploding)              | exploding?
  2444      0000 
  2445 1bb4 6600 00EA 	    jne     9f                                | yes, return
@@ -3229,6 +3238,9 @@
  2479               	* bomb active here
  2480 1c3c 43F9 0000 	    lea       obj_tbl+_OBJSIZE*0x21,a1          | bomb object
  2480      0000 
+68K GAS  src/xevious_main.68k 			page 55
+
+
  2481 1c42 5229 0018 	    addq.b    #1,(_TIMER,a1)                    | inc timer
  2482 1c46 1029 0018 	    move.b    (_TIMER,a1),d0
  2483 1c4a 0200 0007 	    and.b     #7,d0                             | time to animate?
@@ -3238,9 +3250,6 @@
  2487 1c58 670A      	    jeq     1f                                | no, skip
  2488 1c5a 5200      	    addq.b    #1,d0                             | inc timer
  2489 1c5c 1340 0019 	    move.b    d0,(_TIMER1,a1)                   | update timer
-68K GAS  src/xevious_main.68k 			page 55
-
-
  2490 1c60 5229 0014 	    addq.b    #1,(_CODE,a1)                     | animate sprite
  2491 1c64 1029 0018 	1:  move.b    (_TIMER,a1),d0
  2492 1c68 E408      	    lsr.b     #2,d0
@@ -3289,6 +3298,9 @@
  2529 1cd6 47F9 0000 	    lea       sprite_shadow_msb+2*0x3a,a3
  2529      0000 
  2530 1cdc 7E05      	    moveq     #6-1,d7                           | 6 enemies to check
+68K GAS  src/xevious_main.68k 			page 56
+
+
  2531 1cde 616E      	1:  jbsr     check_shot_hit_flying_enemy
  2532 1ce0 6432      	    jcc     loc_1972
  2533 1ce2 12BC 0003 	    move.b    #3,(_STATE,a1)                    | enemy hit
@@ -3298,9 +3310,6 @@
  2536 1cf0 6622      	    jne       loc_1972                          | yes, skip
  2537 1cf2 7000      	    moveq     #0,d0
  2538 1cf4 1029 0016 	    move.b    (_PTS,a1),d0                      | enemy points
-68K GAS  src/xevious_main.68k 			page 56
-
-
  2539 1cf8 41FA 2D52 	    lea       object_value_tbl,a0
  2540 1cfc 41F0 0000 	    lea       (a0,d0.w),a0                      | address of points value
  2541               	    *** do we really need to push a3?
@@ -3349,6 +3358,9 @@
  2580 1d60 640C      	    jcc     9f                                | no, exit
  2581 1d62 102B 0001 	    move.b    (1,a3),d0                         | enemy sprite X
  2582 1d66 9004      	    sub.b     d4,d0                             | compare to shot sprite X
+68K GAS  src/xevious_main.68k 			page 57
+
+
  2583 1d68 5100      	    subq.b    #8,d0
  2584 1d6a 0600 0010 	    add.b     #16,d0                            | C = hit
  2585 1d6e 4E75      	9:  rts
@@ -3358,9 +3370,6 @@
  2589 1d72 4E75      	    rts
  2590               	
  2591               	check_shot_hit_bacura: | $19CB
-68K GAS  src/xevious_main.68k 			page 57
-
-
  2592 1d74 0C11 0002 	    cmp.b     #2,(_STATE,a1)                    | active?
  2593 1d78 66F6      	    jne       loc_19C9                          | no, go
  2594 1d7a 1003      	    move.b    d3,d0                             | solvalou spriteY
@@ -3409,6 +3418,9 @@
  2631 1df4 4E75      	    rts
  2632               	
  2633               	loc_1A34:
+68K GAS  src/xevious_main.68k 			page 58
+
+
  2634 1df6 4A00      	    tst.b     d0                                | clear C flag
  2635 1df8 4E75      	    rts
  2636               	    
@@ -3418,9 +3430,6 @@
  2640 1e00 1003      	    move.b    d3,d0                             | bomb target spriteY
  2641 1e02 9013      	    sub.b     (0,a3),d0                         | compare object spriteY
  2642 1e04 0400 000A 	    sub.b     #10,d0
-68K GAS  src/xevious_main.68k 			page 58
-
-
  2643 1e08 0600 0014 	    add.b     #20,d0                            | hit?
  2644 1e0c 640C      	    jcc     9f                                | no, return
  2645 1e0e 102B 0001 	    move.b    (1,a3),d0                         | bomb target spriteX
@@ -3469,6 +3478,9 @@
  2678      0014 
  2679 1e8c 2D7C 0000 	    move.l    #garu_barra_handler,(4,a6)        | patch handler for next object
  2679      0000 0004 
+68K GAS  src/xevious_main.68k 			page 59
+
+
  2680 1e94 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  2680      0000 
  2681 1e9a 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
@@ -3478,9 +3490,6 @@
  2684               	
  2685               	* centre of Garu Barra
  2686               	garu_barra_handler: | $1ADD
-68K GAS  src/xevious_main.68k 			page 59
-
-
  2687 1eaa 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
  2688 1eae 6700 1B28 	    jeq       explode_and_remove_object         | yes, go
  2689 1eb2 6100 19EA 	    jbsr       scroll_sprite_X
@@ -3529,6 +3538,9 @@
  2726               	* this would fire either - unfinished?          
  2727               	handle_19_Logram_unused: | $1B45
  2728 1f0a 4E71      	    nop
+68K GAS  src/xevious_main.68k 			page 60
+
+
  2729               	
  2730               	handle_logram_init: | $1B49
  2731 1f0c 1ABC 0002 	    move.b    #2,(_STATE,a5)
@@ -3538,9 +3550,6 @@
  2734 1f1a 1B7C 001B 	    move.b    #27,(_PTS,a5)                     | 300 pts
  2734      0016 
  2735 1f20 6100 F13C 	    jbsr       pseudo_random_gen
-68K GAS  src/xevious_main.68k 			page 60
-
-
  2736 1f24 C02D 001C 	    and.b     (_FFREQ,a5),d0                    | scale with mask
  2737 1f28 5200      	    addq.b    #1,d0
  2738 1f2a 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | init timer
@@ -3589,6 +3598,9 @@
  2776 1faa 5200      	    addq.b    #1,d0
  2777 1fac 1B40 0018 	    move.b    d0,(_TIMER,a5)
  2778 1fb0 2CBC 0000 	    SET_REENTRY_ADDR handle_logram_main
+68K GAS  src/xevious_main.68k 			page 61
+
+
  2778      0000 
  2779 1fb6 60DA      	    jra     set_logram_colour
  2780               	    
@@ -3598,9 +3610,6 @@
  2783 1fbe 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
  2784 1fc2 6700 196A 	    jeq       handle_bomb_explosion             | yes, go
  2785 1fc6 6100 18D6 	    jbsr       scroll_sprite_X
-68K GAS  src/xevious_main.68k 			page 61
-
-
  2786 1fca 6000 1872 	    jra       add_obj_handler
  2787               	
  2788               	| sprite codes for when firing
@@ -3649,6 +3658,9 @@
  2826 202e 6000 180E 	    jra       add_obj_handler
  2827               	
  2828               	* Garu Derota (Daiza) 2,000 pts
+68K GAS  src/xevious_main.68k 			page 62
+
+
  2829               	handle_21_Garu_Derota: | $1C61
  2830 2032 1ABC 0003 	    move.b    #3,(_STATE,a5)                    | can't be destroyed
  2831 2036 1B7C 0003 	    move.b    #3,(_ATTR,a5)                     | size=2x2
@@ -3658,9 +3670,6 @@
  2833      5000 
  2834 2046 4235 5001 	    clr.b     (_ATTR,a5,d5.w)                   | size=1x1
  2835 204a 1BBC 0001 	    move.b    #1,(_X,a5,d5.w)                   | MSB
-68K GAS  src/xevious_main.68k 			page 62
-
-
  2835      5008 
  2836 2050 302D 000E 	    move.w    (_Y,a5),d0                        | 1st object spriteY
  2837 2054 0440 0100 	    sub.w     #0x0100,d0                        | adjust
@@ -3709,6 +3718,9 @@
  2873 20c4 7E04      	    moveq     #5-1,d7
  2874 20c6 22D8      	1:  move.l    (a0)+,(a1)+                       | patch handler address
  2875 20c8 51CF FFFC 	    dbf       d7,1b
+68K GAS  src/xevious_main.68k 			page 63
+
+
  2876               	    * initialise state, attr for all objects
  2877 20cc 1ABC 0002 	    move.b    #2,(_STATE,a5)
  2878 20d0 422D 0001 	    clr.b     (_ATTR,a5)                        | size=1x1
@@ -3718,9 +3730,6 @@
  2882 20dc 3295      	2:  move.w    (_STATE,a5),(_STATE,a1)           | copy state, attr
  2883 20de 43E9 0020 	    lea       (_OBJSIZE,a1),a1                  | next object
  2884 20e2 51CF FFF8 	    dbf       d7,2b
-68K GAS  src/xevious_main.68k 			page 63
-
-
  2885               	    * patch ptr to centre object into outer object tables
  2886               	    * so the points value of the centre can be updated
  2887               	    * if an outer logram is hit (first)
@@ -3769,6 +3778,9 @@
  2927 2158 0000 0180 	    .word 0, 0x180, 0x180, 0x300, 0x180
  2927      0180 0300 
  2927      0180 
+68K GAS  src/xevious_main.68k 			page 64
+
+
  2928               	    
  2929               	handle_boza_logram_centre: | $1D5B
  2930 2162 1B7C 003A 	    move.b    #0x3a,(_CODE,a5)
@@ -3778,9 +3790,6 @@
  2932 216e 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  2932      0000 
  2933 2174 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
-68K GAS  src/xevious_main.68k 			page 64
-
-
  2934 2178 6710      	    jeq     destroy_all_outer_lograms         | yes, go
  2935 217a 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  2935      0000 0015 
@@ -3829,6 +3838,9 @@
  2973 21f8 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  2973      0000 
  2974 21fe 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
+68K GAS  src/xevious_main.68k 			page 65
+
+
  2975 2202 673E      	    jeq     update_centre_points_value        | yes, go
  2976 2204 522D 0018 	    addq.b    #1,(_TIMER,a5)
  2977 2208 102D 0018 	    move.b    (_TIMER,a5),d0
@@ -3838,9 +3850,6 @@
  2981 2216 102D 0018 	    move.b    (_TIMER,a5),d0
  2982 221a E408      	1:  lsr.b     #2,d0
  2983 221c 0200 0007 	    and.b     #7,d0
-68K GAS  src/xevious_main.68k 			page 65
-
-
  2984 2220 0C00 0007 	    cmp.b     #7,d0                             | start next shot timer?
  2985 2224 672A      	    jeq       boza_logram_init_shot_timer       | yes, go
  2986 2226 207C 0000 	    movea.l   #boza_logram_outer_sprite_tbl,a0
@@ -3889,6 +3898,9 @@
  3022 2282 1ABC 0002 	    move.b    #2,(_STATE,a5)
  3023 2286 422D 0001 	    clr.b     (_ATTR,a5)                        | bank=0,size=1x1
  3024               	    .ifne OPT_REVEAL_SOL_TOWER
+68K GAS  src/xevious_main.68k 			page 66
+
+
  3025               		jra	0f
  3026               		.endif
  3027 228a 4A39 0000 		tst.b	reveal_sol_tower_flag
@@ -3898,9 +3910,6 @@
  3030 2296 600E      		jra	1f
  3031               	0:
  3032 2298 1B7C 00B6 	    move.b    #0xb6,(_CODE,a5)
-68K GAS  src/xevious_main.68k 			page 66
-
-
  3032      0014 
  3033 229e 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3033      0000 0015 
@@ -3949,6 +3958,9 @@
  3068 2318 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3068      0000 
  3069 231e 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
+68K GAS  src/xevious_main.68k 			page 67
+
+
  3070 2322 6700 160A 	    jeq       handle_bomb_explosion             | yes, go
  3071 2326 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3071      0000 0015 
@@ -3958,9 +3970,6 @@
  3075               	* these are sprite codes for the Sol Tower as it rises
  3076               	sol_tower_animation_tbl: | $1EF1
  3077 2336 A8        	    .byte 0xA8
-68K GAS  src/xevious_main.68k 			page 67
-
-
  3078 2337 A9        	    .byte 0xA9
  3079 2338 AA        	    .byte 0xAA
  3080 2339 AB        	    .byte 0xAB
@@ -4009,6 +4018,9 @@
  3117 2394 5440      	    addq.w    #2,d0                             | ddY=2
  3118               	    
  3119               	 brag_spario_update_dY: | $1F33
+68K GAS  src/xevious_main.68k 			page 68
+
+
  3120               	 * note it doesn't store ddY
  3121 2396 D16D 0010 	    add.w     d0,(_dY,a5)                       | update dY
  3122 239a 302D 000C 	    move.w    (_ddX,a5),d0
@@ -4018,9 +4030,6 @@
  3125 23a8 0200 000C 	    and.b     #0x0c,d0                          | flipy,flipx
  3126 23ac 0600 0080 	    add.b     #0x80,d0                          | bank=1
  3127 23b0 1B40 0001 	    move.b    d0,(_ATTR,a5)
-68K GAS  src/xevious_main.68k 			page 68
-
-
  3128 23b4 6100 14A4 	    jbsr       move_object_dX_dY
  3129 23b8 6000 1484 	    jra       add_obj_handler
  3130               	
@@ -4069,6 +4078,9 @@
  3167 2418 0839 0001 	    btst.b    #1,(dswb)                         | awards bonus life?
  3167      0000 0000 
  3168 2420 660A      	    jne       inc_num_solvalou                  | yes, go
+68K GAS  src/xevious_main.68k 			page 69
+
+
  3169               	score_10000_for_bonus_flag_tank: | $1ECF (super)
  3170 2422 41FA 2667 	    lea       pts_10000,a0                      | 10,000 pts
  3171 2426 6100 DC14 	    jbsr       add_to_score
@@ -4078,9 +4090,6 @@
  3175 242c 5239 0000 	    addq.b    #1,(curr_player_solvalou_left)
  3175      0000 
  3176 2432 6100 EC68 	    jbsr       display_solvalou_left
-68K GAS  src/xevious_main.68k 			page 69
-
-
  3177               	    ** fall thru
  3178               	    
  3179               	remove_bonus_flag: | $1FC3
@@ -4129,6 +4138,9 @@
  3216 24a6 1B7C 0002 	    move.b    #2,(_COLOUR,a5)
  3216      0015 
  3217 24ac 6100 DCA2 	    jbsr       save_PC_to_fn_tbl_and_ret
+68K GAS  src/xevious_main.68k 			page 70
+
+
  3218 24b0 6100 13A8 	    jbsr       move_object_dX_dY
  3219 24b4 6000 1388 	    jra       add_obj_handler
  3220               	jet_sprite_tbl: 
@@ -4138,9 +4150,6 @@
  3224 24be 03E0      	    .byte 3, 0xE0
  3225 24c0 03E4      	    .byte 3, 0xE4
  3226 24c2 03E8      	    .byte 3, 0xE8
-68K GAS  src/xevious_main.68k 			page 70
-
-
  3227 24c4 03EC      	    .byte 3, 0xEC
  3228               	jet_dydx_tbl:   
  3229 24c6 2435      	    .byte 0x24, 0x35
@@ -4189,6 +4198,9 @@
  3264 2542 6100 135A 	    jbsr       scroll_sprite_X    
  3265 2546 6000 12F6 	    jra       add_obj_handler
  3266               	* Bridge
+68K GAS  src/xevious_main.68k 			page 71
+
+
  3267               	* - benign object to 'allow' Domograms to cross a river
  3268               	handle_5D_Bridge:
  3269 254a 1ABC 0003 	    move.b    #3,(_STATE,a5)                    | indestructible
@@ -4198,9 +4210,6 @@
  3271      0015 
  3272 255a 1B7C 00FC 	    move.b    #0xfc,(_CODE,a5)
  3272      0014 
-68K GAS  src/xevious_main.68k 			page 71
-
-
  3273 2560 6100 DBEE 	    jbsr       save_PC_to_fn_tbl_and_ret
  3274 2564 6100 1338 	    jbsr       scroll_sprite_X
  3275 2568 6000 12D4 	    jra       add_obj_handler
@@ -4249,6 +4258,9 @@
  3314 25d4 6000 1268 	    jra       add_obj_handler
  3315               	
  3316               	toroid_swing_left: | $205F
+68K GAS  src/xevious_main.68k 			page 72
+
+
  3317 25d8 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3317      0000 
  3318 25de 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
@@ -4258,9 +4270,6 @@
  3322 25ee E208      	    lsr.b     #1,d0
  3323 25f0 0240 0007 	    and.w     #7,d0
  3324 25f4 5000      	    addq.b    #8,d0                             | calc sprite
-68K GAS  src/xevious_main.68k 			page 72
-
-
  3325 25f6 1B40 0014 	    move.b    d0,(_CODE,a5)
  3326 25fa 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3326      0000 0015 
@@ -4309,6 +4318,9 @@
  3365               	handle_0F_Torkan: | $20E7
  3366 2662 1ABC 0002 	    move.b    #2,(_STATE,a5)
  3367 2666 422D 0001 	    clr.b     (_ATTR,a5)                        | size=1x1
+68K GAS  src/xevious_main.68k 			page 73
+
+
  3368 266a 6100 153C 	    jbsr       gen_random_Y_store_obj
  3369 266e 45FA 249E 	    lea       angle_dX_dY_tbl,a2
  3370 2672 6100 14FA 	    jbsr       calc_dX_dY_for_vector_to_solvalou
@@ -4318,9 +4330,6 @@
  3372      0014 
  3373 2682 6100 E9DA 	    jbsr       pseudo_random_gen                 | rnd shot timer
  3374 2686 0200 003F 	    and.b     #0x3f,d0
-68K GAS  src/xevious_main.68k 			page 73
-
-
  3375 268a 0600 0040 	    add.b     #0x40,d0
  3376 268e 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | init timer
  3377 2692 6100 DABC 	    jbsr       save_PC_to_fn_tbl_and_ret
@@ -4369,6 +4378,9 @@
  3415 2722 6700 11A0 	    jeq       flying_enemy_hit                  | yes, go
  3416 2726 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3416      0000 0015 
+68K GAS  src/xevious_main.68k 			page 74
+
+
  3417 272e 6100 112A 	    jbsr       move_object_dX_dY
  3418 2732 6000 110A 	    jra       add_obj_handler
  3419               	
@@ -4378,9 +4390,6 @@
  3423 2736 1ABC 0002 	    move.b    #2,(_STATE,a5)
  3424 273a 422D 0001 	    clr.b     (_ATTR,a5)                        | bank=0,size=1x1
  3425 273e 1B7C 0028 	    move.b    #40,(_X,a5)                       | MSB
-68K GAS  src/xevious_main.68k 			page 74
-
-
  3425      0008 
  3426 2744 6100 1478 	    jbsr       gen_rnd_spriteY
  3427 2748 600C      	    jra     zoshi_0D_init
@@ -4429,6 +4438,9 @@
  3465      0000 0015 
  3466 27cc 6100 108C 	    jbsr       move_object_dX_dY
  3467 27d0 6000 106C 	    jra       add_obj_handler
+68K GAS  src/xevious_main.68k 			page 75
+
+
  3468               	
  3469               	* Zoshi (Octopus) 70 pts
  3470               	* shoots in a random direction
@@ -4438,9 +4450,6 @@
  3474 27dc 6100 13CA 	    jbsr       gen_random_Y_store_obj
  3475 27e0 45FA 236C 	    lea       angle_dX_dY_toroid_tbl,a2
  3476 27e4 6100 1388 	    jbsr       calc_dX_dY_for_vector_to_solvalou
-68K GAS  src/xevious_main.68k 			page 75
-
-
  3477 27e8 1B7C 000C 	    move.b    #12,(_PTS,a5)                     | 70 pts
  3477      0016 
  3478 27ee 1B79 0000 	    move.b    (ffreq_mask_zoshi),(_FFREQ,a5)
@@ -4489,6 +4498,9 @@
  3517 2870 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3517      0000 0015 
  3518 2878 6100 0FE0 	    jbsr       move_object_dX_dY    
+68K GAS  src/xevious_main.68k 			page 76
+
+
  3519 287c 6000 0FC0 	    jra       add_obj_handler
  3520               	
  3521               	jara_set_dir: | $22C4
@@ -4498,9 +4510,6 @@
  3525               	jara_moving_right: | $22C8
  3526 2884 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3526      0000 
-68K GAS  src/xevious_main.68k 			page 76
-
-
  3527 288a 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
  3528 288e 6700 1034 	    jeq       flying_enemy_hit                  | yes, go
  3529 2892 522D 0018 	    addq.b    #1,(_TIMER,a5)
@@ -4549,6 +4558,9 @@
  3569 2906 6606      	    jne     1f
  3570 2908 7000      	    moveq     #0,d0
  3571 290a 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | re-init timer
+68K GAS  src/xevious_main.68k 			page 77
+
+
  3572 290e 41FA 0022 	1:  lea       jara_left_sprite_tbl,a0
  3573 2912 1B70 0000 	    move.b    (a0,d0.w),(_CODE,a5)
  3573      0014 
@@ -4558,9 +4570,6 @@
  3576 2924 6100 0F34 	    jbsr       move_object_dX_dY
  3577 2928 6000 0F14 	    jra       add_obj_handler
  3578               	    
-68K GAS  src/xevious_main.68k 			page 77
-
-
  3579               	jara_right_sprite_tbl: | $235C
  3580 292c A0A1 A2A3 	    .byte 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
  3580      A4A5 
@@ -4609,6 +4618,9 @@
  3617      0014 
  3618 299c 6100 E6C0 	    jbsr       pseudo_random_gen
  3619 29a0 0600 003F 	    add.b     #63,d0
+68K GAS  src/xevious_main.68k 			page 78
+
+
  3620 29a4 0600 0030 	    add.b     #48,d0                            | 48-111
  3621 29a8 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | init shot timer
  3622 29ac 1B79 0000 	    move.b    (ffreq_mask_kapi),(_FFREQ,a5)
@@ -4618,9 +4630,6 @@
  3625 29bc 6700 0F06 	    jeq       flying_enemy_hit                  | yes, go
  3626 29c0 532D 0018 	    subq.b    #1,(_TIMER,a5)                    | time to shoot?
  3627 29c4 6710      	    jeq     kapi_10_fire                      | yes, g0
-68K GAS  src/xevious_main.68k 			page 78
-
-
  3628 29c6 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)   
  3628      0000 0015 
  3629 29ce 6100 0E8A 	    jbsr       move_object_dX_dY   
@@ -4669,6 +4678,9 @@
  3667 2a5c 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3667      0000 0015 
  3668 2a64 302D 0012 	    move.w    (_ddY,a5),d0
+68K GAS  src/xevious_main.68k 			page 79
+
+
  3669 2a68 D16D 0010 	    add.w     d0,(_dY,a5)                       | update dY
  3670 2a6c 556D 000A 	    subq.w    #2,(_dX,a5)
  3671 2a70 6100 0DE8 	    jbsr       move_object_dX_dY   
@@ -4678,9 +4690,6 @@
  3675               	handle_11_Terrazi: | $2487
  3676 2a78 1ABC 0002 	    move.b    #2,(_STATE,a5)
  3677 2a7c 422D 0001 	    clr.b     (_ATTR,a5)                        | size=1x1
-68K GAS  src/xevious_main.68k 			page 79
-
-
  3678 2a80 6100 113C 	    jbsr       gen_rnd_spriteY
  3679 2a84 45FA 2048 	    lea       angle_dX_dY_terrazi_torkan_tbl,a2
  3680 2a88 6100 10E4 	    jbsr       calc_dX_dY_for_vector_to_solvalou
@@ -4729,6 +4738,9 @@
  3716 2b12 0C00 0007 	    cmp.b     #7,d0                             | time to animate sprite?
  3717 2b16 6722      	    jeq     terrazi_main_cont_2               | no, go
  3718 2b18 5200      	    addq.b    #1,d0                             | calc sprite code
+68K GAS  src/xevious_main.68k 			page 80
+
+
  3719 2b1a 1B40 0014 	    move.b    d0,(_CODE,a5)
  3720 2b1e 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
  3720      0000 0015 
@@ -4738,9 +4750,6 @@
  3724 2b32 6100 0D26 	    jbsr       move_object_dX_dY
  3725 2b36 6000 0D06 	    jra       add_obj_handler    
  3726               	
-68K GAS  src/xevious_main.68k 			page 80
-
-
  3727               	terrazi_main_cont_2: | $2535
  3728 2b3a 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3728      0000 
@@ -4789,6 +4798,9 @@
  3765 2bc0 1B79 0000 	    move.b    (pulsing_colour_2),(_COLOUR,a5)
  3765      0000 0015 
  3766 2bc8 6100 0C90 	    jbsr       move_object_dX_dY
+68K GAS  src/xevious_main.68k 			page 81
+
+
  3767 2bcc 6000 0C70 	    jra       add_obj_handler
  3768               	
  3769               	zakato_shoot: | $25B9
@@ -4798,9 +4810,6 @@
  3772 2bda 6100 0E82 	    jbsr       init_new_bullet
  3773               	    
  3774               	zakato_explode_and_remove: | $25C2
-68K GAS  src/xevious_main.68k 			page 81
-
-
  3775 2bde 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3775      0000 
  3776 2be4 6100 0222 	    jbsr       zakato_explode                    | done exploding?
@@ -4849,6 +4858,9 @@
  3812               	handle_14_Zakato_fast: | $262E
  3813 2c58 6100 024A 	    jbsr       init_teleport
  3814 2c5c 1B7C 0012 	    move.b    #18,(_PTS,a5)                     | 150 pts
+68K GAS  src/xevious_main.68k 			page 82
+
+
  3814      0016 
  3815 2c62 6100 D4EC 	    jbsr       save_PC_to_fn_tbl_and_ret
  3816 2c66 6100 01EC 	    jbsr       zakato_teleport                   | done teleporting?
@@ -4858,9 +4870,6 @@
  3820               	
  3821               	zakato_14_main: | $263F
  3822 2c74 6100 E3E8 	    jbsr       pseudo_random_gen
-68K GAS  src/xevious_main.68k 			page 82
-
-
  3823 2c78 0240 003F 	    and.w     #0x3f,d0
  3824 2c7c 5200      	    addq.b    #1,d0
  3825 2c7e 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | init shot timer
@@ -4909,6 +4918,9 @@
  3860 2d02 1039 0000 	    move.b    (obj_tbl+_OBJSIZE*0x23+_Y),d0     | Solvalou spriteY MSB
  3860      0000 
  3861 2d08 902D 000E 	    sub.b     (_Y,a5),d0                        | MSB
+68K GAS  src/xevious_main.68k 			page 83
+
+
  3862 2d0c 5900      	    subq.b    #4,d0
  3863 2d0e 5000      	    addq.b    #8,d0                             | close enough?
  3864 2d10 6500 FEBE 	    jcs     zakato_shoot                      | yes, go
@@ -4918,9 +4930,6 @@
  3867 2d20 6000 0B1C 	    jra       add_obj_handler
  3868               	
  3869               	* Brag Zakato (Cracker) 600 pts
-68K GAS  src/xevious_main.68k 			page 83
-
-
  3870               	* explodes based on random timer
  3871               	handle_16_Brag_Zakato_rnd: | $26DF
  3872 2d24 6100 017E 	    jbsr       init_teleport
@@ -4969,6 +4978,9 @@
  3909               	    
  3910               	brag_zakato_17_main: | $2747
  3911 2da6 1B7C 0012 	    move.b    #0x12,(_CODE,a5)
+68K GAS  src/xevious_main.68k 			page 84
+
+
  3911      0014 
  3912 2dac 45FA 1D60 	    lea       angle_dX_dY_tbl,a2
  3913 2db0 6100 0DBC 	    jbsr       calc_dX_dY_for_vector_to_solvalou
@@ -4978,9 +4990,6 @@
  3916 2dbe 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  3916      0000 
  3917 2dc4 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
-68K GAS  src/xevious_main.68k 			page 84
-
-
  3918 2dc8 6700 0AFA 	    jeq       flying_enemy_hit                  | yes, go   
  3919 2dcc 1039 0000 	    move.b    (obj_tbl+_OBJSIZE*0x23+_Y),d0     | solvalou spriteY MSB
  3919      0000 
@@ -5029,6 +5038,9 @@
  3959               	
  3960               	* sprite (code, attr) pairs
  3961               	zakato_exploding_sprite_tbl: | $27DB
+68K GAS  src/xevious_main.68k 			page 85
+
+
  3962 2e48 0480      	    .byte 4, 0x80
  3963 2e4a 0580      	    .byte 5, 0x80
  3964 2e4c 0680      	    .byte 6, 0x80
@@ -5038,9 +5050,6 @@
  3968               	
  3969               	zakato_teleport: | $27E7
  3970 2e54 522D 0018 	    addq.b    #1,(_TIMER,a5)
-68K GAS  src/xevious_main.68k 			page 85
-
-
  3971 2e58 102D 0018 	    move.b    (_TIMER,a5),d0
  3972 2e5c 0C00 0008 	    cmp.b     #8,d0
  3973 2e60 6608      	    jne     zakato_teleport_sparkles
@@ -5089,6 +5098,9 @@
  4013 2ecc 4EB9 0000 	    jsr       osd_sound_start
  4013      0000 
  4014 2ed2 4E75      	    rts
+68K GAS  src/xevious_main.68k 			page 86
+
+
  4015               	    
  4016               	* Garu Zakota (Bullseye) 1,000/500 pts
  4017               	* - jig exploding bomb preceding the later Andor Geneses
@@ -5098,9 +5110,6 @@
  4020      0001 
  4021 2ede 6100 0CC8 	    jbsr       gen_random_Y_store_obj
  4022 2ee2 1B7C 0013 	    move.b    #0x13,(_CODE,a5)
-68K GAS  src/xevious_main.68k 			page 86
-
-
  4022      0014 
  4023 2ee8 1B7C 0030 	    move.b    #48,(_PTS,a5)                     | 1,000 pts
  4023      0016 
@@ -5149,6 +5158,9 @@
  4060               	handle_31_right_sheonite: | $28DD
  4061 2f66 1ABC 0003 	    move.b    #3,(_STATE,a5)                    | indestructible
  4062 2f6a 422D 0001 	    clr.b     (_ATTR,a5)                        | bank=0, size=1x1
+68K GAS  src/xevious_main.68k 			page 87
+
+
  4063 2f6e 1B7C 0030 	    move.b    #0x30,(_Y,a5)                     | MSB
  4063      000E 
  4064 2f74 6100 D1DA 	    jbsr       save_PC_to_fn_tbl_and_ret
@@ -5158,9 +5170,6 @@
  4067 2f82 5500      	    subq.b    #2,d0
  4068 2f84 902D 0008 	    sub.b     (_X,a5),d0                        | MSB
  4069 2f88 1229 000E 	    move.b    (_Y,a1),d1                        | MSB
-68K GAS  src/xevious_main.68k 			page 87
-
-
  4070 2f8c 5501      	    subq.b    #2,d1
  4071 2f8e 922D 000E 	    sub.b     (_Y,a5),d1                        | MSB
  4072 2f92 6100 E05E 	    jbsr       get_index_for_angle
@@ -5209,6 +5218,9 @@
  4105               	
  4106               	r_sheonite_code_tbl_2: | $2974
  4107 3016 3232 3232 	    .byte 0x32, 0x32, 0x32, 0x32, 0x34, 0x35, 0x36
+68K GAS  src/xevious_main.68k 			page 88
+
+
  4107      3435 36
  4108 301d 00        	    .align 2
  4109               	
@@ -5218,9 +5230,6 @@
  4112 3024 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4112      0000 
  4113 302a 522D 0018 	    addq.b    #1,(_TIMER,a5)                    | time to retreat?
-68K GAS  src/xevious_main.68k 			page 88
-
-
  4114 302e 672E      	    jeq     r_sheonite_retreat                | yes, go
  4115 3030 43F9 0000 	    lea       obj_tbl+_OBJSIZE*0x23,a1          | solvalou
  4115      0000 
@@ -5269,6 +5278,9 @@
  4149 30b4 43F9 0000 	    lea       obj_tbl+_OBJSIZE*0x23,a1          | solvalou
  4149      0000 
  4150 30ba 3029 0008 	    move.w    (_X,a1),d0
+68K GAS  src/xevious_main.68k 			page 89
+
+
  4151 30be 0440 0200 	    sub.w     #0x0200,d0                        | calc obj X
  4152 30c2 3B40 0008 	    move.w    d0,(_X,a5)
  4153 30c6 3029 000E 	    move.w    (_Y,a1),d0
@@ -5278,9 +5290,6 @@
  4157               	
  4158               	animate_l_sheonite_1: | $2A11
  4159 30d4 1B79 0000 	    move.b    (pulsing_colour_1),(_COLOUR,a5)
-68K GAS  src/xevious_main.68k 			page 89
-
-
  4159      0000 0015 
  4160 30dc 41FA 0018 	    lea       l_sheonite_code_tbl_1,a0
  4161 30e0 1039 0000 	    move.b    (countup_timer_1),d0
@@ -5329,6 +5338,9 @@
  4198 315e 41FA FF96 	    lea       l_sheonite_code_tbl_1,a0
  4199 3162 1039 0000 	    move.b    (countup_timer_1),d0
  4199      0000 
+68K GAS  src/xevious_main.68k 			page 90
+
+
  4200 3168 E208      	    lsr.b     #1,d0
  4201 316a 0240 0003 	    and.w     #3,d0                             | calc sprite code
  4202 316e 1B70 0000 	    move.b    (a0,d0.w),(_CODE,a5)
@@ -5338,9 +5350,6 @@
  4204 317c 4E75      	    rts
  4205               	
  4206               	animate_l_sheonite_2: | $2A9D
-68K GAS  src/xevious_main.68k 			page 90
-
-
  4207 317e 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4207      0000 
  4208 3184 6100 007A 	    jbsr     set_l_sheonite_above_solvalou
@@ -5389,6 +5398,9 @@
  4243 31fc 6000 0640 	    jra       add_obj_handler
  4244               	         
  4245               	set_l_sheonite_above_solvalou: | $2B09
+68K GAS  src/xevious_main.68k 			page 91
+
+
  4246 3200 227C 0000 	    movea.l   #obj_tbl+_OBJSIZE*0x23,a1         | solvalou
  4246      0000 
  4247 3206 3029 0008 	    move.w    (_X,a1),d0
@@ -5398,9 +5410,6 @@
  4251 3216 0640 0200 	    add.w     #0x0200,d0                        | calc object Y
  4252 321a 3B40 000E 	    move.w    d0,(_Y,a5)
  4253 321e 4E75      	    rts
-68K GAS  src/xevious_main.68k 			page 91
-
-
  4254               	
  4255               	handle_01_Bacura: | $2B23
  4256 3220 1ABC 0002 	    move.b    #2,(_STATE,a5)
@@ -5449,6 +5458,9 @@
  4295 3286 6000 05B6 	    jra       add_obj_handler
  4296               	                        
  4297               	handle_2C_Grobda_stationary: | $2B83
+68K GAS  src/xevious_main.68k 			page 92
+
+
  4298 328a 303C 0008 	    move.w    #8,d0                             | dX=8 (stop)
  4299 328e 6100 0354 	    jbsr       activate_and_set_grobda_dX
  4300 3292 1B7C 0015 	    move.b    #21,(_PTS,a5)                     | 200 pts
@@ -5458,9 +5470,6 @@
  4302 329e 6100 CEB0 	    jbsr       save_PC_to_fn_tbl_and_ret
  4303 32a2 6100 02DE 	    jbsr       check_grobda_hit
  4304 32a6 6058      	    jra       set_grobda_colour_and_move_dX
-68K GAS  src/xevious_main.68k 			page 92
-
-
  4305               	
  4306               	* 
  4307               	* Grobda (Tank/Stingray) 400 pts
@@ -5509,6 +5518,9 @@
  4344               	
  4345               	* Grobda (Tank/Stingray) 1,000 pts
  4346               	* - moving, stops when in crosshairs
+68K GAS  src/xevious_main.68k 			page 93
+
+
  4347               	handle_38_Grobda_fwd_crosshairs_stop_fwd: | $2C2E
  4348 3310 303C 000E 	    move.w    #14,d0                            | dX=14 (fwd)
  4349 3314 6100 02CE 	    jbsr       activate_and_set_grobda_dX
@@ -5518,9 +5530,6 @@
  4352 3322 6100 025E 	    jbsr       check_grobda_hit
  4353 3326 6100 02FC 	    jbsr       check_grobda_in_crosshairs        | in crosshairs?
  4354 332a 6506      	    jcs     grobda_stops_in_crosshairs        | yes, go
-68K GAS  src/xevious_main.68k 			page 93
-
-
  4355 332c 6100 0270 	    jbsr       animate_grobda_forwards
  4356 3330 60CE      	    jra       set_grobda_colour_and_move_dX
  4357               	
@@ -5569,6 +5578,9 @@
  4392               	
  4393               	grobda_stop: | $2CAD
  4394 33a4 3B7C 0008 	    move.w    #8,(_dX,a5)                       | stop
+68K GAS  src/xevious_main.68k 			page 94
+
+
  4394      000A 
  4395 33aa 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4395      0000 
@@ -5578,9 +5590,6 @@
  4399               	* Grobda (Tank/Stingray) 2,000 pts
  4400               	* - moving, darts forward when targeted
  4401               	handle_3A_Grobda_fwd_crosshairs_darts_fwd: | $2CC4
-68K GAS  src/xevious_main.68k 			page 94
-
-
  4402 33b8 303C 000E 	    move.w    #14,d0                            | dX=14 (fwd)
  4403 33bc 6100 0226 	    jbsr       activate_and_set_grobda_dX
  4404 33c0 1B7C 0036 	    move.b    #54,(_PTS,a5)                     | 2,000 pts
@@ -5629,6 +5638,9 @@
  4440      000A 
  4441 343c 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4441      0000 
+68K GAS  src/xevious_main.68k 			page 95
+
+
  4442 3442 6100 013E 	    jbsr       check_grobda_hit
  4443 3446 532D 0018 	    subq.b    #1,(_TIMER,a5)                    | time to change dir?
  4444 344a 6708      	    jeq     grobda_3B_dart_fwd                | yes, go
@@ -5638,9 +5650,6 @@
  4448               	grobda_3B_dart_fwd: | $2D44
  4449 3454 3B7C 000E 	    move.w    #14,(_dX,a5)                      | forward
  4449      000A 
-68K GAS  src/xevious_main.68k 			page 95
-
-
  4450 345a 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4450      0000 
  4451 3460 6100 0120 	    jbsr       check_grobda_hit
@@ -5689,6 +5698,9 @@
  4486 34da 6000 FE24 	    jra       set_grobda_colour_and_move_dX
  4487               	
  4488               	* Grobda (Tank/Stingray) 400 pts
+68K GAS  src/xevious_main.68k 			page 96
+
+
  4489               	* - moving
  4490               	handle_3E_Grobda_fwd_in_water: | $2DB7
  4491 34de 303C 000E 	    move.w    #14,d0                            | dX=14 (fwd)
@@ -5698,9 +5710,6 @@
  4494 34ec 6100 CC62 	    jbsr       save_PC_to_fn_tbl_and_ret
  4495 34f0 6100 009E 	    jbsr       check_grobda_hit_and_remove
  4496 34f4 6100 00A8 	    jbsr       animate_grobda_forwards
-68K GAS  src/xevious_main.68k 			page 96
-
-
  4497 34f8 6000 FE06 	    jra       set_grobda_colour_and_move_dX
  4498               	
  4499               	* Grobda (Tank/Stingray) 600 pts
@@ -5749,6 +5758,9 @@
  4535 356a 6000 FD94 	    jra       set_grobda_colour_and_move_dX
  4536 356e 3B7C 000E 	2:  move.w    #14,(_dX,a5)                      | forwards    
  4536      000A 
+68K GAS  src/xevious_main.68k 			page 97
+
+
  4537 3574 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  4537      0000 
  4538 357a 6114      	    jbsr     check_grobda_hit_and_remove
@@ -5758,9 +5770,6 @@
  4542               	check_grobda_hit: | $2E45
  4543 3582 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
  4544 3586 6702      	    jeq     1f                                | yes, go
-68K GAS  src/xevious_main.68k 			page 97
-
-
  4545 3588 4E75      	    rts
  4546 358a 588F      	1:  addq.l    #4,a7                             | return up call stack
  4547 358c 6000 03A0 	    jra       handle_bomb_explosion
@@ -5809,6 +5818,9 @@
  4587 35f4 4E75      	    rts
  4588               	
  4589               	check_targeted_and_init_timer: | $2EA0
+68K GAS  src/xevious_main.68k 			page 98
+
+
  4590 35f6 41F9 0000 	    lea       obj_tbl+_OBJSIZE*0x20,a0
  4590      0000 
  4591 35fc 1028 0008 	    move.b    (_X,a0),d0                        | MSB X bomb target
@@ -5818,9 +5830,6 @@
  4595 3608 6418      	    jcc     9f                                | no, exit
  4596 360a 1028 000E 	    move.b    (_Y,a0),d0                        | MSB Y bomb target
  4597 360e 902D 000E 	    sub.b     (_Y,a5),d0                        | MSB Y object
-68K GAS  src/xevious_main.68k 			page 98
-
-
  4598 3612 5500      	    subq.b    #2,d0
  4599 3614 5800      	    addq.b    #4,d0                             | match?
  4600 3616 640A      	    jcc     9f                                | no, exit
@@ -5869,6 +5878,9 @@
  4636 3678 C02D 001C 	    and.b     (_FFREQ,a5),d0                    | scale with mask
  4637 367c 5200      	    addq.b    #1,d0
  4638 367e 1B40 0018 	    move.b    d0,(_TIMER,a5)                    | init shot timer
+68K GAS  src/xevious_main.68k 			page 99
+
+
  4639 3682 422D 001E 	    clr.b     (_TYPE,a5)                        | repurpose as shot animation timer
  4640 3686 6100 CAC8 	    jbsr       save_PC_to_fn_tbl_and_ret
  4641 368a 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
@@ -5878,9 +5890,6 @@
  4645               	* get next path vector
  4646 3698 206D 0004 	    move.l    (_EXTRA,a5),a0                    | ptr path data
  4647 369c 1B58 001A 	    move.b    (a0)+,(_VECLEN,a5)
-68K GAS  src/xevious_main.68k 			page 99
-
-
  4648 36a0 7400      	    moveq     #0,d2
  4649 36a2 1418      	    move.b    (a0)+,d2                          | vector index
  4650 36a4 2B48 0004 	    move.l    a0,(_EXTRA,a5)                    | store updated ptr path data
@@ -5929,6 +5938,9 @@
  4689 3714 E408      	    lsr.b     #2,d0
  4690 3716 0240 0007 	    and.w     #7,d0
  4691 371a 41FA 0018 	    lea       domogram_sprite_tbl,a0
+68K GAS  src/xevious_main.68k 			page 100
+
+
  4692 371e 1B70 0000 	    move.b    (a0,d0.w),(_CODE,a5)
  4692      0014 
  4693               	
@@ -5938,9 +5950,6 @@
  4696 372c 6100 012C 	    jbsr       move_object_dX_dY
  4697 3730 6000 010C 	    jra       add_obj_handler
  4698               	
-68K GAS  src/xevious_main.68k 			page 100
-
-
  4699               	domogram_sprite_tbl: | $2FAB
  4700 3734 3C3D 3E3F 	    .byte 0x3C, 0x3D, 0x3E, 0x3F, 0x3E, 0x3D
  4700      3E3D 
@@ -5989,6 +5998,9 @@
  4743 3781 FF        	    .byte 0xFF
  4744 3782 FF        	    .byte 0xFF
  4745 3783 FF        	    .byte 0xFF
+68K GAS  src/xevious_main.68k 			page 101
+
+
  4746 3784 FF        	    .byte 0xFF
  4747 3785 FF        	    .byte 0xFF
  4748 3786 FF        	    .byte 0xFF
@@ -5998,9 +6010,6 @@
  4752               	                
  4753               	main_fn_2__handle_objects: | $3000
  4754 378a 41F9 0000 	    lea       obj_tbl,a0
-68K GAS  src/xevious_main.68k 			page 101
-
-
  4754      0000 
  4755 3790 3E3C 0200 	    move.w    #_OBJSIZE*64/4,d7                 | 64 objects
  4756 3794 4298      	1:  clr.l     (a0)+
@@ -6049,6 +6058,9 @@
  4790 380e 4BED 0020 	    lea       (_OBJSIZE,a5),a5                  | next object
  4791 3812 588E      	    addq.l    #4,a6                             | next object fn
  4792 3814 51CF FFEC 	    dbf       d7,5b
+68K GAS  src/xevious_main.68k 			page 102
+
+
  4793               	    
  4794 3818 4BED 00E0 	    lea       (_OBJSIZE*7,a5),a5                | skip solvalou, shots
  4795 381c 4DF9 0000 	    lea       main_2_fn_tbl_2,a6
@@ -6058,9 +6070,6 @@
  4798 3826 48E7 0106 	    movem.l   d7/a5-a6,-(a7)
  4799 382a 4E90      	    jsr       (a0)                              | call handler fn
  4800 382c 4CDF 6080 	    movem.l   (a7)+,d7/a5-a6
-68K GAS  src/xevious_main.68k 			page 102
-
-
  4801 3830 4BED 0020 	    lea       (_OBJSIZE,a5),a5                  | next object
  4802 3834 588E      	    addq.l    #4,a6                             | next object fn
  4803 3836 51CF FFEC 	    dbf       d7,6b
@@ -6109,6 +6118,9 @@
  4846 388c 422D 001E 	    clr.b     (_TYPE,a5)
  4847 3890 4E75      	    rts
  4848               	
+68K GAS  src/xevious_main.68k 			page 103
+
+
  4849               	* a5=object ptr
  4850               	move_object_dX: | $30D4
  4851 3892 302D 000A 	    move.w    (_dX,a5),d0
@@ -6118,9 +6130,6 @@
  4855               	            
  4856               	* a5=object ptr
  4857               	scroll_sprite_X: | $30E8
-68K GAS  src/xevious_main.68k 			page 103
-
-
  4858 389e 3039 0000 	    move.w    (scroll_delta),d0
  4858      0000 
  4859 38a4 4440      	    neg.w     d0
@@ -6169,6 +6178,9 @@
  4898               	
  4899               	* code and size for flying enemy explosion
  4900               	flying_obj_explosion_sprites: | $316F
+68K GAS  src/xevious_main.68k 			page 104
+
+
  4901 391a 7000      	    .byte 0x70, 0
  4902 391c 7100      	    .byte 0x71, 0
  4903 391e 7403      	    .byte 0x74, 3
@@ -6178,9 +6190,6 @@
  4907               	remove_object_type_state: | $3179
  4908 3924 422D 001E 	    clr.b     (_TYPE,a5)
  4909 3928 4215      	    clr.b     (_STATE,a5)
-68K GAS  src/xevious_main.68k 			page 104
-
-
  4910 392a 6000 FF12 	    jra       add_obj_handler
  4911               	
  4912               	handle_bomb_explosion: | $3186
@@ -6229,6 +6238,9 @@
  4946 39a6 0600 00A6 	    add.b     #0xa6,d0
  4947 39aa 1B40 0014 	    move.b    d0,(_CODE,a5)
  4948 39ae 6100 FEEE 	    jbsr       scroll_sprite_X
+68K GAS  src/xevious_main.68k 			page 105
+
+
  4949 39b2 6000 FE8A 	    jra       add_obj_handler
  4950               	    
  4951               	* these are sprite codes, sizes for the bomb explosion
@@ -6238,9 +6250,6 @@
  4955 39ba 6403      	    .byte 0x64, 3
  4956 39bc 6803      	    .byte 0x68, 3
  4957 39be 6C03      	    .byte 0x6C, 3
-68K GAS  src/xevious_main.68k 			page 105
-
-
  4958 39c0 6200      	    .byte 0x62, 0
  4959 39c2 6300      	    .byte 0x63, 0
  4960               	
@@ -6289,6 +6298,9 @@
  5000 3a2c 6000 FE10 	    jra       add_obj_handler
  5001               	
  5002               	remove_object: | $3266
+68K GAS  src/xevious_main.68k 			page 106
+
+
  5003 3a30 422D 001E 	    clr.b     (_TYPE,a5)
  5004 3a34 4215      	    clr.b     (_STATE,a5)
  5005 3a36 6000 FE06 	    jra       add_obj_handler
@@ -6298,9 +6310,6 @@
  5008      0000 
  5009 3a40 0200 0007 	    and.b     #7,d0
  5010 3a44 6616      	    jne     9f
-68K GAS  src/xevious_main.68k 			page 106
-
-
  5011 3a46 532D 0018 	    subq.b    #1,(_TIMER,a5)                    | time to fire?
  5012 3a4a 6610      	    jne     9f                                | no, exit
  5013 3a4c 6110      	    jbsr     init_new_bullet
@@ -6349,6 +6358,9 @@
  5051               	
  5052               	* a0=bullet d2=angle index
  5053               	init_radiating_bullet: | $32C4
+68K GAS  src/xevious_main.68k 			page 107
+
+
  5054 3aaa 61E2      	    jbsr     set_state_and_copy_obj_coords
  5055 3aac 45FA 1020 	    lea       angle_dX_dY_terrazi_torkan_tbl,a2
  5056 3ab0 C14D      	    exg       a0,a5                             | copy to bullet
@@ -6358,9 +6370,6 @@
  5059      001E 
  5060 3abe 4E75      	    rts
  5061               	
-68K GAS  src/xevious_main.68k 			page 107
-
-
  5062               	brag_zakato_shoot: | $32D9
  5063 3ac0 182D 0008 	    move.b    (_X,a5),d4                        | save MSB
  5064 3ac4 43F9 0000 	    lea       obj_tbl+_OBJSIZE*0x23,a1          | solvalou
@@ -6409,6 +6418,9 @@
  5103 3b46 1018      	3:  move.b    (a0)+,d0                          | table entry
  5104 3b48 4880      	    ext.w     d0                                | (68K)
  5105 3b4a 3540 000A 	    move.w    d0,(_dX,a2)                       | init dX
+68K GAS  src/xevious_main.68k 			page 108
+
+
  5106 3b4e 1019      	    move.b    (a1)+,d0                          | table entry
  5107 3b50 4880      	    ext.w     d0                                | (68K)
  5108 3b52 3540 0010 	    move.w    d0,(_dY,a2)                       | init dY
@@ -6418,9 +6430,6 @@
  5111 3b60 51CF FFE4 	    dbf       d7,3b
  5112 3b64 4E75      	    rts
  5113               	
-68K GAS  src/xevious_main.68k 			page 108
-
-
  5114               	brag_spario_dX_tbl: | $335D
  5115 3b66 20        	    .byte 0x20
  5116 3b67 00        	    .byte    0
@@ -6469,6 +6478,9 @@
  5158 3bb0 0C00 0019 	    cmp.b     #25,d0                            | >24?
  5159 3bb4 64F2      	    jcc     gen_random_Y_store_obj            | yes, try again
  5160 3bb6 5640      	    addq.w    #3,d0                             | offset
+68K GAS  src/xevious_main.68k 			page 109
+
+
  5161 3bb8 1B40 000E 	    move.b    d0,(_Y,a5)                        | spriteY (MSB)
  5162 3bbc 4E75      	    rts
  5163               	        
@@ -6478,9 +6490,6 @@
  5166 3bc4 6100 D498 	1:  jbsr       pseudo_random_gen
  5167 3bc8 0200 001F 	    and.b     #31,d0
  5168 3bcc 0C00 0019 	    cmp.b     #25,d0                            | too jig?
-68K GAS  src/xevious_main.68k 			page 109
-
-
  5169 3bd0 64F2      	    jcc     1b                                | yes, try again
  5170 3bd2 5600      	    addq.b    #3,d0                             | offset
  5171 3bd4 1200      	    move.b    d0,d1
@@ -6529,6 +6538,9 @@
  5206 3c44 51CF FFF4 	    dbf       d7,1b
  5207 3c48 4E75      	9:  rts
  5208               	
+68K GAS  src/xevious_main.68k 			page 110
+
+
  5209               	main_fn_5__inc_num_bacura: | $33E5
  5210 3c4a 6100 C504 	    jbsr       save_PC_to_fn_tbl_and_ret
  5211 3c4e 4A39 0000 	    tst.b     (scroll_disabled)
@@ -6538,9 +6550,6 @@
  5213      0000 
  5214 3c5c 672C      	    jeq     9f
  5215 3c5e 13FC 003C 	1:  move.b    #60,(one_second_cntr)
-68K GAS  src/xevious_main.68k 			page 110
-
-
  5215      0000 0000 
  5216 3c66 6100 C4E8 	    jbsr       save_PC_to_fn_tbl_and_ret
  5217 3c6a 4A39 0000 	    tst.b     (scroll_disabled)
@@ -6589,6 +6598,9 @@
  5251      0000 
  5252 3ce6 522D 0018 	    addq.b    #1,(_TIMER,a5)
  5253 3cea 102D 0018 	    move.b    (_TIMER,a5),d0
+68K GAS  src/xevious_main.68k 			page 111
+
+
  5254 3cee E208      	    lsr.b     #1,d0
  5255 3cf0 0C00 0004 	    cmp.b     #4,d0                             | time to remove?
  5256 3cf4 670E      	    jeq     remove_giddo_spario               | yes, go
@@ -6598,9 +6610,6 @@
  5260 3d00 6000 FB3C 	    jra       add_obj_handler
  5261               	
  5262               	remove_giddo_spario: | $3476
-68K GAS  src/xevious_main.68k 			page 111
-
-
  5263 3d04 4215      	    clr.b     (_STATE,a5)
  5264 3d06 422D 001E 	    clr.b     (_TYPE,a5)
  5265 3d0a 6000 FB32 	    jra       add_obj_handler      
@@ -6649,6 +6658,9 @@
  5300 3d7a 3B41 0012 	1:  move.w    d1,(_ddY,a5)                      | update ddY
  5301 3d7e 1B7C 000F 	    move.b    #15,(_TIMER1,a5)                  | re-init timer1
  5301      0019 
+68K GAS  src/xevious_main.68k 			page 112
+
+
  5302 3d84 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  5302      0000 
  5303 3d8a 615A      	    jbsr       is_object_hit                     | hit?
@@ -6658,9 +6670,6 @@
  5307 3d98 102D 0019 	    move.b    (_TIMER1,a5),d0
  5308 3d9c E808      	    lsr.b     #4,d0
  5309 3d9e 0240 0003 	    and.w     #3,d0                             | time to animate?
-68K GAS  src/xevious_main.68k 			page 112
-
-
  5310 3da2 6730      	    jeq       galaxian_cont                     | no, go
  5311 3da4 302D 0012 	    move.w    (_ddY,a5),d0
  5312 3da8 41FA 0046 	    lea       galaxian_sprite_tbl_1,a0
@@ -6709,6 +6718,9 @@
  5350      000E 
  5351 3e04 3B7C 0000 	    move.w    #0,(_dY,a5)
  5351      0010 
+68K GAS  src/xevious_main.68k 			page 113
+
+
  5352 3e0a 3B7C 0008 	    move.w    #8,(_dX,a5)
  5352      000A 
  5353 3e10 1B7C 0000 	    move.b    #0,(_PTS,a5)                      | 10 pts
@@ -6718,9 +6730,6 @@
  5355 3e1c 1B7C 0006 	    move.b    #6,(_COLOUR,a5)
  5355      0015 
  5356 3e22 1B7C 0080 	    move.b    #128,(_TIMER,a5)
-68K GAS  src/xevious_main.68k 			page 113
-
-
  5356      0018 
  5357 3e28 6100 C326 	    jbsr       save_PC_to_fn_tbl_and_ret
  5358 3e2c 61B8      	    jbsr       is_object_hit                     | hit?
@@ -6769,6 +6778,9 @@
  5397 3e88 103C 0010 	    move.b    #0x10,d0
  5398 3e8c B02D 0008 	    cmp.b     (_X,a5),d0                        | MSB, stop descending?
  5399 3e90 6716      	    jeq     1f                                | yes, go
+68K GAS  src/xevious_main.68k 			page 114
+
+
  5400 3e92 7007      	    moveq     #ANDOR_GENESIS_SND,d0
  5401 3e94 4EB9 0000 	    jsr       osd_sound_start
  5401      0000 
@@ -6778,9 +6790,6 @@
  5405 3ea4 6000 047A 	    jra       cycle_andor_genesis_colour
  5406               	
  5407 3ea8 2CBC 0000 	1:  SET_REENTRY_ADDR_HERE
-68K GAS  src/xevious_main.68k 			page 114
-
-
  5407      0000 
  5408 3eae 4A39 0000 	    tst.b     (andor_genesis_end_flag)          | time to leave?
  5408      0000 
@@ -6829,6 +6838,9 @@
  5441 3f28 303C FFF8 	    move.w    #0xfff8,d0
  5442 3f2c D040      	    add.w     d0,d0                             | x2
  5443 3f2e D16D 0008 	    add.w     d0,(_X,a5)                        | update spriteX
+68K GAS  src/xevious_main.68k 			page 115
+
+
  5444 3f32 7007      	    moveq     #ANDOR_GENESIS_SND,d0
  5445 3f34 4EB9 0000 	    jsr       osd_sound_start
  5445      0000 
@@ -6838,9 +6850,6 @@
  5449 3f3e 4215      	    clr.b     (_STATE,a5)
  5450 3f40 422D 001E 	    clr.b     (_TYPE,a5)
  5451 3f44 6000 F8F8 	    jra       add_obj_handler
-68K GAS  src/xevious_main.68k 			page 115
-
-
  5452               	
  5453               	* installed into object #14
  5454               	* andor genesis core gun port
@@ -6889,6 +6898,9 @@
  5487      0008 
  5488 3fba 3B68 000E 	    move.w    (_Y,a0),(_Y,a5)                   | update spriteY
  5488      000E 
+68K GAS  src/xevious_main.68k 			page 116
+
+
  5489 3fc0 6100 02FA 	    jbsr       gun_port_explosion
  5490 3fc4 0C15 0004 	    cmp.b     #4,(_STATE,a5)                    | finished exploding?
  5491 3fc8 6702      	    jeq       1f                                | no, skip
@@ -6898,9 +6910,6 @@
  5495               	* which flies up the screen
  5496 3fcc 2CBC 0000 	    SET_REENTRY_ADDR handle_Bragza
  5496      0000 
-68K GAS  src/xevious_main.68k 			page 116
-
-
  5497 3fd2 3B7C FFD0 	    move.w    #0xffd0,(_dX,a5)
  5497      000A 
  5498 3fd8 426D 0010 	    clr.w     (_dY,a5)
@@ -6949,6 +6958,9 @@
  5533      0000 
  5534 4054 1010      	    move.b    (_STATE,a0),d0
  5535 4056 5300      	    subq.b    #1,d0                             | inactive?
+68K GAS  src/xevious_main.68k 			page 117
+
+
  5536 4058 671A      	    jeq     remove_tl_gun_port                | yes, go
  5537 405a 3028 0008 	    move.w    (_X,a0),d0                        | object15
  5538 405e 0640 FE00 	    add.w     #0xfe00,d0                        | calc spriteY
@@ -6958,9 +6970,6 @@
  5541 406e 6100 F9CA 	    jbsr       chk_timer_fire_bullet_reinit_timer        
  5542 4072 4E75      	    rts
  5543               	
-68K GAS  src/xevious_main.68k 			page 117
-
-
  5544               	remove_tl_gun_port: | $3615
  5545 4074 4215      	    clr.b     (_STATE,a5)
  5546 4076 422D 001E 	    clr.b     (_TYPE,a5)
@@ -7009,6 +7018,9 @@
  5582 40ee 0C39 0003 	    cmp.b     #3,(obj_tbl+_OBJSIZE*0x0e+_STATE)
  5582      0000 0000 
  5583 40f6 6730      	    jeq     tr_gun_port_hit
+68K GAS  src/xevious_main.68k 			page 118
+
+
  5584 40f8 41F9 0000 	    lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
  5584      0000 
  5585 40fe 1010      	    move.b    (_STATE,a0),d0
@@ -7018,9 +7030,6 @@
  5589 4108 0640 FE00 	    add.w     #0xfe00,d0                        | calc spriteY
  5590 410c 3B40 0008 	    move.w    d0,(_X,a5)                        | update spriteY
  5591 4110 1B79 0000 	    move.b    (andor_genesis_colour),(_COLOUR,a5)
-68K GAS  src/xevious_main.68k 			page 118
-
-
  5591      0000 0015 
  5592 4118 6100 F920 	    jbsr       chk_timer_fire_bullet_reinit_timer        
  5593 411c 4E75      	    rts
@@ -7069,6 +7078,9 @@
  5629      0000 001C 
  5630 418e 6100 BFC0 	    jbsr       save_PC_to_fn_tbl_and_ret
  5631 4192 0C15 0003 	    cmp.b     #3,(_STATE,a5)                    | hit?
+68K GAS  src/xevious_main.68k 			page 119
+
+
  5632 4196 673A      	    jeq     bl_gun_port_hit                   | yes, go
  5633 4198 0C39 0003 	    cmp.b     #3,(obj_tbl+_OBJSIZE*0x0e+_STATE)
  5633      0000 0000 
@@ -7078,9 +7090,6 @@
  5636 41a8 1010      	    move.b    (_STATE,a0),d0
  5637 41aa 5300      	    subq.b    #1,d0                             | inactive?
  5638 41ac 671A      	    jeq     remove_bl_gun_port                | yes, go
-68K GAS  src/xevious_main.68k 			page 119
-
-
  5639 41ae 3028 0008 	    move.w    (_X,a0),d0                        | object15
  5640 41b2 0640 0200 	    add.w     #0x0200,d0                        | calc spriteY
  5641 41b6 3B40 0008 	    move.w    d0,(_X,a5)                        | update spriteY
@@ -7129,6 +7138,9 @@
  5677      0000 
  5678 4228 0640 FE00 	    add.w     #0xfe00,d0                        | calc spriteY
  5679 422c 3B40 000E 	    move.w    d0,(_Y,a5)                        | update spriteY    
+68K GAS  src/xevious_main.68k 			page 120
+
+
  5680 4230 1B79 0000 	    move.b    (ffreq_mask_andor_genesis),(_FFREQ,a5)
  5680      0000 001C 
  5681 4238 6100 BF16 	    jbsr       save_PC_to_fn_tbl_and_ret
@@ -7138,9 +7150,6 @@
  5684      0000 0000 
  5685 424a 6730      	    jeq     br_gun_port_hit
  5686 424c 41F9 0000 	    lea       obj_tbl+_OBJSIZE*0x0f,a0          | object15
-68K GAS  src/xevious_main.68k 			page 120
-
-
  5686      0000 
  5687 4252 1010      	    move.b    (_STATE,a0),d0
  5688 4254 5300      	    subq.b    #1,d0                             | inactive?
@@ -7189,6 +7198,9 @@
  5726 42c4 1200      	    move.b    d0,d1                             | copy
  5727 42c6 E408      	    lsr.b     #2,d0
  5728 42c8 0240 0007 	    and.w     #7,d0
+68K GAS  src/xevious_main.68k 			page 121
+
+
  5729 42cc 5B00      	    subq.b    #5,d0
  5730 42ce 5600      	    addq.b    #3,d0                             | adjust for size?
  5731 42d0 6404      	    jcc     1f                                | no, skip
@@ -7198,9 +7210,6 @@
  5735 42dc 661E      	    jne     9f                                | no, go
  5736 42de E409      	    lsr.b     #2,d1
  5737 42e0 0241 0007 	    and.w     #7,d1
-68K GAS  src/xevious_main.68k 			page 121
-
-
  5738 42e4 0C01 0007 	    cmp.b     #7,d1                             | done exploding?
  5739 42e8 6714      	    jeq     gun_port_explosion_finished       | yes, go
  5740 42ea 41FA 001C 	    lea       gun_port_explosion_sprite_tbl,a0
@@ -7249,6 +7258,9 @@
  5778               	* top-left corner piece
  5779               	handle_41_Andor_Genesis_obj_09: | $3860
  5780 4342 49F9 0000 	    lea       obj_tbl+_OBJSIZE*0x09,a4          | override: object=9
+68K GAS  src/xevious_main.68k 			page 122
+
+
  5780      0000 
  5781 4348 18BC 0003 	    move.b    #3,(_STATE,a4)                    | indestructible
  5782 434c 197C 0003 	    move.b    #3,(_ATTR,a4)                     | size=2x2
@@ -7258,9 +7270,6 @@
  5784 4358 3039 0000 	    move.w    (obj_tbl+_OBJSIZE*0x0F+_Y),d0     | object 15
  5784      0000 
  5785 435e 0640 0500 	    add.w     #0x0500,d0                        | calc spriteY
-68K GAS  src/xevious_main.68k 			page 122
-
-
  5786 4362 3940 000E 	    move.w    d0,(_Y,a4)
  5787 4366 6100 BDE8 	    jbsr       save_PC_to_fn_tbl_and_ret
  5788 436a 49F9 0000 	    lea       obj_tbl+_OBJSIZE*0x09,a4          | override: object=9
@@ -7309,6 +7318,9 @@
  5821 43ec 422C 001E 	    clr.b     (_TYPE,a4)
  5822 43f0 6000 F44C 	    jra       add_obj_handler
  5823 43f4 4E75      	9:  rts
+68K GAS  src/xevious_main.68k 			page 123
+
+
  5824               	
  5825               	* installed into object #3
  5826               	* top-right corner piece
@@ -7318,9 +7330,6 @@
  5829 43fc 18BC 0003 	    move.b    #3,(_STATE,a4)                    | indestructible
  5830 4400 197C 0003 	    move.b    #3,(_ATTR,a4)                     | size=2x2
  5830      0001 
-68K GAS  src/xevious_main.68k 			page 123
-
-
  5831 4406 197C 0084 	    move.b    #0x84,(_CODE,a4)
  5831      0014 
  5832 440c 3039 0000 	    move.w    (obj_tbl+_OBJSIZE*0x0F+_Y),d0     | object 15
@@ -7369,6 +7378,9 @@
  5865 4490 1979 0000 	    move.b    (andor_genesis_colour),(_COLOUR,a4)
  5865      0000 0015 
  5866 4498 0C10 0001 	    cmp.b     #1,(_STATE,a0)                    | core state=1?
+68K GAS  src/xevious_main.68k 			page 124
+
+
  5867 449c 660A      	    jne     9f                                | no, return
  5868 449e 4214      	    clr.b     (_STATE,a4)
  5869 44a0 422C 001E 	    clr.b     (_TYPE,a4)
@@ -7378,9 +7390,6 @@
  5873               	* installed into object #5
  5874               	* centre piece
  5875               	handle_45_Andor_Genesis_obj_05: | $393A
-68K GAS  src/xevious_main.68k 			page 124
-
-
  5876 44aa 49F9 0000 	    lea       obj_tbl+_OBJSIZE*0x05,a4          | override: object=5
  5876      0000 
  5877 44b0 18BC 0003 	    move.b    #3,(_STATE,a4)                    | indestructible
@@ -7429,6 +7438,9 @@
  5909 4532 41F9 0000 	    lea       obj_tbl+_OBJSIZE*0x0F,a0          | object15
  5909      0000 
  5910 4538 3028 0008 	    move.w    (_X,a0),d0
+68K GAS  src/xevious_main.68k 			page 125
+
+
  5911 453c 0440 0100 	    sub.w     #0x0100,d0                        | calc spriteX
  5912 4540 3940 0008 	    move.w    d0,(_X,a4)
  5913 4544 1979 0000 	    move.b    (andor_genesis_colour),(_COLOUR,a4)
@@ -7438,9 +7450,6 @@
  5916 4552 4214      	    clr.b     (_STATE,a4)
  5917 4554 422C 001E 	    clr.b     (_TYPE,a4)
  5918 4558 6000 F2E4 	    jra       add_obj_handler
-68K GAS  src/xevious_main.68k 			page 125
-
-
  5919 455c 4E75      	9:  rts
  5920               	
  5921               	* installed into object #7
@@ -7489,6 +7498,9 @@
  5953 45d4 0640 0100 	    add.w     #0x0100,d0                        | calc spriteY
  5954 45d8 3940 000E 	    move.w    d0,(_Y,a4)                        | update spriteY
  5955 45dc 6100 BB72 	    jbsr       save_PC_to_fn_tbl_and_ret
+68K GAS  src/xevious_main.68k 			page 126
+
+
  5956 45e0 49F9 0000 	    lea       obj_tbl+_OBJSIZE*0x02,a4          | override: object=2
  5956      0000 
  5957 45e6 41F9 0000 	    lea       obj_tbl+_OBJSIZE*0x0F,a0          | object15
@@ -7498,9 +7510,6 @@
  5960 45f4 3940 0008 	    move.w    d0,(_X,a4)
  5961 45f8 1979 0000 	    move.b    (andor_genesis_colour),(_COLOUR,a4)
  5961      0000 0015 
-68K GAS  src/xevious_main.68k 			page 126
-
-
  5962 4600 0C10 0001 	    cmp.b     #1,(_STATE,a0)                    | core state=1?
  5963 4604 660A      	    jne     9f                                | no, return
  5964 4606 4214      	    clr.b     (_STATE,a4)
@@ -7549,6 +7558,9 @@
  5999 4672 663A      	    jne     remove_easter_egg                 | yes, go
  6000 4674 1ABC 0002 	    move.b    #2,(_STATE,a5)
  6001 4678 422D 0001 	    clr.b     (_ATTR,a5)                        | bank=0, size=1x1
+68K GAS  src/xevious_main.68k 			page 127
+
+
  6002 467c 422D 0014 	    clr.b     (_CODE,a5)                        | invisible sprite
  6003 4680 2CBC 0000 	    SET_REENTRY_ADDR_HERE
  6003      0000 
@@ -7558,9 +7570,6 @@
  6007 4690 6000 F1AC 	    jra       add_obj_handler
  6008               	
  6009               	check_copyright_strings: | $3A75
-68K GAS  src/xevious_main.68k 			page 127
-
-
  6010 4694 1B7C 0080 	    move.b    #0x80,(_TIMER,a5)                 | init timer
  6010      0018 
  6011               	    *** here is where the Z80 code checked the copyright strings
@@ -7609,6 +7618,9 @@
  6052 46f0 303C 1722 	    move.w    #0x1722,d0                        | screen col,row
  6053 46f4 41FA 0048 	    lea       str_BYGAMEDESIGNEREVEZOO,a0
  6054 46f8 7E18      	    moveq     #24,d7                            | length
+68K GAS  src/xevious_main.68k 			page 128
+
+
  6055 46fa 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  6056 46fc 6000 CE96 	    jra       display_string
  6057               	  
@@ -7618,9 +7630,6 @@
  6060      CCCB CA
  6061 4707 DBE7 E4ED 	    .byte 0xDB, 0xE7, 0xE4, 0xED, 0xEF, 0xED, 0xE8, 0xF5, 0xEA    | " ORIGINAL"
  6061      EFED E8F5 
-68K GAS  src/xevious_main.68k 			page 128
-
-
  6061      EA
  6062               	str_program_by_EVEZOO:
  6063 4710 DBDB DBDB 	    .byte 0xDB, 0xDB, 0xDB, 0xDB, 0xDB, 0xBA, 0xB8, 0xBB, 0xC3, 0xB8, 0xC9, 0xBD, 0xDB, 0xC8, 0xB1,
@@ -7669,6 +7678,9 @@
  6092 4768 303C 1921 	    move.w    #0x1921,d0                        | screen col,row
  6093 476c 41F9 0000 	    lea       str_decrypt_buf,a0                | string
  6093      0000 
+68K GAS  src/xevious_main.68k 			page 129
+
+
  6094 4772 7E10      	    moveq     #16,d7                            | length
  6095 4774 7408      	    moveq     #BANK_FG_VIDEORAM,d2
  6096 4776 6100 CE1C 	    jbsr       display_string
@@ -7678,9 +7690,6 @@
  6100 477c 43F9 0000 	    lea       str_decrypt_buf,a1
  6100      0000 
  6101 4782 7E17      	    moveq     #24-1,d7                          | 24 chars to decrypt
-68K GAS  src/xevious_main.68k 			page 129
-
-
  6102 4784 1018      	1:  move.b    (a0)+,d0
  6103 4786 4600      	    not.b     d0
  6104 4788 12C0      	    move.b    d0,(a1)+
@@ -7729,6 +7738,9 @@
  6146 47d8 000A 0A0A 	    .byte 0, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0x55, 0x55, 0x55
  6146      0A0A 0A0B 
  6146      0B0B 0B0B 
+68K GAS  src/xevious_main.68k 			page 130
+
+
  6146      0B55 5555 
  6147 47e8 5555 5556 	    .byte 0x55, 0x55, 0x55, 0x56, 0x56, 0x56, 0x56, 0x56, 0x56, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xC
  6147      5656 5656 
@@ -7738,9 +7750,6 @@
  6148      0C0B 0B08 
  6148      0808 0808 
  6148      080D 0D0D 
-68K GAS  src/xevious_main.68k 			page 130
-
-
  6149 4808 0D0D 0D0E 	    .byte 0xD, 0xD, 0xD, 0xE, 0xE, 0xE, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x14, 0x14, 0x14, 0x14
  6149      0E0E 1212 
  6149      1213 1313 
@@ -7789,6 +7798,9 @@
  6167      1313 1515 
  6168 48b8 1515 1010 	    .byte 0x15, 0x15, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10
  6168      1010 1010 
+68K GAS  src/xevious_main.68k 			page 131
+
+
  6169 48c0 5555 5555 	    .byte 0x55, 0x55, 0x55, 0x55, 0x11, 0x11, 0x11, 0x11
  6169      1111 1111 
  6170 48c8 1515 0E0E 	    .byte 0x15, 0x15, 0xE, 0xE, 0x16, 0x11, 0x11, 0x11
@@ -7798,9 +7810,6 @@
  6172               	
  6173               	    .align 4        
  6174               	obj_handler_tbl: | $3C83
-68K GAS  src/xevious_main.68k 			page 131
-
-
  6175 48d8 0000 0000 	    .long     handle_01_Bacura
  6176 48dc 0000 0000 	    .long     null_fn                           | NOT USED
  6177 48e0 0000 0000 	    .long     null_fn                           | NOT USED
@@ -7849,6 +7858,9 @@
  6220 498c 0000 0000 	    .long     handle_2E_Domogram
  6221 4990 0000 0000 	    .long     null_fn                           | NOT USED
  6222 4994 0000 0000 	    .long     null_fn                           | NOT USED
+68K GAS  src/xevious_main.68k 			page 132
+
+
  6223 4998 0000 0000 	    .long     handle_31_right_sheonite
  6224 499c 0000 0000 	    .long     handle_32_left_sheonite
  6225 49a0 0000 0000 	    .long     null_fn                           | NOT USED
@@ -7858,9 +7870,6 @@
  6229 49b0 0000 0000 	    .long     null_fn                           | NOT USED
  6230 49b4 0000 0000 	    .long     handle_38_Grobda_fwd_crosshairs_stop_fwd
  6231 49b8 0000 0000 	    .long     handle_39_Grobda_targeted_back_stop
-68K GAS  src/xevious_main.68k 			page 132
-
-
  6232 49bc 0000 0000 	    .long     handle_3A_Grobda_fwd_crosshairs_darts_fwd
  6233 49c0 0000 0000 	    .long     handle_3B_Grobda_fwd_targeted_back_fwd
  6234 49c4 0000 0000 	    .long     handle_3C_Grobda_targeted_fast_fwd
@@ -7909,6 +7918,9 @@
  6277 4a58 0700 00   	    .byte 7, 0, 0                               | 70 (offset=12)
  6278 4a5b 1000 00   	    .byte 0x10, 0, 0                            | 100 (offset=15)
  6279 4a5e 1500 00   	    .byte 0x15, 0, 0                            | 150 (offset=18)
+68K GAS  src/xevious_main.68k 			page 133
+
+
  6280 4a61 2000 00   	    .byte 0x20, 0, 0                            | 200 (offset=21)
  6281 4a64 2500 00   	    .byte 0x25, 0, 0                            | 250 (offset=24)
  6282 4a67 3000 00   	    .byte 0x30, 0, 0                            | 300 (offset=27)
@@ -7918,9 +7930,6 @@
  6286 4a73 7000 00   	    .byte 0x70, 0, 0                            | 700 (offset=39)
  6287 4a76 8000 00   	    .byte 0x80, 0, 0                            | 800 (offset=42)
  6288 4a79 9000 00   	    .byte 0x90, 0, 0                            | 900 (offset=45)
-68K GAS  src/xevious_main.68k 			page 133
-
-
  6289 4a7c 0001 00   	    .byte 0, 1, 0                               | 1,000 (offset=48)
  6290 4a7f 5001 00   	    .byte 0x50, 1, 0                            | 1,500 (offset=51)
  6291 4a82 0002 00   	    .byte 0, 2, 0                               | 2,000 (offset=54)
@@ -7969,6 +7978,9 @@
  6334 4ace 0030      	    .byte 0, 0x30
  6335 4ad0 092F      	    .byte 9, 0x2F
  6336 4ad2 122C      	    .byte 0x12, 0x2C
+68K GAS  src/xevious_main.68k 			page 134
+
+
  6337 4ad4 1B28      	    .byte 0x1B, 0x28
  6338 4ad6 2222      	    .byte 0x22, 0x22
  6339 4ad8 281B      	    .byte 0x28, 0x1B
@@ -7978,9 +7990,6 @@
  6343 4ae0 2FF7      	    .byte 0x2F, 0xF7
  6344 4ae2 2CEE      	    .byte 0x2C, 0xEE
  6345 4ae4 28E5      	    .byte 0x28, 0xE5
-68K GAS  src/xevious_main.68k 			page 134
-
-
  6346 4ae6 22DE      	    .byte 0x22, 0xDE
  6347 4ae8 1BD8      	    .byte 0x1B, 0xD8
  6348 4aea 12D4      	    .byte 0x12, 0xD4
@@ -8029,6 +8038,9 @@
  6391 4b3a E2F4      	    .byte 0xE2, 0xF4
  6392 4b3c E1FA      	    .byte 0xE1, 0xFA
  6393 4b3e E000      	    .byte 0xE0, 0
+68K GAS  src/xevious_main.68k 			page 135
+
+
  6394 4b40 E106      	    .byte 0xE1, 6
  6395 4b42 E20C      	    .byte 0xE2, 0xC
  6396 4b44 E511      	    .byte 0xE5, 0x11
@@ -8038,9 +8050,6 @@
  6400 4b4c FA1F      	    .byte 0xFA, 0x1F
  6401               	
  6402               	angle_dX_dY_toroid_tbl: | $3E33
-68K GAS  src/xevious_main.68k 			page 135
-
-
  6403 4b4e 0018      	    .byte 0, 0x18
  6404 4b50 0518      	    .byte 5, 0x18
  6405 4b52 0916      	    .byte 9, 0x16
@@ -8089,6 +8098,9 @@
  6443               	strCOPYRIGHT: | $3ECD
  6444 4ba8 2D2E 2824 	    .byte 0x2D, 0x2E, 0x28, 0x24, 1, 9, 8, 2, 0x24, 0x17, 0xA, 0x16, 0xC, 0x18, 0x24, 0x15
  6444      0109 0802 
+68K GAS  src/xevious_main.68k 			page 136
+
+
  6444      2417 0A16 
  6444      0C18 2415 
  6445 4bb8 1D0D 50   	    .byte 0x1D, 0xD, 0x50
@@ -8098,9 +8110,6 @@
  6449 4bbb 2D2E 160C 	    .byte 0x2D, 0x2E, 0x16, 0xC, 0x16, 0x15, 0x21, 0x21, 0x21
  6449      1615 2121 
  6449      21
-68K GAS  src/xevious_main.68k 			page 136
-
-
  6450 4bc4 1212 2417 	    .byte 0x12, 0x12, 0x24, 0x17, 0xA, 0x16, 0xC, 0x18 | "(C)MCMLXXXII NAMCO"
  6450      0A16 0C18 
  6451               	strCOPYRIGHTIV: 
@@ -8160,50 +8169,50 @@ src/xevious_main.68k:1578   .text:00001238 start_area
      src/xevious.inc:27     *ABS*:00000000 OPT_DISPLAY_AREA
      src/xevious.inc:28     *ABS*:00000000 OPT_SKIP_SPLASH
      src/xevious.inc:29     *ABS*:00000000 OPT_SKIP_ATTRACT
-     src/xevious.inc:61     *ABS*:00000000 _STATE
-     src/xevious.inc:62     *ABS*:00000001 _ATTR
-     src/xevious.inc:63     *ABS*:00000004 _EXTRA
-     src/xevious.inc:64     *ABS*:00000008 _X
-     src/xevious.inc:65     *ABS*:0000000a _dX
-     src/xevious.inc:66     *ABS*:0000000c _ddX
-     src/xevious.inc:67     *ABS*:0000000e _Y
-     src/xevious.inc:68     *ABS*:00000010 _dY
-     src/xevious.inc:69     *ABS*:00000012 _ddY
-     src/xevious.inc:70     *ABS*:00000014 _CODE
-     src/xevious.inc:71     *ABS*:00000015 _COLOUR
-     src/xevious.inc:72     *ABS*:00000016 _PTS
-     src/xevious.inc:73     *ABS*:00000018 _TIMER
-     src/xevious.inc:74     *ABS*:00000019 _TIMER1
-     src/xevious.inc:75     *ABS*:00000019 _NVEC
-     src/xevious.inc:76     *ABS*:0000001a _TIMER2
-     src/xevious.inc:77     *ABS*:0000001a _VECLEN
-     src/xevious.inc:78     *ABS*:0000001c _FFREQ
-     src/xevious.inc:79     *ABS*:0000001e _TYPE
-     src/xevious.inc:81     *ABS*:00000020 _OBJSIZE
-     src/xevious.inc:84     *ABS*:00000000 BANK_FG_COLORRAM
-     src/xevious.inc:85     *ABS*:00000004 BANK_BG_COLORRAM
-     src/xevious.inc:86     *ABS*:00000008 BANK_FG_VIDEORAM
-     src/xevious.inc:87     *ABS*:0000000c BANK_BG_VIDEORAM
-     src/xevious.inc:91     *ABS*:00000001 MAIN_THEME_SND
-     src/xevious.inc:92     *ABS*:00000002 HIGHEST_SCORE_SND
-     src/xevious.inc:93     *ABS*:00000003 HIGH_SCORE_SND
-     src/xevious.inc:94     *ABS*:00000004 EXTRA_SOLVALOU_SND
+     src/xevious.inc:70     *ABS*:00000000 _STATE
+     src/xevious.inc:71     *ABS*:00000001 _ATTR
+     src/xevious.inc:72     *ABS*:00000004 _EXTRA
+     src/xevious.inc:73     *ABS*:00000008 _X
+     src/xevious.inc:74     *ABS*:0000000a _dX
+     src/xevious.inc:75     *ABS*:0000000c _ddX
+     src/xevious.inc:76     *ABS*:0000000e _Y
+     src/xevious.inc:77     *ABS*:00000010 _dY
+     src/xevious.inc:78     *ABS*:00000012 _ddY
+     src/xevious.inc:79     *ABS*:00000014 _CODE
+     src/xevious.inc:80     *ABS*:00000015 _COLOUR
+     src/xevious.inc:81     *ABS*:00000016 _PTS
+     src/xevious.inc:82     *ABS*:00000018 _TIMER
+     src/xevious.inc:83     *ABS*:00000019 _TIMER1
+     src/xevious.inc:84     *ABS*:00000019 _NVEC
+     src/xevious.inc:85     *ABS*:0000001a _TIMER2
+     src/xevious.inc:86     *ABS*:0000001a _VECLEN
+     src/xevious.inc:87     *ABS*:0000001c _FFREQ
+     src/xevious.inc:88     *ABS*:0000001e _TYPE
+     src/xevious.inc:90     *ABS*:00000020 _OBJSIZE
+     src/xevious.inc:93     *ABS*:00000000 BANK_FG_COLORRAM
+     src/xevious.inc:94     *ABS*:00000004 BANK_BG_COLORRAM
+     src/xevious.inc:95     *ABS*:00000008 BANK_FG_VIDEORAM
+     src/xevious.inc:96     *ABS*:0000000c BANK_BG_VIDEORAM
+     src/xevious.inc:100    *ABS*:00000001 MAIN_THEME_SND
+     src/xevious.inc:101    *ABS*:00000002 HIGHEST_SCORE_SND
+     src/xevious.inc:102    *ABS*:00000003 HIGH_SCORE_SND
+     src/xevious.inc:103    *ABS*:00000004 EXTRA_SOLVALOU_SND
 68K GAS  src/xevious_main.68k 			page 138
 
 
-     src/xevious.inc:95     *ABS*:00000005 FLYING_ENEMY_HIT_SND
-     src/xevious.inc:96     *ABS*:00000006 GARU_ZAKATO_SND
-     src/xevious.inc:97     *ABS*:00000007 ANDOR_GENESIS_SND
-     src/xevious.inc:98     *ABS*:00000008 SHEONITE_SND
-     src/xevious.inc:99     *ABS*:00000009 TELEPORT_SND
-     src/xevious.inc:100    *ABS*:0000000a BACURA_HIT_SND
-     src/xevious.inc:101    *ABS*:0000000b SHOT_SND
-     src/xevious.inc:102    *ABS*:0000000c BOMB_SND
-     src/xevious.inc:103    *ABS*:0000000d BONUS_FLAG_SND
-     src/xevious.inc:104    *ABS*:0000000e SOLVALOU_SND
-     src/xevious.inc:106    *ABS*:00000010 COIN_SND
-     src/xevious.inc:107    *ABS*:00000011 GROUND_EXPLOSION_SND
-     src/xevious.inc:108    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
+     src/xevious.inc:104    *ABS*:00000005 FLYING_ENEMY_HIT_SND
+     src/xevious.inc:105    *ABS*:00000006 GARU_ZAKATO_SND
+     src/xevious.inc:106    *ABS*:00000007 ANDOR_GENESIS_SND
+     src/xevious.inc:107    *ABS*:00000008 SHEONITE_SND
+     src/xevious.inc:108    *ABS*:00000009 TELEPORT_SND
+     src/xevious.inc:109    *ABS*:0000000a BACURA_HIT_SND
+     src/xevious.inc:110    *ABS*:0000000b SHOT_SND
+     src/xevious.inc:111    *ABS*:0000000c BOMB_SND
+     src/xevious.inc:112    *ABS*:0000000d BONUS_FLAG_SND
+     src/xevious.inc:113    *ABS*:0000000e SOLVALOU_SND
+     src/xevious.inc:115    *ABS*:00000010 COIN_SND
+     src/xevious.inc:116    *ABS*:00000011 GROUND_EXPLOSION_SND
+     src/xevious.inc:117    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
 src/xevious_main.68k:41     .text:00000000 _start_of_xevious_main_rom
 src/xevious_main.68k:6145   .text:000047d8 flying_enemy_type_tbl_normal
 src/xevious_main.68k:1587   .text:00001241 ROM_high_score_tbl_normal

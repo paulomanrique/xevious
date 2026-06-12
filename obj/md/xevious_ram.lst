@@ -56,71 +56,80 @@
   52               	    OPT_SKIP_SPLASH=0
   53               	    OPT_SKIP_ATTRACT=0
   54               		.endif
-  55               		
-  56               	***
+  55               	
+  56               	* Mega Drive debug autoplay: start a real game immediately, no death,
 68K GAS  src/xevious_ram.68k 			page 2
 
 
-  57               	*** end of BUILD OPTIONS
-  58               	***
-  59               	
-  60               	* offsets into object table
-  61               	    .equ  _STATE,     0
-  62               	    .equ  _ATTR,      1
-  63               	    .equ  _EXTRA,     4
-  64               	    .equ  _X,         8
-  65               	    .equ  _dX,        10
-  66               	    .equ  _ddX,       12
-  67               	    .equ  _Y,         14
-  68               	    .equ  _dY,        16
-  69               	    .equ  _ddY,       18
-  70               	    .equ  _CODE,      20
-  71               	    .equ  _COLOUR,    21
-  72               	    .equ  _PTS,       22
-  73               	    .equ  _TIMER,     24
-  74               	    .equ  _TIMER1,    25
-  75               	      .equ  _NVEC,    25
-  76               	    .equ  _TIMER2,    26
-  77               	      .equ  _VECLEN,  26
-  78               	    .equ  _FFREQ,     28
-  79               	    .equ  _TYPE,      30
-  80               	
-  81               	    .equ  _OBJSIZE,   32
-  82               	
-  83               	* video functions
-  84               	    .equ  BANK_FG_COLORRAM,   (0<<2)
-  85               	    .equ  BANK_BG_COLORRAM,   (1<<2)
-  86               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
-  87               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
-  88               	
-  89               	* sound ordinals
-  90               	
-  91               	    .equ  MAIN_THEME_SND,         0x01
-  92               	    .equ  HIGHEST_SCORE_SND,      0x02
-  93               	    .equ  HIGH_SCORE_SND,         0x03
-  94               	    .equ  EXTRA_SOLVALOU_SND,     0x04
-  95               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
-  96               	    .equ  GARU_ZAKATO_SND,        0x06
-  97               	    .equ  ANDOR_GENESIS_SND,      0x07
-  98               	    .equ  SHEONITE_SND,           0x08
-  99               	    .equ  TELEPORT_SND,           0x09
- 100               	    .equ  BACURA_HIT_SND,         0x0a
- 101               	    .equ  SHOT_SND,               0x0b
- 102               	    .equ  BOMB_SND,               0x0c
- 103               	    .equ  BONUS_FLAG_SND,         0x0d
- 104               	    .equ  SOLVALOU_SND,           0x0e
- 105               	    * 60XX (noise chip?)
- 106               	    .equ  COIN_SND,               0x10
- 107               	    .equ  GROUND_EXPLOSION_SND,   0x11
- 108               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
- 109               	    
- 110               	
- 111               	
-   2               	
-   3               	    .global main_2_fn_tbl_1
+  57               	* so unattended runs exercise gameplay/area-transition code paths
+  58               		.ifdef	MD_AUTOPLAY
+  59               		.set	OPT_SKIP_ATTRACT, 1
+  60               		.endif
+  61               		.ifdef	MD_INVINCIBLE
+  62               		.set	OPT_INVINCIBLE, 1
+  63               		.endif
+  64               	
+  65               	***
+  66               	*** end of BUILD OPTIONS
+  67               	***
+  68               	
+  69               	* offsets into object table
+  70               	    .equ  _STATE,     0
+  71               	    .equ  _ATTR,      1
+  72               	    .equ  _EXTRA,     4
+  73               	    .equ  _X,         8
+  74               	    .equ  _dX,        10
+  75               	    .equ  _ddX,       12
+  76               	    .equ  _Y,         14
+  77               	    .equ  _dY,        16
+  78               	    .equ  _ddY,       18
+  79               	    .equ  _CODE,      20
+  80               	    .equ  _COLOUR,    21
+  81               	    .equ  _PTS,       22
+  82               	    .equ  _TIMER,     24
+  83               	    .equ  _TIMER1,    25
+  84               	      .equ  _NVEC,    25
+  85               	    .equ  _TIMER2,    26
+  86               	      .equ  _VECLEN,  26
+  87               	    .equ  _FFREQ,     28
+  88               	    .equ  _TYPE,      30
+  89               	
+  90               	    .equ  _OBJSIZE,   32
+  91               	
+  92               	* video functions
+  93               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  94               	    .equ  BANK_BG_COLORRAM,   (1<<2)
+  95               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
+  96               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
+  97               	
+  98               	* sound ordinals
+  99               	
+ 100               	    .equ  MAIN_THEME_SND,         0x01
+ 101               	    .equ  HIGHEST_SCORE_SND,      0x02
+ 102               	    .equ  HIGH_SCORE_SND,         0x03
+ 103               	    .equ  EXTRA_SOLVALOU_SND,     0x04
+ 104               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+ 105               	    .equ  GARU_ZAKATO_SND,        0x06
+ 106               	    .equ  ANDOR_GENESIS_SND,      0x07
+ 107               	    .equ  SHEONITE_SND,           0x08
+ 108               	    .equ  TELEPORT_SND,           0x09
+ 109               	    .equ  BACURA_HIT_SND,         0x0a
+ 110               	    .equ  SHOT_SND,               0x0b
+ 111               	    .equ  BOMB_SND,               0x0c
+ 112               	    .equ  BONUS_FLAG_SND,         0x0d
+ 113               	    .equ  SOLVALOU_SND,           0x0e
 68K GAS  src/xevious_ram.68k 			page 3
 
 
+ 114               	    * 60XX (noise chip?)
+ 115               	    .equ  COIN_SND,               0x10
+ 116               	    .equ  GROUND_EXPLOSION_SND,   0x11
+ 117               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
+ 118               	    
+ 119               	
+ 120               	
+   2               	
+   3               	    .global main_2_fn_tbl_1
    4               	    .global main_30_fn_tbl
    5               	    .global main_2_fn_tbl_2
    6               	    .global obj_tbl
@@ -169,6 +178,9 @@
   49               	    .global curr_player_score_lsb
   50               	    .global curr_player_solvalou_left
   51               	    .global area_obj_ptr
+68K GAS  src/xevious_ram.68k 			page 4
+
+
   52               	    .global area
   53               	    .global enemy_AI_level
   54               	    .global next_bonus_life_Ks
@@ -178,9 +190,6 @@
   58               	    .global ffreq_mask_kapi
   59               	    .global ffreq_mask_terrazi
   60               	    .global ffreq_mask_logram
-68K GAS  src/xevious_ram.68k 			page 4
-
-
   61               	    .global ffreq_mask_zoshi
   62               	    .global ffreq_mask_boza_logram
   63               	    .global ffreq_mask_domogram
@@ -229,6 +238,9 @@
  102      0000 0000 
  103 0080 0000 0000 	                                        ds.l  4           | solvalou
  103      0000 0000 
+68K GAS  src/xevious_ram.68k 			page 5
+
+
  103      0000 0000 
  103      0000 0000 
  104 0090 0000 0000 	main_30_fn_tbl:                         ds.l  3           | player shots
@@ -238,9 +250,6 @@
  105      0000 0000 
  105      0000 0000 
  105      0000 0000 
-68K GAS  src/xevious_ram.68k 			page 5
-
-
  105      0000 0000 
  106               	
  107               	* $7900-
@@ -289,6 +298,9 @@
  142 181f 00        	flying_enemy_type_tbl_offset:           ds.b  1
  143 1820 00        	num_bacura:                             ds.b  1
  144 1821 00        	sheonite_end_flag:                      ds.b  1
+68K GAS  src/xevious_ram.68k 			page 6
+
+
  145 1822 00        	andor_genesis_end_flag:                 ds.b  1
  146 1823 00        	shot_flag:                              ds.b  1
  147 1824 00        	shot_timer_init_value:                  ds.b  1
@@ -298,9 +310,6 @@
  151               	    .align 2
  152 1828 0000      	next_domogram:                          ds.w  1
  153 182a 00        	pulsing_colour_2:                       ds.b  1
-68K GAS  src/xevious_ram.68k 			page 6
-
-
  154 182b 00        	solvalou_exploding:                     ds.b  1
  155 182c 00        	new_high_score_entry_index:             ds.b  1
  156 182d 00        	name_entry_char_cnt:                    ds.b  1
@@ -349,6 +358,9 @@
  199               	* this value is set from the object table
  200               	* in SUB CPU as map is generated
  201               	* area01=$1F area05=$0F area07=$07
+68K GAS  src/xevious_ram.68k 			page 7
+
+
  202 1849 00        	ffreq_mask_boza_logram:                 ds.b  1
  203               	* this value is set from the object table
  204               	* in SUB CPU as map is generated
@@ -358,9 +370,6 @@
  208               	* this value is set from the object table
  209               	* in SUB CPU as map is generated
  210               	* area04=$2F area09=$0F area14=$0F
-68K GAS  src/xevious_ram.68k 			page 7
-
-
  211 184b 00        	ffreq_mask_andor_genesis:               ds.b  1
  212 184c 00        	gnd_stop_firing_row:                    ds.b  1
  213 184d 0000 0000 	curr_player_filler:                     ds.b  64
@@ -409,6 +418,9 @@
  236               	* name_buffer MUST follow RAM_test_result_final_score
  237 19b6 0000 00   	RAM_test_result_final_score:            ds.b  3
  238 19b9 0000 0000 	name_buffer:                            ds.b  10
+68K GAS  src/xevious_ram.68k 			page 8
+
+
  238      0000 0000 
  238      0000 
  239 19c3 0000 00   	                                        ds.b  3
@@ -418,9 +430,6 @@
  241      0000 
  242 19d3 0000 00   	                                        ds.b  3
  243 19d6 0000 00   	high_score_2nd_msb:                     ds.b  3
-68K GAS  src/xevious_ram.68k 			page 8
-
-
  244 19d9 0000 0000 	high_score_2nd_name:                    ds.b  10
  244      0000 0000 
  244      0000 
@@ -469,6 +478,9 @@
  265 3000 0000 0000 	fg_videoram:                            ds.b  0x800
  265      0000 0000 
  265      0000 0000 
+68K GAS  src/xevious_ram.68k 			page 9
+
+
  265      0000 0000 
  265      0000 0000 
  266 3800 0000 0000 	bg_videoram:                            ds.b  0x800
@@ -478,9 +490,6 @@
  266      0000 0000 
  267               	
  268               	* hitbox routines use sprite shadow register values
-68K GAS  src/xevious_ram.68k 			page 9
-
-
  269               	* - but for efficiency they're in OSD format
  270               	* - so maintain a 'raw' copy of (X{8:0]+8)>>1 & ($EF-Y[7:0])
  271               	* - layout is 64x Y,X pairs
@@ -512,50 +521,50 @@ DEFINED SYMBOLS
      src/xevious.inc:27     *ABS*:00000000 OPT_DISPLAY_AREA
      src/xevious.inc:28     *ABS*:00000000 OPT_SKIP_SPLASH
      src/xevious.inc:29     *ABS*:00000000 OPT_SKIP_ATTRACT
-     src/xevious.inc:61     *ABS*:00000000 _STATE
-     src/xevious.inc:62     *ABS*:00000001 _ATTR
-     src/xevious.inc:63     *ABS*:00000004 _EXTRA
-     src/xevious.inc:64     *ABS*:00000008 _X
-     src/xevious.inc:65     *ABS*:0000000a _dX
-     src/xevious.inc:66     *ABS*:0000000c _ddX
-     src/xevious.inc:67     *ABS*:0000000e _Y
-     src/xevious.inc:68     *ABS*:00000010 _dY
-     src/xevious.inc:69     *ABS*:00000012 _ddY
-     src/xevious.inc:70     *ABS*:00000014 _CODE
-     src/xevious.inc:71     *ABS*:00000015 _COLOUR
-     src/xevious.inc:72     *ABS*:00000016 _PTS
-     src/xevious.inc:73     *ABS*:00000018 _TIMER
-     src/xevious.inc:74     *ABS*:00000019 _TIMER1
-     src/xevious.inc:75     *ABS*:00000019 _NVEC
-     src/xevious.inc:76     *ABS*:0000001a _TIMER2
-     src/xevious.inc:77     *ABS*:0000001a _VECLEN
-     src/xevious.inc:78     *ABS*:0000001c _FFREQ
-     src/xevious.inc:79     *ABS*:0000001e _TYPE
-     src/xevious.inc:81     *ABS*:00000020 _OBJSIZE
-     src/xevious.inc:84     *ABS*:00000000 BANK_FG_COLORRAM
-     src/xevious.inc:85     *ABS*:00000004 BANK_BG_COLORRAM
-     src/xevious.inc:86     *ABS*:00000008 BANK_FG_VIDEORAM
-     src/xevious.inc:87     *ABS*:0000000c BANK_BG_VIDEORAM
-     src/xevious.inc:91     *ABS*:00000001 MAIN_THEME_SND
-     src/xevious.inc:92     *ABS*:00000002 HIGHEST_SCORE_SND
-     src/xevious.inc:93     *ABS*:00000003 HIGH_SCORE_SND
-     src/xevious.inc:94     *ABS*:00000004 EXTRA_SOLVALOU_SND
-     src/xevious.inc:95     *ABS*:00000005 FLYING_ENEMY_HIT_SND
-     src/xevious.inc:96     *ABS*:00000006 GARU_ZAKATO_SND
-     src/xevious.inc:97     *ABS*:00000007 ANDOR_GENESIS_SND
-     src/xevious.inc:98     *ABS*:00000008 SHEONITE_SND
-     src/xevious.inc:99     *ABS*:00000009 TELEPORT_SND
-     src/xevious.inc:100    *ABS*:0000000a BACURA_HIT_SND
-     src/xevious.inc:101    *ABS*:0000000b SHOT_SND
-     src/xevious.inc:102    *ABS*:0000000c BOMB_SND
-     src/xevious.inc:103    *ABS*:0000000d BONUS_FLAG_SND
+     src/xevious.inc:70     *ABS*:00000000 _STATE
+     src/xevious.inc:71     *ABS*:00000001 _ATTR
+     src/xevious.inc:72     *ABS*:00000004 _EXTRA
+     src/xevious.inc:73     *ABS*:00000008 _X
+     src/xevious.inc:74     *ABS*:0000000a _dX
+     src/xevious.inc:75     *ABS*:0000000c _ddX
+     src/xevious.inc:76     *ABS*:0000000e _Y
+     src/xevious.inc:77     *ABS*:00000010 _dY
+     src/xevious.inc:78     *ABS*:00000012 _ddY
+     src/xevious.inc:79     *ABS*:00000014 _CODE
+     src/xevious.inc:80     *ABS*:00000015 _COLOUR
+     src/xevious.inc:81     *ABS*:00000016 _PTS
+     src/xevious.inc:82     *ABS*:00000018 _TIMER
+     src/xevious.inc:83     *ABS*:00000019 _TIMER1
+     src/xevious.inc:84     *ABS*:00000019 _NVEC
+     src/xevious.inc:85     *ABS*:0000001a _TIMER2
+     src/xevious.inc:86     *ABS*:0000001a _VECLEN
+     src/xevious.inc:87     *ABS*:0000001c _FFREQ
+     src/xevious.inc:88     *ABS*:0000001e _TYPE
+     src/xevious.inc:90     *ABS*:00000020 _OBJSIZE
+     src/xevious.inc:93     *ABS*:00000000 BANK_FG_COLORRAM
+     src/xevious.inc:94     *ABS*:00000004 BANK_BG_COLORRAM
+     src/xevious.inc:95     *ABS*:00000008 BANK_FG_VIDEORAM
+     src/xevious.inc:96     *ABS*:0000000c BANK_BG_VIDEORAM
+     src/xevious.inc:100    *ABS*:00000001 MAIN_THEME_SND
+     src/xevious.inc:101    *ABS*:00000002 HIGHEST_SCORE_SND
+     src/xevious.inc:102    *ABS*:00000003 HIGH_SCORE_SND
+     src/xevious.inc:103    *ABS*:00000004 EXTRA_SOLVALOU_SND
+     src/xevious.inc:104    *ABS*:00000005 FLYING_ENEMY_HIT_SND
+     src/xevious.inc:105    *ABS*:00000006 GARU_ZAKATO_SND
+     src/xevious.inc:106    *ABS*:00000007 ANDOR_GENESIS_SND
+     src/xevious.inc:107    *ABS*:00000008 SHEONITE_SND
+     src/xevious.inc:108    *ABS*:00000009 TELEPORT_SND
+     src/xevious.inc:109    *ABS*:0000000a BACURA_HIT_SND
+     src/xevious.inc:110    *ABS*:0000000b SHOT_SND
+     src/xevious.inc:111    *ABS*:0000000c BOMB_SND
+     src/xevious.inc:112    *ABS*:0000000d BONUS_FLAG_SND
 68K GAS  src/xevious_ram.68k 			page 11
 
 
-     src/xevious.inc:104    *ABS*:0000000e SOLVALOU_SND
-     src/xevious.inc:106    *ABS*:00000010 COIN_SND
-     src/xevious.inc:107    *ABS*:00000011 GROUND_EXPLOSION_SND
-     src/xevious.inc:108    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
+     src/xevious.inc:113    *ABS*:0000000e SOLVALOU_SND
+     src/xevious.inc:115    *ABS*:00000010 COIN_SND
+     src/xevious.inc:116    *ABS*:00000011 GROUND_EXPLOSION_SND
+     src/xevious.inc:117    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
  src/xevious_ram.68k:102    .bss:00000000 main_2_fn_tbl_1
  src/xevious_ram.68k:104    .bss:00000090 main_30_fn_tbl
  src/xevious_ram.68k:105    .bss:0000009c main_2_fn_tbl_2

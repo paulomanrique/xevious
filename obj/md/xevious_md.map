@@ -20,50 +20,50 @@ Linker script and memory map
                 0x00000300                md_error
                 0x0000031e                md_hblank
                 0x0000031e                md_ext_irq
- .text          0x00000320      0xc7c C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
+ .text          0x00000320      0xdb4 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
                 0x00000320                md_main
-                0x00000502                md_vblank
-                0x000009b4                osd_enable_vblank_interrupt
-                0x000009ba                osd_ack_vblank_interrupt
-                0x000009c2                osd_disable_vblank_interrupt
-                0x000009c8                osd_kick_wdog
-                0x000009ca                osd_debug_hook
-                0x000009cc                osd_w_fg_videoram
-                0x000009ec                osd_w_fg_colorram
-                0x00000bf8                osd_w_bg_videoram
-                0x00000c18                osd_w_bg_colorram
-                0x00000cba                osd_update_scroll_hw
-                0x00000cc2                osd_update_sprite_shadow
-                0x00000eae                osd_update_32_sprite_hw
-                0x00000f80                osd_read_dipswitches
-                0x00000f8a                osd_read_p2_inputs
-                0x00000f8a                osd_read_p1_inputs
-                0x00000f90                osd_read_coin
-                0x00000f94                osd_read_start
-                0x00000f98                osd_sound_start
-                0x00000f98                osd_sound_unmute
-                0x00000f98                osd_sound_stop
-                0x00000f98                osd_sound_mute
-                0x00000f9a                osd_write_high_scores
-                0x00000f9a                osd_read_high_scores
- .text          0x00000f9c     0x4c0a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
-                0x00000f9c                xevious_reset
-                0x000010f0                xevious_im1_irq
-                0x000021d4                start_area
-                0x0000576a                is_super_xevious
-                0x0000576b                invincible_flag
-                0x0000576c                infinite_lives_flag
-                0x0000576d                reveal_sol_tower_flag
-                0x0000576e                reveal_bonus_flag_flag
- *fill*         0x00005ba6        0x2 4e75
- .text          0x00005ba8     0x283a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
-                0x00005ba8                xevious_sub_reset
-                0x00005bce                xevious_sub_irq
-                0x00005c10                xevious_sub_cpu
-                0x000065d0                area_object_tbl_tbl_pointer
- *fill*         0x000083e2        0x2 4e75
- .text          0x000083e4        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
- *fill*         0x000083e4      0xc1c 4e75
+                0x000004ea                md_vblank
+                0x000009b6                osd_enable_vblank_interrupt
+                0x000009bc                osd_ack_vblank_interrupt
+                0x000009c4                osd_disable_vblank_interrupt
+                0x000009ca                osd_kick_wdog
+                0x000009cc                osd_debug_hook
+                0x000009ce                osd_w_fg_videoram
+                0x000009ee                osd_w_fg_colorram
+                0x00000bf2                osd_w_bg_videoram
+                0x00000c12                osd_w_bg_colorram
+                0x00000cdc                osd_update_scroll_hw
+                0x00000ce4                osd_update_sprite_shadow
+                0x00000ed0                osd_update_32_sprite_hw
+                0x00000fe8                osd_read_dipswitches
+                0x00001022                osd_read_p1_inputs
+                0x00001030                osd_read_p2_inputs
+                0x00001068                osd_read_coin
+                0x000010ae                osd_read_start
+                0x000010d0                osd_sound_start
+                0x000010d0                osd_sound_unmute
+                0x000010d0                osd_sound_stop
+                0x000010d0                osd_sound_mute
+                0x000010d2                osd_write_high_scores
+                0x000010d2                osd_read_high_scores
+ .text          0x000010d4     0x4c0a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
+                0x000010d4                xevious_reset
+                0x00001228                xevious_im1_irq
+                0x0000230c                start_area
+                0x000058a2                is_super_xevious
+                0x000058a3                invincible_flag
+                0x000058a4                infinite_lives_flag
+                0x000058a5                reveal_sol_tower_flag
+                0x000058a6                reveal_bonus_flag_flag
+ *fill*         0x00005cde        0x2 4e75
+ .text          0x00005ce0     0x283a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
+                0x00005ce0                xevious_sub_reset
+                0x00005d06                xevious_sub_irq
+                0x00005d48                xevious_sub_cpu
+                0x00006708                area_object_tbl_tbl_pointer
+ *fill*         0x0000851a        0x2 4e75
+ .text          0x0000851c        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
+ *fill*         0x0000851c      0xae4 4e75
  .text          0x00009000     0x4000 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
                 0x00009000                rom2a
                 0x0000a000                rom2b
@@ -95,113 +95,114 @@ Linker script and memory map
                 0x0006b7c0                _end_of_rom = .
                 0x00ff0000                . = 0xff0000
 
-.bss            0x00ff0000     0xd080
+.bss            0x00ff0000     0xa080
  *(.bss)
  .bss           0x00ff0000        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\header.o
  .bss           0x00ff0000        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\startup.o
- .bss           0x00ff0000     0x800c C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
- .bss           0x00ff800c        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
- .bss           0x00ff800c       0x82 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
- *fill*         0x00ff808e      0xf72 
- .bss           0x00ff9000     0x4080 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
-                0x00ff9000                main_2_fn_tbl_1
-                0x00ff9090                main_30_fn_tbl
-                0x00ff909c                main_2_fn_tbl_2
-                0x00ffa000                obj_tbl
-                0x00ffa800                vb_semaphore_main
-                0x00ffa800                watermark_0x8000
-                0x00ffa801                countup_timer_1
-                0x00ffa802                vb_ticks_count
-                0x00ffa804                pseudo_random_seed
-                0x00ffa806                bg_scroll_x_shadow
-                0x00ffa808                scroll_cntr
-                0x00ffa80a                area_offset_in_map
-                0x00ffa80c                scroll_delta
-                0x00ffa80e                dswa
-                0x00ffa80f                dswb
-                0x00ffa810                P1_inputs
-                0x00ffa811                P2_inputs
-                0x00ffa812                start_pressed
-                0x00ffa813                pulsing_colour_1
-                0x00ffa814                curr_player
-                0x00ffa815                two_player_game
-                0x00ffa816                is_real_game
-                0x00ffa817                high_score_msb
-                0x00ffa817                RAM_high_score
-                0x00ffa81a                attract_mode_stage
-                0x00ffa81c                num_credits
-                0x00ffa81d                scroll_disabled
-                0x00ffa81e                num_flying_enemies
-                0x00ffa81f                flying_enemy_type_tbl_offset
-                0x00ffa820                num_bacura
-                0x00ffa821                sheonite_end_flag
-                0x00ffa822                andor_genesis_end_flag
-                0x00ffa823                shot_flag
-                0x00ffa824                shot_timer_init_value
-                0x00ffa825                shot_timer
-                0x00ffa826                andor_genesis_colour
-                0x00ffa827                countdown_timer_1
-                0x00ffa828                next_domogram
-                0x00ffa82a                pulsing_colour_2
-                0x00ffa82b                solvalou_exploding
-                0x00ffa82c                new_high_score_entry_index
-                0x00ffa82d                name_entry_char_cnt
-                0x00ffa82e                name_entry_curr_char_screen_offset
-                0x00ffa830                name_entry_ptr_curr_char
-                0x00ffa834                curr_player_score_msb
-                0x00ffa835                curr_player_score_Ks
-                0x00ffa836                curr_player_score_lsb
-                0x00ffa837                curr_player_solvalou_left
-                0x00ffa838                area_obj_ptr
-                0x00ffa83c                area
-                0x00ffa83e                enemy_AI_level
-                0x00ffa840                next_bonus_life_Ks
-                0x00ffa842                solvalou_number
-                0x00ffa843                bonus_life_none
-                0x00ffa844                ffreq_mask_derota
-                0x00ffa845                ffreq_mask_kapi
-                0x00ffa846                ffreq_mask_terrazi
-                0x00ffa847                ffreq_mask_logram
-                0x00ffa848                ffreq_mask_zoshi
-                0x00ffa849                ffreq_mask_boza_logram
-                0x00ffa84a                ffreq_mask_domogram
-                0x00ffa84b                ffreq_mask_andor_genesis
-                0x00ffa84c                gnd_stop_firing_row
-                0x00ffa84d                curr_player_filler
-                0x00ffa88d                other_player_score_msb
-                0x00ffa890                other_player_solvalou_left
-                0x00ffa891                other_player_filler
-                0x00ffa8d4                main_fn_tbl_RAM
-                0x00ffa954                area_object_tbl_tbl_RAM
-                0x00ffa954                watermark_0x8400
-                0x00ffa994                bacura_inc_cnt
-                0x00ffa995                one_second_cntr
-                0x00ffa996                str_decrypt_buf
-                0x00ffa9b6                RAM_test_result_final_score
-                0x00ffa9b9                name_buffer
-                0x00ffa9c6                high_score_1st_msb
-                0x00ffa9c9                high_score_1st_name
-                0x00ffa9d6                high_score_2nd_msb
-                0x00ffa9d9                high_score_2nd_name
-                0x00ffa9e6                high_score_3rd_msb
-                0x00ffa9e9                high_score_3rd_name
-                0x00ffa9f6                high_score_4th_msb
-                0x00ffa9f9                high_score_4th_name
-                0x00ffaa06                high_score_5th_msb
-                0x00ffaa09                high_score_5th_name
-                0x00ffaa16                maincpu_inited
-                0x00ffaa17                domogram_tbl
-                0x00ffb000                fg_colorram
-                0x00ffb800                bg_colorram
-                0x00ffc000                fg_videoram
-                0x00ffc800                bg_videoram
-                0x00ffd000                sprite_shadow_msb
- .bss           0x00ffd080        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
+ .bss           0x00ff0000     0x5012 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
+ *fill*         0x00ff5012        0x2 
+ .bss           0x00ff5014        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
+ .bss           0x00ff5014       0x82 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
+ *fill*         0x00ff5096      0xf6a 
+ .bss           0x00ff6000     0x4080 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
+                0x00ff6000                main_2_fn_tbl_1
+                0x00ff6090                main_30_fn_tbl
+                0x00ff609c                main_2_fn_tbl_2
+                0x00ff7000                obj_tbl
+                0x00ff7800                vb_semaphore_main
+                0x00ff7800                watermark_0x8000
+                0x00ff7801                countup_timer_1
+                0x00ff7802                vb_ticks_count
+                0x00ff7804                pseudo_random_seed
+                0x00ff7806                bg_scroll_x_shadow
+                0x00ff7808                scroll_cntr
+                0x00ff780a                area_offset_in_map
+                0x00ff780c                scroll_delta
+                0x00ff780e                dswa
+                0x00ff780f                dswb
+                0x00ff7810                P1_inputs
+                0x00ff7811                P2_inputs
+                0x00ff7812                start_pressed
+                0x00ff7813                pulsing_colour_1
+                0x00ff7814                curr_player
+                0x00ff7815                two_player_game
+                0x00ff7816                is_real_game
+                0x00ff7817                high_score_msb
+                0x00ff7817                RAM_high_score
+                0x00ff781a                attract_mode_stage
+                0x00ff781c                num_credits
+                0x00ff781d                scroll_disabled
+                0x00ff781e                num_flying_enemies
+                0x00ff781f                flying_enemy_type_tbl_offset
+                0x00ff7820                num_bacura
+                0x00ff7821                sheonite_end_flag
+                0x00ff7822                andor_genesis_end_flag
+                0x00ff7823                shot_flag
+                0x00ff7824                shot_timer_init_value
+                0x00ff7825                shot_timer
+                0x00ff7826                andor_genesis_colour
+                0x00ff7827                countdown_timer_1
+                0x00ff7828                next_domogram
+                0x00ff782a                pulsing_colour_2
+                0x00ff782b                solvalou_exploding
+                0x00ff782c                new_high_score_entry_index
+                0x00ff782d                name_entry_char_cnt
+                0x00ff782e                name_entry_curr_char_screen_offset
+                0x00ff7830                name_entry_ptr_curr_char
+                0x00ff7834                curr_player_score_msb
+                0x00ff7835                curr_player_score_Ks
+                0x00ff7836                curr_player_score_lsb
+                0x00ff7837                curr_player_solvalou_left
+                0x00ff7838                area_obj_ptr
+                0x00ff783c                area
+                0x00ff783e                enemy_AI_level
+                0x00ff7840                next_bonus_life_Ks
+                0x00ff7842                solvalou_number
+                0x00ff7843                bonus_life_none
+                0x00ff7844                ffreq_mask_derota
+                0x00ff7845                ffreq_mask_kapi
+                0x00ff7846                ffreq_mask_terrazi
+                0x00ff7847                ffreq_mask_logram
+                0x00ff7848                ffreq_mask_zoshi
+                0x00ff7849                ffreq_mask_boza_logram
+                0x00ff784a                ffreq_mask_domogram
+                0x00ff784b                ffreq_mask_andor_genesis
+                0x00ff784c                gnd_stop_firing_row
+                0x00ff784d                curr_player_filler
+                0x00ff788d                other_player_score_msb
+                0x00ff7890                other_player_solvalou_left
+                0x00ff7891                other_player_filler
+                0x00ff78d4                main_fn_tbl_RAM
+                0x00ff7954                area_object_tbl_tbl_RAM
+                0x00ff7954                watermark_0x8400
+                0x00ff7994                bacura_inc_cnt
+                0x00ff7995                one_second_cntr
+                0x00ff7996                str_decrypt_buf
+                0x00ff79b6                RAM_test_result_final_score
+                0x00ff79b9                name_buffer
+                0x00ff79c6                high_score_1st_msb
+                0x00ff79c9                high_score_1st_name
+                0x00ff79d6                high_score_2nd_msb
+                0x00ff79d9                high_score_2nd_name
+                0x00ff79e6                high_score_3rd_msb
+                0x00ff79e9                high_score_3rd_name
+                0x00ff79f6                high_score_4th_msb
+                0x00ff79f9                high_score_4th_name
+                0x00ff7a06                high_score_5th_msb
+                0x00ff7a09                high_score_5th_name
+                0x00ff7a16                maincpu_inited
+                0x00ff7a17                domogram_tbl
+                0x00ff8000                fg_colorram
+                0x00ff8800                bg_colorram
+                0x00ff9000                fg_videoram
+                0x00ff9800                bg_videoram
+                0x00ffa000                sprite_shadow_msb
+ .bss           0x00ffa080        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
  *(.bss.*)
  *(COMMON)
-                0x00ffd080                . = ALIGN (0x4)
-                0x00ffd080                _end = .
-                0x00ffd080                PROVIDE (end, .)
+                0x00ffa080                . = ALIGN (0x4)
+                0x00ffa080                _end = .
+                0x00ffa080                PROVIDE (end, .)
 
 .comment
  *(.comment)

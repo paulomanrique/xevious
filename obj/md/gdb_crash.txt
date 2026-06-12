@@ -1,0 +1,3 @@
+0x00000200 in _start ()
+Breakpoint 1 at 0x300
+Breakpoint 2 at 0x10b8

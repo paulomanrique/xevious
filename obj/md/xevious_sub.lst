@@ -77,66 +77,75 @@
   52               	    OPT_SKIP_SPLASH=0
   53               	    OPT_SKIP_ATTRACT=0
   54               		.endif
-  55               		
-  56               	***
-  57               	*** end of BUILD OPTIONS
-  58               	***
-  59               	
-  60               	* offsets into object table
-  61               	    .equ  _STATE,     0
-  62               	    .equ  _ATTR,      1
-  63               	    .equ  _EXTRA,     4
-  64               	    .equ  _X,         8
-  65               	    .equ  _dX,        10
-  66               	    .equ  _ddX,       12
-  67               	    .equ  _Y,         14
-  68               	    .equ  _dY,        16
-  69               	    .equ  _ddY,       18
-  70               	    .equ  _CODE,      20
-  71               	    .equ  _COLOUR,    21
-  72               	    .equ  _PTS,       22
-  73               	    .equ  _TIMER,     24
-  74               	    .equ  _TIMER1,    25
-  75               	      .equ  _NVEC,    25
-  76               	    .equ  _TIMER2,    26
-  77               	      .equ  _VECLEN,  26
-  78               	    .equ  _FFREQ,     28
-  79               	    .equ  _TYPE,      30
-  80               	
-  81               	    .equ  _OBJSIZE,   32
-  82               	
-  83               	* video functions
-  84               	    .equ  BANK_FG_COLORRAM,   (0<<2)
-  85               	    .equ  BANK_BG_COLORRAM,   (1<<2)
-  86               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
-  87               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
-  88               	
-  89               	* sound ordinals
-  90               	
-  91               	    .equ  MAIN_THEME_SND,         0x01
-  92               	    .equ  HIGHEST_SCORE_SND,      0x02
-  93               	    .equ  HIGH_SCORE_SND,         0x03
-  94               	    .equ  EXTRA_SOLVALOU_SND,     0x04
-  95               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+  55               	
+  56               	* Mega Drive debug autoplay: start a real game immediately, no death,
+  57               	* so unattended runs exercise gameplay/area-transition code paths
+  58               		.ifdef	MD_AUTOPLAY
+  59               		.set	OPT_SKIP_ATTRACT, 1
+  60               		.endif
+  61               		.ifdef	MD_INVINCIBLE
+  62               		.set	OPT_INVINCIBLE, 1
+  63               		.endif
+  64               	
+  65               	***
+  66               	*** end of BUILD OPTIONS
+  67               	***
+  68               	
+  69               	* offsets into object table
+  70               	    .equ  _STATE,     0
+  71               	    .equ  _ATTR,      1
+  72               	    .equ  _EXTRA,     4
+  73               	    .equ  _X,         8
+  74               	    .equ  _dX,        10
+  75               	    .equ  _ddX,       12
+  76               	    .equ  _Y,         14
+  77               	    .equ  _dY,        16
+  78               	    .equ  _ddY,       18
+  79               	    .equ  _CODE,      20
+  80               	    .equ  _COLOUR,    21
+  81               	    .equ  _PTS,       22
+  82               	    .equ  _TIMER,     24
+  83               	    .equ  _TIMER1,    25
+  84               	      .equ  _NVEC,    25
+  85               	    .equ  _TIMER2,    26
+  86               	      .equ  _VECLEN,  26
+  87               	    .equ  _FFREQ,     28
+  88               	    .equ  _TYPE,      30
+  89               	
+  90               	    .equ  _OBJSIZE,   32
+  91               	
+  92               	* video functions
+  93               	    .equ  BANK_FG_COLORRAM,   (0<<2)
+  94               	    .equ  BANK_BG_COLORRAM,   (1<<2)
+  95               	    .equ  BANK_FG_VIDEORAM,   (2<<2)
 68K GAS  src/xevious_sub.68k 			page 3
 
 
-  96               	    .equ  GARU_ZAKATO_SND,        0x06
-  97               	    .equ  ANDOR_GENESIS_SND,      0x07
-  98               	    .equ  SHEONITE_SND,           0x08
-  99               	    .equ  TELEPORT_SND,           0x09
- 100               	    .equ  BACURA_HIT_SND,         0x0a
- 101               	    .equ  SHOT_SND,               0x0b
- 102               	    .equ  BOMB_SND,               0x0c
- 103               	    .equ  BONUS_FLAG_SND,         0x0d
- 104               	    .equ  SOLVALOU_SND,           0x0e
- 105               	    * 60XX (noise chip?)
- 106               	    .equ  COIN_SND,               0x10
- 107               	    .equ  GROUND_EXPLOSION_SND,   0x11
- 108               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
- 109               	    
- 110               	
- 111               	
+  96               	    .equ  BANK_BG_VIDEORAM,   (3<<2)
+  97               	
+  98               	* sound ordinals
+  99               	
+ 100               	    .equ  MAIN_THEME_SND,         0x01
+ 101               	    .equ  HIGHEST_SCORE_SND,      0x02
+ 102               	    .equ  HIGH_SCORE_SND,         0x03
+ 103               	    .equ  EXTRA_SOLVALOU_SND,     0x04
+ 104               	    .equ  FLYING_ENEMY_HIT_SND,   0x05
+ 105               	    .equ  GARU_ZAKATO_SND,        0x06
+ 106               	    .equ  ANDOR_GENESIS_SND,      0x07
+ 107               	    .equ  SHEONITE_SND,           0x08
+ 108               	    .equ  TELEPORT_SND,           0x09
+ 109               	    .equ  BACURA_HIT_SND,         0x0a
+ 110               	    .equ  SHOT_SND,               0x0b
+ 111               	    .equ  BOMB_SND,               0x0c
+ 112               	    .equ  BONUS_FLAG_SND,         0x0d
+ 113               	    .equ  SOLVALOU_SND,           0x0e
+ 114               	    * 60XX (noise chip?)
+ 115               	    .equ  COIN_SND,               0x10
+ 116               	    .equ  GROUND_EXPLOSION_SND,   0x11
+ 117               	    .equ  SOLVALOU_EXPLOSION_SND, 0x12
+ 118               	    
+ 119               	
+ 120               	
   20               	
   21               	* this doesn't return in the real code
   22               	* jut we are calling from main, so we
@@ -169,6 +178,9 @@
   46               	    ***   of ground objects
   47               	    ****jbsr       sub_fn_0__update_32_sprite_hw
   48 0026 303C 0020 	    move.w    #32,d0                            | start at sprite 32
+68K GAS  src/xevious_sub.68k 			page 4
+
+
   49 002a 4EB9 0000 	    jsr       osd_update_32_sprite_hw
   49      0000 
   50               	    ***jbsr       sub_fn_1__update_scroll_hw
@@ -178,9 +190,6 @@
   52      0000 
   53 003c 4E75      	    rts
   54               	.endif
-68K GAS  src/xevious_sub.68k 			page 4
-
-
   55               	
   56               	save_PC_to_fn_tbl_and_ret: | $0030
   57 003e 2C9F      	    move.l    (a7)+,(a6)                        | pop return and store in table
@@ -229,6 +238,9 @@
   96               		| as code seems to rely on current a6 value)
   97 008a 584E      		addq.w	#4,a6
   98 008c 51CF FFEC 	    dbf       d7,main_fn_loop
+68K GAS  src/xevious_sub.68k 			page 5
+
+
   99               	
  100 0090 303C 8000 	    move.w    #0x8000,d0                        | black
  101 0094 4EB9 0000 	    jsr       osd_debug_hook
@@ -238,9 +250,6 @@
  104               	    * - jut we need to share CPU with the MAIN code
  105               	    * - so return here
  106 009a 4E75      	9:  rts
-68K GAS  src/xevious_sub.68k 			page 5
-
-
  107               	
  108               	    .align 4
  109               	sub_fn_jump_tbl_ROM: | $01B6
@@ -289,6 +298,9 @@
  152               	    * see OPT_SUB_HAS_IRQ
  153 011c 4EB9 0000 	    jsr       osd_disable_vblank_interrupt
  153      0000 
+68K GAS  src/xevious_sub.68k 			page 6
+
+
  154 0122 303C 0020 	    move.w    #32,d0                            | start at sprite 32
  155 0126 4EB9 0000 	    jsr       osd_update_32_sprite_hw
  155      0000 
@@ -298,9 +310,6 @@
  158               	sub_fn_1__update_scroll_hw: | $0218
  159               	    * on the Neo Geo we have do disable VBLANK
  160               	    * and possibly on other platforms as well
-68K GAS  src/xevious_sub.68k 			page 6
-
-
  161               	    * the other options is to move this into VBLANK
  162               	    * see OPT_SUB_HAS_IRQ
  163 0132 4EB9 0000 	    jsr       osd_disable_vblank_interrupt
@@ -349,6 +358,9 @@
  195 0198 0C39 0002 	    cmp.b     #2,(num_credits)                  | enough for 2P?
  195      0000 0000 
  196 01a0 6524      	    jcs     9f                                | no, exit
+68K GAS  src/xevious_sub.68k 			page 7
+
+
  197 01a2 7402      	    moveq     #2,d2                             | 2 credits/players
  198               	    * can start a game here
  199 01a4 023C 000F 	8:  andi      #0x0f,ccr                         | clear X
@@ -358,9 +370,6 @@
  202 01b0 13C1 0000 	    move.b    d1,(num_credits)
  202      0000 
  203 01b6 5302      	    subq.b    #1,d2                             | 0=1P/1=2P
-68K GAS  src/xevious_sub.68k 			page 7
-
-
  204 01b8 13C2 0000 	    move.b    d2,(two_player_game)
  204      0000 
  205 01be 13FC 0001 	    move.b    #1,(start_pressed)
@@ -409,6 +418,9 @@
  238 0234 303C 0040 	    move.w    #0x40,d0
  239 0238 3239 0000 	    move.w    (scroll_cntr),d1
  239      0000 
+68K GAS  src/xevious_sub.68k 			page 8
+
+
  240 023e D040      	    add.w     d0,d0
  241 0240 D041      	    add.w     d1,d0
  242 0242 EA48      	    lsr.w     #5,d0
@@ -418,9 +430,6 @@
  245 024e 4E75      	9:  rts
  246               	
  247               	get_map_row: | $02D4
-68K GAS  src/xevious_sub.68k 			page 8
-
-
  248 0250 3039 0000 	    move.w    (scroll_cntr),d0
  248      0000 
  249 0256 3400      	    move.w    d0,d2                             | copy
@@ -469,6 +478,9 @@
  285      0000 
  286 02cc 4CDF 0007 	    movem.l   (a7)+,d0-d2
  287 02d0 0640 0100 	    add.w     #0x0100,d0
+68K GAS  src/xevious_sub.68k 			page 9
+
+
  288 02d4 5202      	    addq.b    #1,d2
  289 02d6 51CF FFB2 	    dbf       d7,2b
  290 02da 4E75      	9:  rts
@@ -478,9 +490,6 @@
  293      0000 
  294 02e2 4EF9 0000 	    jmp       osd_update_sprite_shadow
  294      0000 
-68K GAS  src/xevious_sub.68k 			page 9
-
-
  295               	
  296               	* byte3 is a signed offset into flying_enemy_offset_tbl
  297               	* which in turn sets number of flying enemies and
@@ -529,6 +538,9 @@
  333 0344 4239 0000 	    clr.b     (flying_enemy_type_tbl_offset)
  333      0000 
  334 034a 23C8 0000 	    move.l    a0,(area_obj_ptr)
+68K GAS  src/xevious_sub.68k 			page 10
+
+
  334      0000 
  335 0350 4E75      	    rts
  336               	
@@ -538,9 +550,6 @@
  340 0353 00        	    .byte   0
  341 0354 06        	    .byte   6
  342 0355 10        	    .byte   0x10
-68K GAS  src/xevious_sub.68k 			page 10
-
-
  343               	
  344               	sub_2_fn_23__adjust_AI_level_based_on_score: | $040C
  345 0356 23C8 0000 	    move.l    a0,(area_obj_ptr)
@@ -589,6 +598,9 @@
  382 03a4 13D8 0000 	    move.b    (a0)+,(ffreq_mask_logram)    
  382      0000 
  383 03aa 23C8 0000 	    move.l    a0,(area_obj_ptr)
+68K GAS  src/xevious_sub.68k 			page 11
+
+
  383      0000 
  384 03b0 4E75      	    rts
  385               	
@@ -598,9 +610,6 @@
  388 03b8 23C8 0000 	    move.l    a0,(area_obj_ptr)
  388      0000 
  389 03be 4E75      	    rts
-68K GAS  src/xevious_sub.68k 			page 11
-
-
  390               	
  391               	sub_2_fn_12__fire_freq_mask_terrazi: | $045C
  392 03c0 13D8 0000 	    move.b    (a0)+,(ffreq_mask_terrazi)   
@@ -649,6 +658,9 @@
  423               	* flying enemy number and offset table
  424               	* - byte $00 -> $802B = num flying enemies
  425               	* - byte $01 -> $802C = offset into flying enemy type table
+68K GAS  src/xevious_sub.68k 			page 12
+
+
  426               	
  427               	* this table can have negative offsets!
  428 0418 040B 050A 	    .byte 4, 0xB, 5, 0xA, 6, 9, 6, 0x25, 6, 0x5C, 6, 0x29, 6, 0x5E, 6, 0x64
@@ -658,9 +670,6 @@
  429 0428 0666 0672 	    .byte 6, 0x66, 6, 0x72, 4, 0x30, 4, 0x31, 5, 0x30, 6, 0x30, 6, 0x3F, 6, 0x48
  429      0430 0431 
  429      0530 0630 
-68K GAS  src/xevious_sub.68k 			page 12
-
-
  429      063F 0648 
  430 0438 064B 0254 	    .byte 6, 0x4B, 2, 0x54, 3, 0x54, 4, 0x54, 2, 0x58, 3, 0x58, 4, 0x58, 4, 0x58
  430      0354 0454 
@@ -709,6 +718,9 @@
  441      033C 043C 
  442 04e8 043C 053C 	    .byte 4, 0x3C, 5, 0x3C, 5, 0x19, 5, 0x19, 6, 0x19, 6, 0x19, 2, 0x45, 3, 0x45
  442      0519 0519 
+68K GAS  src/xevious_sub.68k 			page 13
+
+
  442      0619 0619 
  442      0245 0345 
  443 04f8 0345 0445 	    .byte 3, 0x45, 4, 0x45, 4, 0x45, 5, 0x45, 5, 0x2D, 5, 0x2D, 6, 0x2D, 6, 0x2D
@@ -718,9 +730,6 @@
  444 0508 0427 0427 	    .byte 4, 0x27, 4, 0x27, 5, 0x27, 5, 0x27, 6, 0x27, 6, 0x27, 5, 0xD, 5, 0xD
  444      0527 0527 
  444      0627 0627 
-68K GAS  src/xevious_sub.68k 			page 13
-
-
  444      050D 050D 
  445 0518 060D 060D 	    .byte 6, 0xD, 6, 0xD, 2, 0x6D, 3, 0x6C, 3, 0x6C, 4, 0x6C, 4, 0x6C, 5, 0x6C
  445      026D 036C 
@@ -769,6 +778,9 @@
  458      041D 0605 
  458      0517 041D 
  458      0517 051D 
+68K GAS  src/xevious_sub.68k 			page 14
+
+
  459 05c8 042D 0517 	    .byte 4, 0x2D, 5, 0x17, 5, 0x2D, 6, 0x1D, 6, 0x17, 4, 0x20, 6, 0x2D, 3, 0x23
  459      052D 061D 
  459      0617 0420 
@@ -778,9 +790,6 @@
  460      0311 062D 
  460      050B 0523 
  461 05e8 0340 060D 	    .byte 3, 0x40, 6, 0xD, 4, 0x40, 6, 0xB, 6, 0x2D, 5, 0x40, 6, 0x23, 6, 0xE
-68K GAS  src/xevious_sub.68k 			page 14
-
-
  461      0440 060B 
  461      062D 0540 
  461      0623 060E 
@@ -829,6 +838,9 @@
  474               	sub_2_fn_7__reset_num_bacura: | $05D8
  475 0698 4239 0000 	    clr.b     (num_bacura)
  475      0000 
+68K GAS  src/xevious_sub.68k 			page 15
+
+
  476 069e 23C8 0000 	    move.l    a0,(area_obj_ptr)
  476      0000 
  477 06a4 4E75      	    rts
@@ -838,9 +850,6 @@
  481               	* byte3 = offset
  482               	* byte4 = sprite Y
  483               	* byte5 = num 2-byte entries to follow
-68K GAS  src/xevious_sub.68k 			page 15
-
-
  484               	* byte6 = vector length
  485               	* byte7 = index into domogram vector table (dY,dX pairs)
  486               	* byteN...
@@ -889,6 +898,9 @@
  523 0706 5200      	    addq.b    #1,d0
  524 0708 0C00 000C 	    cmp.b     #12,d0                            | wrap?
  525 070c 6502      	    jcs     2f
+68K GAS  src/xevious_sub.68k 			page 16
+
+
  526 070e 4240      	    clr.w     d0
  527 0710 33C0 0000 	2:  move.w    d0,(next_domogram)
  527      0000 
@@ -898,9 +910,6 @@
  531 0718 4BF9 0000 	    lea       obj_tbl+_OBJSIZE*0x3f,a5          | 6th flying object
  531      0000 
  532 071e 1B7C 0031 	    move.b    #0x31,(_TYPE,a5)
-68K GAS  src/xevious_sub.68k 			page 16
-
-
  532      001E 
  533 0724 4BED FFE0 	    lea       (-_OBJSIZE,a5),a5                 | 5th flying object
  534 0728 1B7C 0032 	    move.b    #0x32,(_TYPE,a5)
@@ -949,6 +958,9 @@
  566 0790 4142 4344 	    .byte 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x52, 0x51, 0x50, 0x4F, 0x4A, 0x4B
  566      4546 4748 
  566      4952 5150 
+68K GAS  src/xevious_sub.68k 			page 17
+
+
  566      4F4A 4B
  567 079f 00        	    .align 2
  568               	    
@@ -958,9 +970,6 @@
  571 07a6 13FC 0001 	    move.b    #1,(andor_genesis_end_flag)
  571      0000 0000 
  572 07ae 4E75      	    rts   
-68K GAS  src/xevious_sub.68k 			page 17
-
-
  573               	                
  574               	sub_fn_2__handle_objects: | $068F
  575 07b0 2079 0000 	    movea.l   (area_obj_ptr),a0
@@ -1009,6 +1018,9 @@
  609 080a 0106 0708 	    .byte 1, 6, 7, 8, 9, 1, 1, 0xA, 0xB, 0xC, 0xD, 1, 1, 0xF, 0x10, 0x11
  609      0901 010A 
  609      0B0C 0D01 
+68K GAS  src/xevious_sub.68k 			page 18
+
+
  609      010F 1011 
  610 081a 0000 1213 	    .byte 0, 0, 0x12, 0x13, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
  610      0101 0101 
@@ -1018,9 +1030,6 @@
  611      0101 0101 
  611      0101 0114 
  611      1516 0000 
-68K GAS  src/xevious_sub.68k 			page 18
-
-
  612 083a 0000 0100 	    .byte 0, 0, 1, 0, 0, 0, 0x17
  612      0000 17
  613               	    * added for Super Xevious
@@ -1069,6 +1078,9 @@
  654      0000 
  655 08b4 4BF5 0000 	    lea       (a5,d0.w),a5                      | set object base
  656 08b8 1B68 FFFF 	    move.b    (-1,a0),(_TYPE,a5)
+68K GAS  src/xevious_sub.68k 			page 19
+
+
  656      001E 
  657 08be 41E8 0001 	    lea       (1,a0),a0
  658 08c2 23C8 0000 	    move.l    a0,(area_obj_ptr)
@@ -1078,9 +1090,6 @@
  661               	null_fn:
  662 08ca 4E75      		rts
  663               		
-68K GAS  src/xevious_sub.68k 			page 19
-
-
  664               	* add object type and sprite coordinate
  665               	* - byte2 is object type
  666               	* - byte3 is offset in RAM
@@ -1129,6 +1138,9 @@
  702 0922 6636      	    jne     9f                                | not finished
  703 0924 3039 0000 	    move.w    (area),d0
  703      0000 
+68K GAS  src/xevious_sub.68k 			page 20
+
+
  704               	    .ifeq OPT_LOOP_AREA
  705 092a 5240      	    addq.w    #1,d0                             | inc area
  706               	    .endif
@@ -1138,9 +1150,6 @@
  710 0936 33C0 0000 	1:  move.w    d0,(area)                         | update area
  710      0000 
  711 093c 41FA 001E 	    lea       area_offset_in_map_tbl,a0
-68K GAS  src/xevious_sub.68k 			page 20
-
-
  712 0940 13F0 0000 	    move.b    (a0,d0.w),(area_offset_in_map)    | update offset
  712      0000 0000 
  713 0948 207A 00DE 		move.l	area_object_tbl_tbl_pointer(pc),a0
@@ -1189,6 +1198,9 @@
  749 0994 6130      	1:  jbsr     flash_1up_2up
  750 0996 C141      	    exg       d0,d1                             | swap cols
  751 0998 4A39 0000 	    tst.b     (two_player_game)                 | 2P?
+68K GAS  src/xevious_sub.68k 			page 21
+
+
  751      0000 
  752 099e 6604      	    jne     2f                                | yes, go
  753 09a0 7C06      	    moveq     #6,d6
@@ -1198,9 +1210,6 @@
  757               	display_1up_2up:
  758 09a8 CCFC 0003 	    mulu      #3,d6
  759 09ac 41FA 0030 	3:  lea       up_string_tbl,a0
-68K GAS  src/xevious_sub.68k 			page 21
-
-
  760 09b0 41F0 6000 	    lea       (d6.w,a0),a0                      | ptr string
  761 09b4 7200      	    moveq     #0,d1
  762 09b6 343C 0008 	    move.w    #BANK_FG_VIDEORAM,d2
@@ -1249,6 +1258,9 @@
  804 0a0e E448      	    lsr.w     #2,d0
  805 0a10 0240 07C0 	    and.w     #0x07C0,d0
  806 0a14 8046      	    or.w      d6,d0
+68K GAS  src/xevious_sub.68k 			page 22
+
+
  807 0a16 4E75      	    rts
  808               	    .align 4
  809               	osd_w_video_bank_tbl:
@@ -1258,9 +1270,6 @@
  813 0a24 0000 0000 	    .long     osd_w_bg_videoram
  814               	*
  815               	* table of objects (ground and air based) in each area
-68K GAS  src/xevious_sub.68k 			page 22
-
-
  816               	* - for each table
  817               	*   - byte 0 : scroll counter value (row)
  818               	*   - byte 1 : handler fn tbl entry
@@ -1309,6 +1318,9 @@
  861 0aa8 0000 0000 	    .long area_16_obj_tbl_super
  862               	    
  863               	area_1_obj_tbl_normal:
+68K GAS  src/xevious_sub.68k 			page 23
+
+
  864 0aac 0C53 000C 	    .byte 0xC, 0x53, 0, 0xC, 0xFF, 0x24, 0xF, 0xFF, 0x25, 0xFF, 0xFF, 0x28, 0x12, 0xFF, 0x29, 0x1F
  864      FF24 0FFF 
  864      25FF FF28 
@@ -1318,9 +1330,6 @@
  865      1FFE 2B07 
  865      FD03 EB03 
  866 0acc D703 D61E 	    .byte 0xD7, 3, 0xD6, 0x1E, 4, 0x80, 0xD6, 0x1F, 6, 0x70, 0xC3, 5, 0xB7, 3, 0xB6, 0x1E
-68K GAS  src/xevious_sub.68k 			page 23
-
-
  866      0480 D61F 
  866      0670 C305 
  866      B703 B61E 
@@ -1369,6 +1378,9 @@
  879      C303 BB2E 
  879      1294 0368 
  880 0b84 0020 02FF 	    .byte 0, 0x20, 2, 0xFF, 0, 0xB3, 0x26, 0x14, 0x68, 0xB3, 5, 0xA7, 0x2E, 0x16, 0x94, 3
+68K GAS  src/xevious_sub.68k 			page 24
+
+
  880      00B3 2614 
  880      68B3 05A7 
  880      2E16 9403 
@@ -1378,9 +1390,6 @@
  881      1A60 A303 
  882 0ba4 9526 1C68 	    .byte 0x95, 0x26, 0x1C, 0x68, 0x93, 3, 0x83, 5, 0x79, 0x1F, 0x1E, 0xD0, 0x6F, 0x26, 4, 0x70
  882      9303 8305 
-68K GAS  src/xevious_sub.68k 			page 24
-
-
  882      791F 1ED0 
  882      6F26 0470 
  883 0bb4 6F1F 0660 	    .byte 0x6F, 0x1F, 6, 0x60, 0x6D, 0x1F, 8, 0x70, 0x6D, 0x26, 0xA, 0x60, 0x67, 0x1D, 0xC, 0x20
@@ -1429,6 +1438,9 @@
  895      9F1D 04E0 
  896 0c5b 930F 7491 	    .byte 0x93, 0xF, 0x74, 0x91, 0x26, 6, 0x80, 0x8F, 0x1E, 8, 0x80, 0x8C, 0x54, 0, 0x87, 0x1E
  896      2606 808F 
+68K GAS  src/xevious_sub.68k 			page 25
+
+
  896      1E08 808C 
  896      5400 871E 
  897 0c6b 0A90 871F 	    .byte 0xA, 0x90, 0x87, 0x1F, 0xC, 0x80, 0x83, 0x23, 0x83, 0x57, 0x7B, 3, 0x6B, 0x1F, 0xE, 0xD0
@@ -1438,9 +1450,6 @@
  898 0c7b 6B26 10A0 	    .byte 0x6B, 0x26, 0x10, 0xA0, 0x63, 5, 0x63, 0x26, 0x12, 0x60, 0x5B, 0x1F, 0x14, 0x60, 0x57, 0x
  898      6305 6326 
  898      1260 5B1F 
-68K GAS  src/xevious_sub.68k 			page 25
-
-
  898      1460 5736 
  899 0c8b 1678 5703 	    .byte 0x16, 0x78, 0x57, 3, 0x4B, 0x57, 0x49, 0x1F, 0x18, 0xD0, 0x49, 0x26, 0x1A, 0xA0, 0x43, 3
  899      4B57 491F 
@@ -1489,6 +1498,9 @@
  911      8722 0183 
  911      2373 0245 
  912 0d39 734E 2F73 	    .byte 0x73, 0x4E, 0x2F, 0x73, 0x4C, 0x63, 5, 0x5F, 2, 0x45, 0x4F, 5, 0x3F, 0x22, 4, 0x33
+68K GAS  src/xevious_sub.68k 			page 26
+
+
  912      4C63 055F 
  912      0245 4F05 
  912      3F22 0433 
@@ -1498,9 +1510,6 @@
  913      0310 030D 
  914               	    
  915               	area_5_obj_tbl_normal:
-68K GAS  src/xevious_sub.68k 			page 26
-
-
  916 0d59 FF24 07FF 	    .byte 0xFF, 0x24, 7, 0xFF, 0x2F, 0xF, 0xFE, 0x30, 0xF, 0xFE, 0x28, 0x1C, 0xFD, 3, 0xEF, 3
  916      2F0F FE30 
  916      0FFE 281C 
@@ -1549,6 +1558,9 @@
  927      1D1E 402F 
  927      0523 2E04 
  927      C001 C018 
+68K GAS  src/xevious_sub.68k 			page 27
+
+
  928 0e19 202E 0620 	    .byte 0x20, 0x2E, 6, 0x20, 1, 0xC0, 8, 0x1D, 0x2E, 8, 0xC0, 1, 0xC0, 0x18, 0x17, 0x1F
  928      01C0 081D 
  928      2E08 C001 
@@ -1558,9 +1570,6 @@
  929      1040 0D
  930               	    
  931               	area_6_obj_tbl_normal:
-68K GAS  src/xevious_sub.68k 			page 27
-
-
  932 0e34 FF24 07F3 	    .byte 0xFF, 0x24, 7, 0xF3, 0x26, 4, 0xC0, 0xF3, 0x1E, 6, 0xB0, 0xEB, 0x2E, 8, 0x3C, 3
  932      2604 C0F3 
  932      1E06 B0EB 
@@ -1609,6 +1618,9 @@
  943      0C70 2726 
  943      0E70 2526 
  943      1090 2326 
+68K GAS  src/xevious_sub.68k 			page 28
+
+
  944 0ef4 12B0 1721 	    .byte 0x12, 0xB0, 0x17, 0x21, 0x14, 0xC0, 0x17, 0x21, 0x18, 0xA0, 0xD
  944      14C0 1721 
  944      18A0 0D
@@ -1618,9 +1630,6 @@
  947      1F04 80EF 
  947      1E06 80ED 
  947      2203 CA30 
-68K GAS  src/xevious_sub.68k 			page 28
-
-
  948 0f0f 3FC9 2E08 	    .byte 0x3F, 0xC9, 0x2E, 8, 0x70, 6, 0x60, 0xC, 0x60, 0x10, 0x60, 0x14, 0x60, 0x1C, 0x60, 0
  948      7006 600C 
  948      6010 6014 
@@ -1669,6 +1678,9 @@
  959      7611 1D14 
  959      200F 230D 
  960               	    
+68K GAS  src/xevious_sub.68k 			page 29
+
+
  961               	area_8_obj_tbl_normal:
  962 0fcb F303 F330 	    .byte 0xF3, 3, 0xF3, 0x30, 0xFF, 0xF3, 0x57, 0xEE, 0x2E, 4, 0x14, 5, 8, 0, 0xA0, 8
  962      FFF3 57EE 
@@ -1678,9 +1690,6 @@
  963      FF00 EA05 
  963      E526 0630 
  963      E526 08C8 
-68K GAS  src/xevious_sub.68k 			page 29
-
-
  964 0feb E21F 0A48 	    .byte 0xE2, 0x1F, 0xA, 0x48, 0xE2, 0x1F, 0xC, 0xB0, 0xDF, 0x26, 0xE, 0x60, 0xDF, 0x26, 0x10, 0x
  964      E21F 0CB0 
  964      DF26 0E60 
@@ -1729,6 +1738,9 @@
  975      2E08 8006 
  975      0800 5808 
  976 10a7 6000 6002 	    .byte 0x60, 0, 0x60, 2, 0x80, 0, 0x60, 4, 0x47, 0x2E, 0xA, 0x68, 8, 8, 0, 0x88
+68K GAS  src/xevious_sub.68k 			page 30
+
+
  976      8000 6004 
  976      472E 0A68 
  976      0808 0088 
@@ -1738,9 +1750,6 @@
  977      0047 2E0C 
  978 10c7 5003 0800 	    .byte 0x50, 3, 8, 0, 0x78, 0x18, 0x80, 0, 0x37, 0x1B, 0xE, 0xB8, 0x37, 0x1B, 0x10, 0x48
  978      7818 8000 
-68K GAS  src/xevious_sub.68k 			page 30
-
-
  978      371B 0EB8 
  978      371B 1048 
  979 10d7 272E 1250 	    .byte 0x27, 0x2E, 0x12, 0x50, 2, 0x68, 4, 0xE0, 8, 0x24, 0x2E, 0x14, 0x38, 2, 0x98, 4
@@ -1789,6 +1798,9 @@
  993               	area_10_obj_tbl_normal:
  994 1174 FF03 FF30 	    .byte 0xFF, 3, 0xFF, 0x30, 0x3F, 0xF7, 5, 0xF3, 0x57, 0xEF, 3, 0xE3, 5, 0xDB, 3, 0xCF
  994      3FF7 05F3 
+68K GAS  src/xevious_sub.68k 			page 31
+
+
  994      57EF 03E3 
  994      05DB 03CF 
  995 1184 05C6 2E1C 	    .byte 5, 0xC6, 0x2E, 0x1C, 0xD8, 8, 0x60, 0x14, 0x60, 4, 0x60, 0x14, 0x60, 4, 0x60, 0x14
@@ -1798,9 +1810,6 @@
  996 1194 6004 6014 	    .byte 0x60, 4, 0x60, 0x14, 0x60, 4, 0xC6, 0x2E, 0x1E, 0x98, 8, 0x60, 0x10, 0x60, 0, 0x60
  996      6004 C62E 
  996      1E98 0860 
-68K GAS  src/xevious_sub.68k 			page 31
-
-
  996      1060 0060 
  997 11a4 1060 0060 	    .byte 0x10, 0x60, 0, 0x60, 0x10, 0x60, 0, 0x60, 0x10, 0x60, 0, 0xC6, 0x2E, 4, 0x58, 8
  997      1060 0060 
@@ -1849,6 +1858,9 @@
  1008 1254 6F1F 06C0 	    .byte 0x6F, 0x1F, 6, 0xC0, 0x6F, 0x1E, 8, 0xA0, 0x6F, 0x1F, 0xA, 0x80, 0x64, 0x2E, 0xC, 0x98
  1008      6F1E 08A0 
  1008      6F1F 0A80 
+68K GAS  src/xevious_sub.68k 			page 32
+
+
  1008      642E 0C98 
  1009 1264 1080 1880 	    .byte 0x10, 0x80, 0x18, 0x80, 0x10, 0x80, 9, 0x20, 0xC, 0x40, 0x18, 0x20, 0x1A, 0x10, 0x18, 0x2
  1009      1080 0920 
@@ -1858,9 +1870,6 @@
  1010      0648 0818 
  1010      0C70 18A0 
  1010      1398 0880 
-68K GAS  src/xevious_sub.68k 			page 32
-
-
  1011 1284 0447 1D0E 	    .byte 4, 0x47, 0x1D, 0xE, 0xC0, 0x47, 0x1D, 0x10, 0xA0, 0x47, 0x1D, 0x12, 0x80, 0x47, 0x1D, 0x1
  1011      C047 1D10 
  1011      A047 1D12 
@@ -1909,6 +1918,9 @@
  1024 132e 7084 2204 	    .byte 0x70, 0x84, 0x22, 4, 0x77, 0x2E, 0xC, 0x34, 9, 0x60, 0, 0xA0, 0x10, 0x28, 0xD, 0x50
  1024      772E 0C34 
  1024      0960 00A0 
+68K GAS  src/xevious_sub.68k 			page 33
+
+
  1024      1028 0D50 
  1025 133e 1070 0C60 	    .byte 0x10, 0x70, 0xC, 0x60, 0xD, 0x40, 6, 0x30, 4, 0x20, 8, 0x75, 0x1F, 0xE, 0x60, 0x73
  1025      0D40 0630 
@@ -1918,9 +1930,6 @@
  1026      2371 1F12 
  1026      806F 1E14 
  1026      906D 1F16 
-68K GAS  src/xevious_sub.68k 			page 33
-
-
  1027 135e A06B 1E18 	    .byte 0xA0, 0x6B, 0x1E, 0x18, 0xB0, 0x69, 0x1F, 0x1A, 0xC0, 0x67, 0x1E, 0x1C, 0xD0, 0x67, 0x57,
  1027      B069 1F1A 
  1027      C067 1E1C 
@@ -1969,6 +1978,9 @@
  1040      1A38 C735 
  1040      1C48 C735 
  1041 1410 1E38 BD1E 	    .byte 0x1E, 0x38, 0xBD, 0x1E, 4, 0xB0, 0xBB, 0x1E, 6, 0xB0, 0xBB, 0x1E, 8, 0x90, 0xB9, 0x1E
+68K GAS  src/xevious_sub.68k 			page 34
+
+
  1041      04B0 BB1E 
  1041      06B0 BB1E 
  1041      0890 B91E 
@@ -1978,9 +1990,6 @@
  1042      7404 5800 
  1043 1430 A018 A008 	    .byte 0xA0, 0x18, 0xA0, 8, 0x20, 0, 0xA3, 0x2E, 0x10, 0x14, 1, 0x20, 0, 0xA3, 0x57, 0xA1
  1043      2000 A32E 
-68K GAS  src/xevious_sub.68k 			page 34
-
-
  1043      1014 0120 
  1043      00A3 57A1 
  1044 1440 2E12 1401 	    .byte 0x2E, 0x12, 0x14, 1, 0x20, 0, 0x97, 3, 0x93, 0x2E, 0x14, 0x7C, 2, 0x98, 0, 0x20
@@ -2029,6 +2038,9 @@
  1054      182E 0E48 
  1055 14f0 0840 1080 	    .byte 8, 0x40, 0x10, 0x80, 8, 0x80, 0, 0x80, 0x18, 0x80, 0x10, 0x80, 8, 0x80, 0, 0x80
  1055      0880 0080 
+68K GAS  src/xevious_sub.68k 			page 35
+
+
  1055      1880 1080 
  1055      0880 0080 
  1056 1500 1817 2110 	    .byte 0x18, 0x17, 0x21, 0x10, 0x70, 0xD
@@ -2038,9 +2050,6 @@
  1059 1506 F71B 1420 	    .byte 0xF7, 0x1B, 0x14, 0x20, 0xF3, 0x1B, 0x16, 0xA0, 0xF3, 0x1B, 0x18, 0x70, 0xED, 0x1F, 0x1A,
  1059      F31B 16A0 
  1059      F31B 1870 
-68K GAS  src/xevious_sub.68k 			page 35
-
-
  1059      ED1F 1AA0 
  1060 1516 EB1F 1C90 	    .byte 0xEB, 0x1F, 0x1C, 0x90, 0xE9, 0x1F, 0x1E, 0x80, 0xE7, 0x1F, 4, 0x70, 0xE3, 0x57, 0xDF, 0x
  1060      E91F 1E80 
@@ -2089,6 +2098,9 @@
  1072      E723 E74E 
  1072      0FE7 02F1 
  1073 15c5 E34C DF05 	    .byte 0xE3, 0x4C, 0xDF, 5, 0xDB, 2, 0x34, 0xD5, 5, 0xCB, 2, 0x49, 0xC5, 5, 0xBB, 2
+68K GAS  src/xevious_sub.68k 			page 36
+
+
  1073      DB02 34D5 
  1073      05CB 0249 
  1073      C505 BB02 
@@ -2098,9 +2110,6 @@
  1074      7705 7318 
  1075 15e5 7667 4C67 	    .byte 0x76, 0x67, 0x4C, 0x67, 2, 0x66, 0x65, 5, 0x5B, 2, 0x21, 0x55, 5, 0x4B, 3, 0x3B
  1075      0266 6505 
-68K GAS  src/xevious_sub.68k 			page 36
-
-
  1075      5B02 2155 
  1075      054B 033B 
  1076 15f5 0537 5733 	    .byte 5, 0x37, 0x57, 0x33, 0x4D, 0x33, 3, 0x23, 5, 0x1B, 3, 0x1F, 5, 0xD
@@ -2149,6 +2158,9 @@
  1088      058B 037B 
  1088      0578 2112 
  1088      C876 2E16 
+68K GAS  src/xevious_sub.68k 			page 37
+
+
  1089 16a3 7808 5014 	    .byte 0x78, 8, 0x50, 0x14, 0x50, 4, 0x50, 0x14, 0x50, 4, 0x50, 0x14, 0x50, 4, 0x50, 0x14
  1089      5004 5014 
  1089      5004 5014 
@@ -2158,9 +2170,6 @@
  1090      0C50 1C50 
  1090      0C50 1C50 
  1091 16c3 0C50 1C50 	    .byte 0xC, 0x50, 0x1C, 0x50, 0xC, 0x50, 0x1C, 0x6B, 0x2E, 0x1A, 0x70, 9, 0x40, 0x1C, 0x50, 0xC
-68K GAS  src/xevious_sub.68k 			page 37
-
-
  1091      0C50 1C6B 
  1091      2E1A 7009 
  1091      401C 500C 
@@ -2209,6 +2218,9 @@
  1102      0D
  1103               	    
  1104               	area_16_obj_tbl_normal:
+68K GAS  src/xevious_sub.68k 			page 38
+
+
  1105 177c 0157 FF03 	    .byte 1, 0x57, 0xFF, 3, 0xF3, 0x1D, 0x14, 0x20, 0xEF, 5, 0xE7, 0x2E, 0x16, 0x9C, 3, 0x40
  1105      F31D 1420 
  1105      EF05 E72E 
@@ -2218,9 +2230,6 @@
  1106      60E1 2E1A 
  1106      2403 8000 
  1107 179c 8010 8000 	    .byte 0x80, 0x10, 0x80, 0, 0xDD, 0x2E, 0x1C, 0x9C, 3, 0x80, 0, 0x80, 0x10, 0x80, 0, 0xD7
-68K GAS  src/xevious_sub.68k 			page 38
-
-
  1107      DD2E 1C9C 
  1107      0380 0080 
  1107      1080 00D7 
@@ -2269,6 +2278,9 @@
  1118      1A34 6B3B 
  1118      1C34 6B05 
  1119 185c 671D 1EB0 	    .byte 0x67, 0x1D, 0x1E, 0xB0, 0x65, 0x1D, 4, 0xA0, 0x63, 3, 0x53, 5, 0x4F, 0x26, 6, 0x80
+68K GAS  src/xevious_sub.68k 			page 39
+
+
  1119      651D 04A0 
  1119      6303 5305 
  1119      4F26 0680 
@@ -2278,9 +2290,6 @@
  1120      0644 1B0C 
  1121 187c 703E 1B0E 	    .byte 0x70, 0x3E, 0x1B, 0xE, 0xC0, 0x3E, 0x1D, 0x10, 0x70, 0x3E, 0x1B, 0x12, 0x18, 0x38, 0x1B, 
  1121      C03E 1D10 
-68K GAS  src/xevious_sub.68k 			page 39
-
-
  1121      703E 1B12 
  1121      1838 1B14 
  1122 188c 7037 2E16 	    .byte 0x70, 0x37, 0x2E, 0x16, 0xA4, 3, 0x70, 0, 0x70, 0x10, 0x70, 0, 0x37, 0x2E, 4, 0x34
@@ -2329,6 +2338,9 @@
  1137      1F10 409F 
  1137      26
  1138 1922 1250 9F05 	    .byte 0x12, 0x50, 0x9F, 5, 0x9B, 0x57, 0x93, 3, 0x83, 3
+68K GAS  src/xevious_sub.68k 			page 40
+
+
  1138      9B57 9303 
  1138      8303 
  1139 192c 7A26 1470 	    .byte 0x7A, 0x26, 0x14, 0x70, 0x78, 0x1F, 0x16, 0x70, 0x73
@@ -2338,9 +2350,6 @@
  1140      5A60 251F 
  1140      5F
  1141 193e 575E 2C1A 	    .byte 0x57, 0x5E, 0x2C, 0x1A, 0x5A, 0x5D, 0x1D, 0x1C, 0x20
-68K GAS  src/xevious_sub.68k 			page 40
-
-
  1141      5A5D 1D1C 
  1141      20
  1142 1947 5B2C 1E5A 	    .byte 0x5B, 0x2C, 0x1E, 0x5A, 0x5B, 3, 0x53, 3, 0x47, 3
@@ -2389,6 +2398,9 @@
  1157      A3
  1158 19d3 0395 261C 	    .byte 3, 0x95, 0x26, 0x1C, 0x68, 0x93, 3, 0x83, 5, 0x79
  1158      6893 0383 
+68K GAS  src/xevious_sub.68k 			page 41
+
+
  1158      0579 
  1159 19dd 1F1E D06F 	    .byte 0x1F, 0x1E, 0xD0, 0x6F, 0x26, 4, 0x70, 0x6F, 0x1F
  1159      2604 706F 
@@ -2398,9 +2410,6 @@
  1160      0A60 
  1161 19f0 671D 0C80 	    .byte 0x67, 0x1D, 0xC, 0x80, 0x67, 0x2E, 0xE, 0xD8, 4, 0x48
  1161      672E 0ED8 
-68K GAS  src/xevious_sub.68k 			page 41
-
-
  1161      0448 
  1162 19fa 1C50 0020 	    .byte 0x1C, 0x50, 0, 0x20, 0x1C, 0xFF, 0, 0x5B, 3, 0x4B
  1162      1CFF 005B 
@@ -2449,6 +2458,9 @@
  1177      1C
  1178 1a88 C09B 1D04 	    .byte 0xC0, 0x9B, 0x1D, 4, 0xE0, 0x93, 0xF, 0x74, 0x91, 0x26
  1178      E093 0F74 
+68K GAS  src/xevious_sub.68k 			page 42
+
+
  1178      9126 
  1179 1a92 0680 8F1E 	    .byte 6, 0x80, 0x8F, 0x1E, 8, 0x80, 0x87, 0x1E, 0xA, 0x90
  1179      0880 871E 
@@ -2458,9 +2470,6 @@
  1180      7B
  1181 1aa5 036B 1F0E 	    .byte 3, 0x6B, 0x1F, 0xE, 0xD0, 0x6B, 0x26, 0x10, 0xA0, 0x63
  1181      D06B 2610 
-68K GAS  src/xevious_sub.68k 			page 42
-
-
  1181      A063 
  1182 1aaf 0563 2612 	    .byte 5, 0x63, 0x26, 0x12, 0x60, 0x5B, 0x1F, 0x14, 0x60
  1182      605B 1F14 
@@ -2509,6 +2518,9 @@
  1198      BD2E 
  1199 1b37 0A24 0348 	    .byte 0xA, 0x24, 3, 0x48, 0, 0x28, 2, 0xFF, 0, 0xBB, 5, 0xAF
  1199      0028 02FF 
+68K GAS  src/xevious_sub.68k 			page 43
+
+
  1199      00BB 05AF 
  1200 1b43 1F0C 50AD 	    .byte 0x1F, 0xC, 0x50, 0xAD, 0x1F, 0xE, 0x40, 0xAA, 0x26
  1200      1F0E 40AA 
@@ -2518,9 +2530,6 @@
  1201      14
  1202 1b55 2404 6000 	    .byte 0x24, 4, 0x60, 0, 0xD8, 0x10, 0x28, 8, 0xFF, 2, 0x9F
  1202      D810 2808 
-68K GAS  src/xevious_sub.68k 			page 43
-
-
  1202      FF02 9F
  1203 1b60 038B 0587 	    .byte 3, 0x8B, 5, 0x87, 0x22, 1, 0x83, 0x23, 0x73, 2, 0xE2
  1203      2201 8323 
@@ -2569,6 +2578,9 @@
  1219      7B05 71
  1220 1bec 2E0C 600C 	    .byte 0x2E, 0xC, 0x60, 0xC, 0x30, 0, 0x30, 0x10, 0x30, 0x18
  1220      3000 3010 
+68K GAS  src/xevious_sub.68k 			page 44
+
+
  1220      3018 
  1221 1bf6 3008 3000 	    .byte 0x30, 8, 0x30, 0, 0x30, 0x10, 0x30, 0x18, 0x30, 8
  1221      3010 3018 
@@ -2578,9 +2590,6 @@
  1222      711D 
  1223 1c0a 0E20 7025 	    .byte 0xE, 0x20, 0x70, 0x25, 0xF, 0x70, 0x24, 0xF, 0x6B
  1223      0F70 240F 
-68K GAS  src/xevious_sub.68k 			page 44
-
-
  1223      6B
  1224 1c13 1E10 8069 	    .byte 0x1E, 0x10, 0x80, 0x69, 0x26, 0x12, 0x80, 0x67, 0x1E
  1224      2612 8067 
@@ -2629,6 +2638,9 @@
  1240      05BB 2E12 
  1240      1C01 FF
  1241 1ca4 00B6 1E14 	    .byte 0, 0xB6, 0x1E, 0x14, 0xC0, 0xB6, 0x26, 0x16, 0xD0
+68K GAS  src/xevious_sub.68k 			page 45
+
+
  1241      C0B6 2616 
  1241      D0
  1242 1cad B022 01AC 	    .byte 0xB0, 0x22, 1, 0xAC, 0x23, 0xAA, 0x1F, 0x18, 0xB0
@@ -2638,9 +2650,6 @@
  1243      9F21 1CA0 
  1243      9B
  1244 1cbf 02E3 841D 	    .byte 2, 0xE3, 0x84, 0x1D, 4, 0x20, 0x83, 5, 0x77, 0x2D
-68K GAS  src/xevious_sub.68k 			page 45
-
-
  1244      0420 8305 
  1244      772D 
  1245 1cc9 06C0 6F3C 	    .byte 6, 0xC0, 0x6F, 0x3C, 0x10, 0x40, 0x6B, 0x3B, 0x12
@@ -2689,6 +2698,9 @@
  1261 1d4e FF22 08F1 	    .byte 0xFF, 0x22, 8, 0xF1, 0x1F, 4, 0x80, 0xEF, 0x1E, 6
  1261      1F04 80EF 
  1261      1E06 
+68K GAS  src/xevious_sub.68k 			page 46
+
+
  1262 1d58 80ED 2203 	    .byte 0x80, 0xED, 0x22, 3, 0xC9, 0x2E, 8, 0x70, 6, 0x60
  1262      C92E 0870 
  1262      0660 
@@ -2698,9 +2710,6 @@
  1264 1d6c 04C6 2E0A 	    .byte 4, 0xC6, 0x2E, 0xA, 0x58, 6, 0x30, 4, 0x60, 0xC, 0x60
  1264      5806 3004 
  1264      600C 60
-68K GAS  src/xevious_sub.68k 			page 46
-
-
  1265 1d77 1060 1460 	    .byte 0x10, 0x60, 0x14, 0x60, 0x1C, 0x60, 0, 0xC3, 0x2E
  1265      1C60 00C3 
  1265      2E
@@ -2749,6 +2758,9 @@
  1280 1e05 C027 3C12 	    .byte 0xC0, 0x27, 0x3C, 0x12, 0xA0, 0x19, 0x11, 0x78, 0x17
  1280      A019 1178 
  1280      17
+68K GAS  src/xevious_sub.68k 			page 47
+
+
  1281 1e0e 1176 0F1D 	    .byte 0x11, 0x76, 0xF, 0x1D, 0x14, 0xC0, 0xF, 0x23, 0xD
  1281      14C0 0F23 
  1281      0D
@@ -2758,9 +2770,6 @@
  1284      EE2E 0414 
  1284      0508 00
  1285 1e22 A008 300C 	    .byte 0xA0, 8, 0x30, 0xC, 0xFF, 0x10, 0xFF, 0, 0xEA, 5, 0xE5
-68K GAS  src/xevious_sub.68k 			page 47
-
-
  1285      FF10 FF00 
  1285      EA05 E5
  1286 1e2d 2606 30E5 	    .byte 0x26, 6, 0x30, 0xE5, 0x26, 8, 0xC8, 0xE2, 0x1F, 0xA
@@ -2809,6 +2818,9 @@
  1300      0D77 1D14 
  1300      40
  1301 1ec0 7305 7326 	    .byte 0x73, 5, 0x73, 0x26, 4, 0x58, 0x73, 0x1F, 6, 0x48
+68K GAS  src/xevious_sub.68k 			page 48
+
+
  1301      0458 731F 
  1301      0648 
  1302 1eca 6D2E 1614 	    .byte 0x6D, 0x2E, 0x16, 0x14, 1, 0x80, 0, 0x6A, 0x2E, 0x18
@@ -2818,9 +2830,6 @@
  1303      672E 1A14 
  1303      0180 
  1304 1ede 0064 351C 	    .byte 0, 0x64, 0x35, 0x1C, 0x14, 0x61, 0x35, 0x1E, 0x14
-68K GAS  src/xevious_sub.68k 			page 48
-
-
  1304      1461 351E 
  1304      14
  1305 1ee7 4D5C 0250 	    .byte 0x4D, 0x5C, 2, 0x50, 0x47, 0x2E, 8, 0x80, 6, 8, 0
@@ -2869,6 +2878,9 @@
  1320               	    
  1321               	area_9_obj_tbl_super:
  1322 1f7f FB02 E7F5 	    .byte 0xFB, 2, 0xE7, 0xF5, 0x1D, 0x10, 0x70, 0xF3, 0x1D
+68K GAS  src/xevious_sub.68k 			page 49
+
+
  1322      1D10 70F3 
  1322      1D
  1323 1f88 1250 F11D 	    .byte 0x12, 0x50, 0xF1, 0x1D, 0x14, 0x30, 0xEF, 0x1D, 0x16
@@ -2878,9 +2890,6 @@
  1324      02E8 D521 
  1324      1850 
  1325 1f9b D305 D157 	    .byte 0xD3, 5, 0xD1, 0x57, 0xCF, 3, 0xC7, 3, 0xC3, 2, 0xE9
-68K GAS  src/xevious_sub.68k 			page 49
-
-
  1325      CF03 C703 
  1325      C302 E9
  1326 1fa6 BF05 B333 	    .byte 0xBF, 5, 0xB3, 0x33, 0x9F, 0x34, 0x87, 0x18, 0x76
@@ -2929,6 +2938,9 @@
  1342      6008 6018 
  1342      6008 
  1343 2037 6018 6008 	    .byte 0x60, 0x18, 0x60, 8, 0x60, 0x18, 0x60, 8, 0xB8, 0x2E
+68K GAS  src/xevious_sub.68k 			page 50
+
+
  1343      6018 6008 
  1343      B82E 
  1344 2041 0AC8 0740 	    .byte 0xA, 0xC8, 7, 0x40, 0x1C, 0x60, 0xC, 0x60, 0x1C, 0x60
@@ -2938,9 +2950,6 @@
  1345      0C60 1CB8 
  1345      2E
  1346 2054 0C98 0740 	    .byte 0xC, 0x98, 7, 0x40, 0, 0x60, 0x10, 0x60, 0, 0x60, 0x10
-68K GAS  src/xevious_sub.68k 			page 50
-
-
  1346      0060 1060 
  1346      0060 10
  1347 205f 6000 6010 	    .byte 0x60, 0, 0x60, 0x10, 0x60, 0, 0xB8, 0x2E, 0xE, 0x68
@@ -2989,6 +2998,9 @@
  1361      16C0 431D 
  1361      18
  1362 20ed A043 1D1A 	    .byte 0xA0, 0x43, 0x1D, 0x1A, 0x80, 0x43, 0x1D, 0x1C, 0x60
+68K GAS  src/xevious_sub.68k 			page 51
+
+
  1362      8043 1D1C 
  1362      60
  1363 20f6 361E 1E80 	    .byte 0x36, 0x1E, 0x1E, 0x80, 0x36, 0x26, 4, 0x60, 0x36
@@ -2998,9 +3010,6 @@
  1364      597E 2B1F 
  1364      0850 
  1365 2109 2120 0A80 	    .byte 0x21, 0x20, 0xA, 0x80, 0x1B, 0x20, 0xE, 0x80, 0x19
-68K GAS  src/xevious_sub.68k 			page 51
-
-
  1365      1B20 0E80 
  1365      19
  1366 2112 1B12 D019 	    .byte 0x1B, 0x12, 0xD0, 0x19, 0x1B, 0x14, 0x20, 0x17, 0x16
@@ -3049,6 +3058,9 @@
  1382      700C 600D 
  1382      40
  1383 219e 0630 0420 	    .byte 6, 0x30, 4, 0x20, 8, 0x75, 0x1F, 0xE, 0x60, 0x73, 0x1E
+68K GAS  src/xevious_sub.68k 			page 52
+
+
  1383      0875 1F0E 
  1383      6073 1E
  1384 21a9 1070 7323 	    .byte 0x10, 0x70, 0x73, 0x23, 0x71, 0x1F, 0x12, 0x80, 0x6F
@@ -3058,9 +3070,6 @@
  1385      1F16 A06B 
  1385      1E
  1386 21bb 18B0 691F 	    .byte 0x18, 0xB0, 0x69, 0x1F, 0x1A, 0xC0, 0x67, 0x1E, 0x1C
-68K GAS  src/xevious_sub.68k 			page 52
-
-
  1386      1AC0 671E 
  1386      1C
  1387 21c4 D067 5763 	    .byte 0xD0, 0x67, 0x57, 0x63, 3, 0x63, 3, 0x53, 0x22, 0x10
@@ -3109,6 +3118,9 @@
  1403 224b B0E3 1B12 	    .byte 0xB0, 0xE3, 0x1B, 0x12, 0x48, 0xE3, 0x1F, 0x14, 0x38
  1403      48E3 1F14 
  1403      38
+68K GAS  src/xevious_sub.68k 			page 53
+
+
  1404 2254 DC2E 167C 	    .byte 0xDC, 0x2E, 0x16, 0x7C, 4, 8, 0x10, 0x78, 0, 0x50
  1404      0408 1078 
  1404      0050 
@@ -3118,9 +3130,6 @@
  1406 2267 1A38 C735 	    .byte 0x1A, 0x38, 0xC7, 0x35, 0x1C, 0x48, 0xC7, 0x35, 0x1E
  1406      1C48 C735 
  1406      1E
-68K GAS  src/xevious_sub.68k 			page 53
-
-
  1407 2270 38BD 1E04 	    .byte 0x38, 0xBD, 0x1E, 4, 0xB0, 0xBB, 0x1E, 6, 0xB0, 0xBB
  1407      B0BB 1E06 
  1407      B0BB 
@@ -3169,6 +3178,9 @@
  1422 2308 0408 00E0 	    .byte 4, 8, 0, 0xE0, 0x18, 0x48, 0x18, 0x20, 0, 0x37, 0x1F
  1422      1848 1820 
  1422      0037 1F
+68K GAS  src/xevious_sub.68k 			page 54
+
+
  1423 2313 14C0 371F 	    .byte 0x14, 0xC0, 0x37, 0x1F, 0x16, 0xB0, 0x33, 2, 0xED
  1423      16B0 3302 
  1423      ED
@@ -3178,9 +3190,6 @@
  1425 2325 1B1C 482A 	    .byte 0x1B, 0x1C, 0x48, 0x2A, 0x1B, 0x1E, 0x38, 0x27, 0x3C
  1425      1B1E 3827 
  1425      3C
-68K GAS  src/xevious_sub.68k 			page 54
-
-
  1426 232e 0414 233B 	    .byte 4, 0x14, 0x23, 0x3B, 6, 0x14, 0x1F, 0x3B, 8, 0x14
  1426      0614 1F3B 
  1426      0814 
@@ -3229,6 +3238,9 @@
  1443 23b8 3E1C 7085 	    .byte 0x3E, 0x1C, 0x70, 0x85, 0x3E, 0x1E, 0x90, 0x81, 0x3E
  1443      3E1E 9081 
  1443      3E
+68K GAS  src/xevious_sub.68k 			page 55
+
+
  1444 23c1 04B0 7B03 	    .byte 4, 0xB0, 0x7B, 3, 0x71, 0x1F, 6, 0xD0, 0x6F, 0x26
  1444      711F 06D0 
  1444      6F26 
@@ -3238,9 +3250,6 @@
  1446 23d5 691F 0E90 	    .byte 0x69, 0x1F, 0xE, 0x90, 0x63, 5, 0x5F, 0x57, 0x5B, 2
  1446      6305 5F57 
  1446      5B02 
-68K GAS  src/xevious_sub.68k 			page 55
-
-
  1447 23df EE43 0540 	    .byte 0xEE, 0x43, 5, 0x40, 0x1D, 0x10, 0x30, 0x40, 0x1D
  1447      1D10 3040 
  1447      1D
@@ -3289,6 +3298,9 @@
  1465               	area_15_obj_tbl_super:
  1466 246b FF02 F6F3 	    .byte 0xFF, 2, 0xF6, 0xF3, 5, 0xEF, 0x2E, 4, 0x3C, 5, 0x80
  1466      05EF 2E04 
+68K GAS  src/xevious_sub.68k 			page 56
+
+
  1466      3C05 80
  1467 2476 0080 1070 	    .byte 0, 0x80, 0x10, 0x70, 0, 0x70, 0x10, 0x70, 0, 0xEE
  1467      0070 1070 
@@ -3298,9 +3310,6 @@
  1468      2E0A 
  1469 248a 3C03 7000 	    .byte 0x3C, 3, 0x70, 0, 0x70, 0x10, 0x70, 0, 0xE5, 0x1F
  1469      7010 7000 
-68K GAS  src/xevious_sub.68k 			page 56
-
-
  1469      E51F 
  1470 2494 0C80 DE2E 	    .byte 0xC, 0x80, 0xDE, 0x2E, 0xE, 0x3C, 3, 0x60, 0, 0x60
  1470      0E3C 0360 
@@ -3349,6 +3358,9 @@
  1484      500C 
  1485 2528 501C 500C 	    .byte 0x50, 0x1C, 0x50, 0xC, 0x50, 0x1C, 0x50, 0xC, 0x50
  1485      501C 500C 
+68K GAS  src/xevious_sub.68k 			page 57
+
+
  1485      50
  1486 2531 1C50 0C50 	    .byte 0x1C, 0x50, 0xC, 0x50, 0x1C, 0x6B, 0x2E, 0x1A, 0x70
  1486      1C6B 2E1A 
@@ -3358,9 +3370,6 @@
  1487      0C50 
  1488 2544 1C50 0C50 	    .byte 0x1C, 0x50, 0xC, 0x50, 0x1C, 0x50, 0xC, 0x50, 0x1C
  1488      1C50 0C50 
-68K GAS  src/xevious_sub.68k 			page 57
-
-
  1488      1C
  1489 254d 6B2E 1C20 	    .byte 0x6B, 0x2E, 0x1C, 0x20, 9, 0x40, 4, 0x50, 0x14, 0x50
  1489      0940 0450 
@@ -3409,6 +3418,9 @@
  1503      04
  1504 25dd 701B 3506 	    .byte 0x70, 0x1B, 0x35, 6, 0x24, 0x1B, 2, 0xF7, 0x17, 0x3B
  1504      241B 02F7 
+68K GAS  src/xevious_sub.68k 			page 58
+
+
  1504      173B 
  1505 25e7 0824 1521 	    .byte 8, 0x24, 0x15, 0x21, 0xA, 0xC0, 0x13, 0x3B, 0xE, 0x24
  1505      0AC0 133B 
@@ -3418,9 +3430,6 @@
  1508               	area_16_obj_tbl_super:
  1509 25f4 0157 FF03 	    .byte 1, 0x57, 0xFF, 3, 0xF3, 0x1D, 0x14, 0xC0, 0xEF, 5
  1509      F31D 14C0 
-68K GAS  src/xevious_sub.68k 			page 58
-
-
  1509      EF05 
  1510 25fe E72E 169C 	    .byte 0xE7, 0x2E, 0x16, 0x9C, 3, 0x40, 0, 0x38, 0x1C, 0x40
  1510      0340 0038 
@@ -3469,6 +3478,9 @@
  1524      B7
  1525 2693 3B1C 50B3 	    .byte 0x3B, 0x1C, 0x50, 0xB3, 3, 0xA3, 3, 0x95, 0x1F, 0x1E
  1525      03A3 0395 
+68K GAS  src/xevious_sub.68k 			page 59
+
+
  1525      1F1E 
  1526 269d 8093 0593 	    .byte 0x80, 0x93, 5, 0x93, 0x1F, 4, 0x70, 0x91, 0x1F, 6
  1526      1F04 7091 
@@ -3478,9 +3490,6 @@
  1527      260A 
  1528 26b1 E07D 260C 	    .byte 0xE0, 0x7D, 0x26, 0xC, 0x88, 0x7D, 0x26, 0xE, 0x50
  1528      887D 260E 
-68K GAS  src/xevious_sub.68k 			page 59
-
-
  1528      50
  1529 26ba 7926 10C0 	    .byte 0x79, 0x26, 0x10, 0xC0, 0x79, 0x26, 0x12, 0x6C, 0x79
  1529      7926 126C 
@@ -3529,6 +3538,9 @@
  1543      70
  1544 274d 1702 FB0F 	    .byte 0x17, 2, 0xFB, 0xF, 5, 0xF, 0x25, 3, 0xF, 0x24, 3
  1544      050F 2503 
+68K GAS  src/xevious_sub.68k 			page 60
+
+
  1544      0F24 03
  1545 2758 0F29 070F 	    .byte 0xF, 0x29, 7, 0xF, 0x2F, 7, 0xF, 0x28, 0xD, 0xFF, 0xFF
  1545      2F07 0F28 
@@ -3538,9 +3550,6 @@
  1548               	*****************************************************************
  1549               	*** this is actually implementing hardware on the PCB
  1550               	*** 3 ROMs are used to read the map constructed of 'meta' tiles
-68K GAS  src/xevious_sub.68k 			page 60
-
-
  1551               	*** - code implemented as per MAME driver
  1552               	*****************************************************************
  1553               	                
@@ -3589,6 +3598,9 @@
  1590 27cc D603      	    add.b     d3,d3               | d3=(xevious_bs[1]&1)<<1
  1591 27ce 8403      	    or.b      d3,d2               | d2=...
  1592 27d0 1639 0000 	    move.b    xevious_bs0,d3
+68K GAS  src/xevious_sub.68k 			page 61
+
+
  1592      0000 
  1593 27d6 0203 0001 	    and.b     #0x01,d3
  1594 27da 8403      	    or.b      d3,d2               | d2=adr_2c
@@ -3598,9 +3610,6 @@
  1598 27e6 0804 0009 	3:  btst      #9,d4               | (dat1 & 0x200)
  1599 27ea 6704      	    jeq     4f
  1600 27ec 0A02 0002 	    eor.b     #0x02,d2            | (adr_2c ^= 2)
-68K GAS  src/xevious_sub.68k 			page 61
-
-
  1601 27f0 0806 0000 	4:  btst      #0,d6               | (offset & 1)
  1602 27f4 670E      	    jeq     5f
  1603 27f6 0042 0800 	    or.w      #0x800,d2           | d2=(adr_2c|0x800)
@@ -3670,50 +3679,50 @@ DEFINED SYMBOLS
      src/xevious.inc:27     *ABS*:00000000 OPT_DISPLAY_AREA
      src/xevious.inc:28     *ABS*:00000000 OPT_SKIP_SPLASH
      src/xevious.inc:29     *ABS*:00000000 OPT_SKIP_ATTRACT
-     src/xevious.inc:61     *ABS*:00000000 _STATE
-     src/xevious.inc:62     *ABS*:00000001 _ATTR
-     src/xevious.inc:63     *ABS*:00000004 _EXTRA
-     src/xevious.inc:64     *ABS*:00000008 _X
-     src/xevious.inc:65     *ABS*:0000000a _dX
-     src/xevious.inc:66     *ABS*:0000000c _ddX
-     src/xevious.inc:67     *ABS*:0000000e _Y
-     src/xevious.inc:68     *ABS*:00000010 _dY
-     src/xevious.inc:69     *ABS*:00000012 _ddY
-     src/xevious.inc:70     *ABS*:00000014 _CODE
-     src/xevious.inc:71     *ABS*:00000015 _COLOUR
-     src/xevious.inc:72     *ABS*:00000016 _PTS
-     src/xevious.inc:73     *ABS*:00000018 _TIMER
-     src/xevious.inc:74     *ABS*:00000019 _TIMER1
-     src/xevious.inc:75     *ABS*:00000019 _NVEC
-     src/xevious.inc:76     *ABS*:0000001a _TIMER2
-     src/xevious.inc:77     *ABS*:0000001a _VECLEN
-     src/xevious.inc:78     *ABS*:0000001c _FFREQ
-     src/xevious.inc:79     *ABS*:0000001e _TYPE
-     src/xevious.inc:81     *ABS*:00000020 _OBJSIZE
-     src/xevious.inc:84     *ABS*:00000000 BANK_FG_COLORRAM
-     src/xevious.inc:85     *ABS*:00000004 BANK_BG_COLORRAM
-     src/xevious.inc:86     *ABS*:00000008 BANK_FG_VIDEORAM
-     src/xevious.inc:87     *ABS*:0000000c BANK_BG_VIDEORAM
-     src/xevious.inc:91     *ABS*:00000001 MAIN_THEME_SND
-     src/xevious.inc:92     *ABS*:00000002 HIGHEST_SCORE_SND
-     src/xevious.inc:93     *ABS*:00000003 HIGH_SCORE_SND
-     src/xevious.inc:94     *ABS*:00000004 EXTRA_SOLVALOU_SND
-     src/xevious.inc:95     *ABS*:00000005 FLYING_ENEMY_HIT_SND
-     src/xevious.inc:96     *ABS*:00000006 GARU_ZAKATO_SND
-     src/xevious.inc:97     *ABS*:00000007 ANDOR_GENESIS_SND
-     src/xevious.inc:98     *ABS*:00000008 SHEONITE_SND
+     src/xevious.inc:70     *ABS*:00000000 _STATE
+     src/xevious.inc:71     *ABS*:00000001 _ATTR
+     src/xevious.inc:72     *ABS*:00000004 _EXTRA
+     src/xevious.inc:73     *ABS*:00000008 _X
+     src/xevious.inc:74     *ABS*:0000000a _dX
+     src/xevious.inc:75     *ABS*:0000000c _ddX
+     src/xevious.inc:76     *ABS*:0000000e _Y
+     src/xevious.inc:77     *ABS*:00000010 _dY
+     src/xevious.inc:78     *ABS*:00000012 _ddY
+     src/xevious.inc:79     *ABS*:00000014 _CODE
+     src/xevious.inc:80     *ABS*:00000015 _COLOUR
+     src/xevious.inc:81     *ABS*:00000016 _PTS
+     src/xevious.inc:82     *ABS*:00000018 _TIMER
+     src/xevious.inc:83     *ABS*:00000019 _TIMER1
+     src/xevious.inc:84     *ABS*:00000019 _NVEC
+     src/xevious.inc:85     *ABS*:0000001a _TIMER2
+     src/xevious.inc:86     *ABS*:0000001a _VECLEN
+     src/xevious.inc:87     *ABS*:0000001c _FFREQ
+     src/xevious.inc:88     *ABS*:0000001e _TYPE
+     src/xevious.inc:90     *ABS*:00000020 _OBJSIZE
+     src/xevious.inc:93     *ABS*:00000000 BANK_FG_COLORRAM
+     src/xevious.inc:94     *ABS*:00000004 BANK_BG_COLORRAM
+     src/xevious.inc:95     *ABS*:00000008 BANK_FG_VIDEORAM
+     src/xevious.inc:96     *ABS*:0000000c BANK_BG_VIDEORAM
+     src/xevious.inc:100    *ABS*:00000001 MAIN_THEME_SND
+     src/xevious.inc:101    *ABS*:00000002 HIGHEST_SCORE_SND
+     src/xevious.inc:102    *ABS*:00000003 HIGH_SCORE_SND
+     src/xevious.inc:103    *ABS*:00000004 EXTRA_SOLVALOU_SND
+     src/xevious.inc:104    *ABS*:00000005 FLYING_ENEMY_HIT_SND
+     src/xevious.inc:105    *ABS*:00000006 GARU_ZAKATO_SND
+     src/xevious.inc:106    *ABS*:00000007 ANDOR_GENESIS_SND
+     src/xevious.inc:107    *ABS*:00000008 SHEONITE_SND
 68K GAS  src/xevious_sub.68k 			page 63
 
 
-     src/xevious.inc:99     *ABS*:00000009 TELEPORT_SND
-     src/xevious.inc:100    *ABS*:0000000a BACURA_HIT_SND
-     src/xevious.inc:101    *ABS*:0000000b SHOT_SND
-     src/xevious.inc:102    *ABS*:0000000c BOMB_SND
-     src/xevious.inc:103    *ABS*:0000000d BONUS_FLAG_SND
-     src/xevious.inc:104    *ABS*:0000000e SOLVALOU_SND
-     src/xevious.inc:106    *ABS*:00000010 COIN_SND
-     src/xevious.inc:107    *ABS*:00000011 GROUND_EXPLOSION_SND
-     src/xevious.inc:108    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
+     src/xevious.inc:108    *ABS*:00000009 TELEPORT_SND
+     src/xevious.inc:109    *ABS*:0000000a BACURA_HIT_SND
+     src/xevious.inc:110    *ABS*:0000000b SHOT_SND
+     src/xevious.inc:111    *ABS*:0000000c BOMB_SND
+     src/xevious.inc:112    *ABS*:0000000d BONUS_FLAG_SND
+     src/xevious.inc:113    *ABS*:0000000e SOLVALOU_SND
+     src/xevious.inc:115    *ABS*:00000010 COIN_SND
+     src/xevious.inc:116    *ABS*:00000011 GROUND_EXPLOSION_SND
+     src/xevious.inc:117    *ABS*:00000012 SOLVALOU_EXPLOSION_SND
  src/xevious_sub.68k:25     .text:00000000 _start_of_xevious_sub_rom
  src/xevious_sub.68k:845    .text:00000a6c area_object_tbl_tbl_super
  src/xevious_sub.68k:455    .text:00000598 flying_enemy_type_offset_tbl_super
