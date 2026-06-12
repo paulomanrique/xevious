@@ -45,15 +45,13 @@
 *  game:  srows 4..31  (top HUD srows 0-1 and bottom srow 35 live on the panel)
 *  title: srows 7..34  (logos, hiscore table, copyright lines)
 * plane A vscroll = (window top srow) * 8
-* The fg overlay and bg layer must register so arcade fg row F sits over bg
-* row F-2; with plane A row = fg row - 4 this gives bg vscroll = FGV + 16.
-* bg vscroll = (VBIAS - scroll) & 511 (scroll moves terrain DOWN the screen).
+* bg vscroll = (VBIAS + scroll) & 511. VBIAS is tuned so the baseline (core
+* scroll = 4) registers the bg with the fixed fg/sprites: bg_vscroll = FGV+12
+* at scroll 4, i.e. VBIAS = FGV + 8.
     .equ    FGV_GAME,       32                  | plane A vscroll per mode
     .equ    FGV_TITLE,      56
-* bg vscroll = VBIAS - scroll; registration is FGV+16 at the core's base
-* scroll of 4, so VBIAS = FGV + 16 + 4 = FGV + 20
-    .equ    VBIAS_GAME,     (FGV_GAME+20)&511
-    .equ    VBIAS_TITLE,    (FGV_TITLE+20)&511
+    .equ    VBIAS_GAME,     (FGV_GAME+8)&511
+    .equ    VBIAS_TITLE,    (FGV_TITLE+8)&511
 
 * HUD panel (window plane, screen columns 34-39, 6 cells wide)
     .equ    PANEL_COL,      34
@@ -348,9 +346,10 @@ md_vblank:
     .endif
     bsr     md_read_pads
 
-* flush plane B vscroll (window bias - game scroll: scroll moves terrain down)
+* flush plane B vscroll. The player flies UP, so terrain must scroll DOWN as
+* the core's scroll counter increases; on MD that means INCREASING vscroll.
     move.w  (md_vbias),d0
-    sub.w   (md_scroll_shadow),d0
+    add.w   (md_scroll_shadow),d0
     andi.w  #0x1FF,d0
     VDP_W_VSRAM 2
     move.w  d0,(VDP_DATA)
@@ -500,7 +499,7 @@ mode_done:
 * the sprite pool; both are reverted as soon as action resumes
 md_check_menu:
     tst.b   (is_real_game)
-    bne.b   in_action
+    bne     in_action
     tst.b   (scroll_disabled)
     bne.b   menu_idle                           | scroll halted: menu screen
 * scroll runs: menu only if nothing is alive (hi-score-over-map screens
@@ -508,7 +507,7 @@ md_check_menu:
     lea     obj_tbl,a0
     moveq   #64-1,d7
 0:  cmpi.b  #2,(a0)
-    bcc.b   in_action                           | active object: demo/game
+    bcc     in_action                           | active object: demo/game
     lea     (_OBJSIZE,a0),a0
     dbf     d7,0b
 menu_idle:
@@ -523,33 +522,7 @@ menu_idle:
     st.b    (md_menu)
     move.w  #VBIAS_TITLE,(md_vbias)
     move.w  #FGV_TITLE,(md_fg_vscroll)
-    bsr     md_hide_fg_logo                     | blank the already-drawn fg logo
 9:  rts
-
-* clear plane A cells holding fg logo graphic tiles (char >= 0x50); the bg
-* layer carries the logo. Called once when entering menu mode.
-md_hide_fg_logo:
-    movem.l d0-d2/a0-a1,-(a7)
-    lea     fg_videoram,a0
-    lea     md_fg_cmd_tbl,a1
-    moveq   #0,d0
-1:  cmpi.b  #0x50,(a0,d0.w)
-    bcs.b   2f                                  | text char: keep
-    move.w  d0,d1
-    add.w   d1,d1
-    add.w   d1,d1
-    move.l  (a1,d1.w),d2                        | plane A VDP cmd (0 = hidden cell)
-    beq.b   2f
-    move.w  sr,-(a7)
-    move    #0x2700,sr
-    move.l  d2,(VDP_CTRL)
-    move.w  #0,(VDP_DATA)                       | blank tile (transparent)
-    move.w  (a7)+,sr
-2:  addq.w  #1,d0
-    cmpi.w  #0x800,d0
-    blt.b   1b
-    movem.l (a7)+,d0-d2/a0-a1
-    rts
 
 in_action:
     clr.w   (md_menu_cnt)
@@ -887,16 +860,14 @@ fg_write:
     .ifdef DIAG_NO_FG
     rts
     .endif
-    * On menu/title screens the core draws the metallic logo highlights as a
-    * separate fg graphic (char codes >= 0x50). The bg layer already carries
-    * the full logo, and the arcade's fg/bg split doesn't reproduce cleanly
-    * here, so suppress those fg graphic tiles in menu mode (in-field text is
-    * all < 0x50, so gameplay is unaffected).
+    * The core draws the title logo's metallic face as a separate fg graphic
+    * (char codes >= 0x50). The bg layer already carries the complete logo
+    * (blue/cyan/white), and the arcade's fg/bg split doesn't reproduce
+    * cleanly here, so suppress those fg graphic tiles. In-field fg is only
+    * text + the ship-count icon (all < 0x50), so gameplay is unaffected.
     cmpi.b  #0x50,d1
-    bcs.b   0f
-    tst.b   (md_menu)
-    bne     fg_skip
-0:  * skip cells that can never be displayed (null command)
+    bcc     fg_skip
+    * skip cells that can never be displayed (null command)
     lea     md_fg_cmd_tbl,a0
     move.w  d0,d5
     add.w   d5,d5
