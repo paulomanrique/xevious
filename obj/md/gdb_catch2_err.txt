@@ -1,4 +1,0 @@
-Error in testing breakpoint condition:
-Argument to arithmetic operation not a number or boolean.
-Invalid register `a6'
-Remote communication error.  Target disconnected.: No such file or directory.

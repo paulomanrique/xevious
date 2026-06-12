@@ -7,3 +7,11 @@ s
 snapshot
 src/datetime
 *.slave
+
+# Mega Drive build artifacts
+obj/
+bin/
+*.lst
+*.map
+*.elf
+address.log

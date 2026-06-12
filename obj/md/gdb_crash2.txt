@@ -1,4 +1,0 @@
-0x00000200 in _start ()
-Breakpoint 1 at 0x5ae
-
-Breakpoint 1, 0x000005ae in md_check_mode ()
