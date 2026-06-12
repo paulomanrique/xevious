@@ -1246,15 +1246,16 @@ obj_double:
     move.w  d0,d1
     not.w   d1
     and.w   d1,d4                               | code &= ~size
-    * which halves swap on a flip: the flip must swap the halves along the SAME
-    * axis it mirrors. Rotated screen -> _ATTR b3 (yflip=Hflip) swaps the width
-    * (short-axis, b0) halves; b2 (xflip=Vflip) swaps the height (long-axis, b1)
-    * halves. (Same axis fix as spr_emit.)
+    * part bit0 = MD-vertical half (dlong, doubled by dw=size b0); bit1 =
+    * MD-horizontal half (dshort, doubled by dh=size b1). A flip swaps the halves
+    * along the axis it mirrors: xflip(=MD Vflip) swaps the vertical pair (bit0),
+    * yflip(=MD Hflip) swaps the horizontal pair (bit1). (Verified against the
+    * arcade sub-tile layout; fixes inside-out composite explosions.)
     moveq   #0,d1
-    btst    #3,d5
+    btst    #2,d5
     beq.b   3f
     bset    #0,d1
-3:  btst    #2,d5
+3:  btst    #3,d5
     beq.b   4f
     bset    #1,d1
 4:  and.w   d0,d1                               | mask to the doubled axes
@@ -1283,10 +1284,10 @@ dpart_loop:
     add.w   d1,d4                               | part code
     move.w  (2,a7),d0
     move.w  d0,d1
-    andi.w  #2,d0
-    lsl.w   #3,d0                               | dlong = (part&2)*8
-    andi.w  #1,d1
-    lsl.w   #4,d1                               | dshort = (part&1)*16
+    andi.w  #1,d0
+    lsl.w   #4,d0                               | dlong  = (part&1)*16  (vertical)
+    andi.w  #2,d1
+    lsl.w   #3,d1                               | dshort = (part&2)*8   (horizontal)
     bsr     spr_emit
     move.w  (a7)+,d4
 dpart_next:
