@@ -238,6 +238,32 @@ md_platform_init:
 * load the PCM4 sound driver (Z80 is still parked from startup)
     bsr     md_sound_init
 
+    .ifdef DIAG_HSTEST
+* high-score SRAM round-trip self-test: seed table, write, wipe, read back.
+* gdb checks high_score_1st_msb == 0x12,0x34,0x56 afterwards.
+    lea     high_score_1st_msb,a0
+    move.b  #0x12,(a0)
+    move.b  #0x34,(1,a0)
+    move.b  #0x56,(2,a0)
+    moveq   #HS_TABLE_LEN-4-1,d7
+    lea     (3,a0),a1
+0:  move.b  #0xA5,(a1)+
+    dbf     d7,0b
+    lea     high_score_1st_msb,a0
+    jsr     osd_write_high_scores
+    * wipe the core table
+    lea     high_score_1st_msb,a0
+    moveq   #HS_TABLE_LEN-1,d7
+1:  clr.b   (a0)+
+    dbf     d7,1b
+    * read back
+    lea     high_score_1st_msb,a0
+    lea     RAM_high_score,a1
+    jsr     osd_read_high_scores
+md_hstest_done:
+    nop
+    .endif
+
 * mode/scroll state
     clr.b   (md_mode)
     clr.b   (md_menu)
@@ -1517,12 +1543,79 @@ osd_read_start:
 * sound: osd_sound_* live in pcm4.68k
 
 ***************************************************************
-*** high scores (M8)
+*** high scores (battery SRAM at 0x200001, odd bytes)
 ***************************************************************
+* SRAM layout (consecutive odd bytes from 0x200001):
+*   [0..3] signature 'XEVS'  [4] checksum  [5..5+0x4F] the 0x50-byte table
+    .equ    HS_TABLE_LEN,   0x50
 
+* a0 = dest high-score table, a1 = dest current-high-score (3 BCD)
+* reads into a scratch buffer and validates before touching the core table,
+* so a corrupt/blank SRAM leaves the core's just-initialised defaults intact
 osd_read_high_scores:
-osd_write_high_scores:
+    movem.l d0-d3/d7/a0-a3,-(a7)
+    lea     (SRAM_BASE),a2                      | 0x200001
+* check signature
+    lea     hs_signature(pc),a3
+    moveq   #4-1,d7
+1:  move.b  (a2),d0
+    adda.l  #2,a2
+    cmp.b   (a3)+,d0
+    bne     9f                                  | bad signature -> keep defaults
+    dbf     d7,1b
+* read stored checksum then the table into the scratch buffer, summing
+    move.b  (a2),d2                             | stored checksum
+    adda.l  #2,a2
+    moveq   #0,d1
+    lea     hs_scratch,a3
+    move.w  #HS_TABLE_LEN-1,d7
+2:  move.b  (a2),d0
+    adda.l  #2,a2
+    add.b   d0,d1
+    move.b  d0,(a3)+
+    dbf     d7,2b
+    cmp.b   d1,d2
+    bne     9f                                  | checksum mismatch -> keep defaults
+* valid: commit scratch -> core table, copy entry-1 score to RAM_high_score
+    lea     hs_scratch,a3
+    move.w  #HS_TABLE_LEN-1,d7
+3:  move.b  (a3)+,(a0)+
+    dbf     d7,3b
+    lea     hs_scratch,a3
+    move.b  (a3),(a1)
+    move.b  (1,a3),(1,a1)
+    move.b  (2,a3),(2,a1)
+9:  movem.l (a7)+,d0-d3/d7/a0-a3
     rts
+
+* a0 = source high-score table
+osd_write_high_scores:
+    movem.l d0-d2/d7/a0-a2,-(a7)
+    lea     (SRAM_BASE),a2
+* signature
+    lea     hs_signature(pc),a1
+    moveq   #4-1,d7
+1:  move.b  (a1)+,(a2)
+    adda.l  #2,a2
+    dbf     d7,1b
+* checksum slot (filled after) - remember its address
+    move.l  a2,a1
+    adda.l  #2,a2
+* table + running checksum
+    moveq   #0,d1
+    move.w  #HS_TABLE_LEN-1,d7
+2:  move.b  (a0)+,d0
+    add.b   d0,d1
+    move.b  d0,(a2)
+    adda.l  #2,a2
+    dbf     d7,2b
+    move.b  d1,(a1)                             | store checksum
+    movem.l (a7)+,d0-d2/d7/a0-a2
+    rts
+
+hs_signature:
+    .ascii  "XEVS"
+    .align 2
 
 ***************************************************************
 *** OSD state
@@ -1549,6 +1642,10 @@ md_panel_cell_slot: ds.w    PANEL_W*PANEL_ROWS  | panel cell -> slot+1 in use
 md_panel_cmd_tbl:   ds.l    PANEL_W*PANEL_ROWS  | panel cell -> window NT cmd
     .align 4
 md_fg_cmd_tbl:      ds.l    0x800               | arcade offset -> plane A VDP cmd
+* high-score read scratch (validated before committing to the core table)
+md_hs_scratch_pad:
+hs_scratch:         ds.b    HS_TABLE_LEN
+    .align 2
 * pads
 md_pad1:            ds.b    1
 md_pad2:            ds.b    1
