@@ -29,10 +29,13 @@
 *   bg game patterns   from 0x0020 (generated, see graphics_md.68k)
 *   sprite pool        after bg    (generated bound; panel glyphs + fg
 *                      overflow live at the pool tail)
-* fg dynamic cache: 96 tiles at 0xB000-0xBBFF (tiles 1408-1503)
+* fg dynamic cache: 64 tiles at 0xB000-0xB7FF (tiles 1408-1471)
+* NOTE: the hscroll table register only resolves to 0x400-aligned addresses,
+* so VRAM_HSCROLL MUST be a multiple of 0x400 - otherwise it silently rounds
+* down and can collide with the SAT (which corrupts plane scrolling).
     .equ    VRAM_WINDOW_NT, 0xA000              | 64x32 window nametable (4KB)
+    .equ    VRAM_HSCROLL,   0xB800              | hscroll table (0x400-aligned)
     .equ    VRAM_SAT,       0xBC00              | sprite attribute table (640B)
-    .equ    VRAM_HSCROLL,   0xBF00              | hscroll table
     .equ    VRAM_PLANE_A,   0xC000              | 64x64 nametable (8KB)
     .equ    VRAM_PLANE_B,   0xE000              | 64x64 nametable (8KB)
 

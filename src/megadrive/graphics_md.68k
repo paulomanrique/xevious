@@ -17,7 +17,7 @@
     .equ GFX_N_TITLE, 131
     .equ GFX_N_FRAMES, 695
     .equ GFX_FG_CACHE_BASE, 1408
-    .equ GFX_FG_CACHE_TILES, 96
+    .equ GFX_FG_CACHE_TILES, 64
 
     .global gfx_palettes_game
     .global gfx_palette_title

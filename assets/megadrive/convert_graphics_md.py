@@ -290,8 +290,9 @@ def main():
     n_bg = len(g_patterns)
     POOL_BASE_TILE = BG_BASE_TILE + n_bg
     # patterns area ends at the window NT (0xA000); the fg dynamic cache
-    # lives separately at 0xB000-0xBBFF (96 tiles, below the SAT)
-    FG_CACHE_TILES = 96
+    # lives at 0xB000-0xB7FF (64 tiles) - the hscroll table sits at 0xB800
+    # and the SAT at 0xBC00, so the cache must not exceed 64 tiles
+    FG_CACHE_TILES = 64
     total_tiles = 0xA000 // 32
     pool_tiles = total_tiles - POOL_BASE_TILE
     FG_CACHE_BASE = 0xB000 // 32
