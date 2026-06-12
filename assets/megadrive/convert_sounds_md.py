@@ -15,6 +15,14 @@ out_dir = os.path.normpath(os.path.join(this_dir, "..", "..", "src", "megadrive"
 
 OUT_RATE = 16000
 
+# Sample playback rate is fixed by the PCM4 driver (Z80 3579545/223 = 16052 Hz)
+# and the samples are encoded at 16000 Hz, so they play at ~the source tempo
+# (0.3% fast). Measurement confirmed the music WAVs are already at arcade tempo
+# (the core's 380-frame theme timer = 6.33s at 60 Hz matches main_theme's 6.35s),
+# so no per-sound speed correction is applied. Left as a tunable hook.
+MUSIC_SPEEDUP = 1.0
+MUSIC_ORDINALS = set()
+
 # ordinal -> (wav name, channel, volume 0-15, loop)
 # channels: 0 = music / engine (mutually exclusive), 1-3 = SFX
 # (mirrors src/amiga/sound_entries.68k channel + relative volume, /4 clamped)
@@ -39,7 +47,7 @@ SOUNDS = {
 }
 MAX_ORD = 0x12
 
-def read_wav_s8_16k(path):
+def read_wav_s8_16k(path, speed=1.0):
     w = wave.open(path, "rb")
     nch, width, rate, n = (w.getnchannels(), w.getsampwidth(),
                            w.getframerate(), w.getnframes())
@@ -61,8 +69,9 @@ def read_wav_s8_16k(path):
     else:
         raise ValueError("unsupported width %d" % width)
 
-    # linear resample to OUT_RATE
-    out_n = max(1, int(len(ints) * OUT_RATE / rate))
+    # linear resample to OUT_RATE; speed>1 compresses time so playback at the
+    # fixed 16 kHz rate runs faster (used to match 60 Hz music tempo)
+    out_n = max(1, int(len(ints) * OUT_RATE / rate / speed))
     out = bytearray(out_n)
     step = len(ints) / out_n
     pos = 0.0
@@ -86,7 +95,8 @@ def main():
     table = {}      # ordinal -> (name, length, channel, vol, loop)
     for ordn, (name, ch, vol, loop) in SOUNDS.items():
         wav = os.path.join(snd_dir, name + ".wav")
-        data = read_wav_s8_16k(wav)
+        speed = MUSIC_SPEEDUP if ordn in MUSIC_ORDINALS else 1.0
+        data = read_wav_s8_16k(wav, speed)
         with open(os.path.join(out_dir, "smp_%s.bin" % name), "wb") as f:
             f.write(data)
         table[ordn] = (name, len(data), ch, vol, loop)
