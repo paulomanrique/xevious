@@ -1238,10 +1238,18 @@ obj_double:
     move.w  d0,d1
     not.w   d1
     and.w   d1,d4                               | code &= ~size
-    move.w  d5,d1
-    lsr.w   #2,d1
-    andi.w  #3,d1
-    and.w   d0,d1
+    * which halves swap on a flip: the flip must swap the halves along the SAME
+    * axis it mirrors. Rotated screen -> _ATTR b3 (yflip=Hflip) swaps the width
+    * (short-axis, b0) halves; b2 (xflip=Vflip) swaps the height (long-axis, b1)
+    * halves. (Same axis fix as spr_emit.)
+    moveq   #0,d1
+    btst    #3,d5
+    beq.b   3f
+    bset    #0,d1
+3:  btst    #2,d5
+    beq.b   4f
+    bset    #1,d1
+4:  and.w   d0,d1                               | mask to the doubled axes
     move.w  d1,-(a7)                            | (2,a7): swap bits
     clr.w   -(a7)                               | (a7): part index
 dpart_loop:
@@ -1332,11 +1340,18 @@ spr_emit:
     andi.w  #0x2000,d2
     add.w   #0x4000,d2                          | palette field
     or.w    d2,d4
-    move.w  d5,d2
-    andi.w  #0x0C,d2
-    lsl.w   #8,d2
-    add.w   d2,d2                               | obj flips -> bits 11/12
-    eor.w   d2,d4
+    * obj flips: the arcade screen is rotated 90 vs this upright display, so
+    * _ATTR b3 ("yflip" in the OSD spec) is the HORIZONTAL flip here -> MD Hflip
+    * (b11), and b2 ("xflip") is the VERTICAL flip -> MD Vflip (b12). Matches the
+    * Amiga port (amiga.68k ~2614); fixes mirrored explosion frames.
+    moveq   #0,d2
+    btst    #3,d5
+    beq.b   1f
+    bset    #11,d2
+1:  btst    #2,d5
+    beq.b   2f
+    bset    #12,d2
+2:  eor.w   d2,d4
     * write SAT entry
     move.w  (a7)+,d3
     move.w  d0,(a6)                             | Y
