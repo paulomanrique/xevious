@@ -33,6 +33,7 @@
     .global osd_read_high_scores
     .global osd_write_high_scores
     .global osd_debug_hook
+    .global md_sound_init
 
 * display geometry
 * playfield: 224px wide at nametable columns 6..33 (screen x 48..271)
@@ -233,6 +234,9 @@ md_platform_init:
 
 * fill the panel with the opaque tile and draw static labels
     bsr     md_panel_init
+
+* load the PCM4 sound driver (Z80 is still parked from startup)
+    bsr     md_sound_init
 
 * mode/scroll state
     clr.b   (md_mode)
@@ -1510,15 +1514,7 @@ osd_read_start:
 2:  tst.b   d0
     rts
 
-***************************************************************
-*** sound (M7)
-***************************************************************
-
-osd_sound_start:
-osd_sound_stop:
-osd_sound_mute:
-osd_sound_unmute:
-    rts
+* sound: osd_sound_* live in pcm4.68k
 
 ***************************************************************
 *** high scores (M8)

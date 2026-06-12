@@ -36,6 +36,7 @@ PLATFORM_SOURCES = [
     ("src/megadrive/header.68k", []),
     ("src/megadrive/startup.68k", []),
     ("src/megadrive/megadrive.68k", []),
+    ("src/megadrive/pcm4.68k", []),
 ]
 CORE_SOURCES = [
     ("src/xevious_main.68k", []),
@@ -47,6 +48,8 @@ CORE_SOURCES = [
 GENERATED_SOURCES = [
     ("src/megadrive/sounds_md.68k", []),
 ]
+# pcm4.68k references md_sound_table from sounds_md.68k, so the sound data
+# must be present for a full link (it always is after convert_sounds_md.py)
 
 def run(cmd):
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)

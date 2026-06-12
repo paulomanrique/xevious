@@ -1,0 +1,274 @@
+*
+* Mega Drive sound: SGDK PCM4 Z80 driver (4ch 8-bit PCM @ 16kHz) + Xevious
+* sound dispatch. Replicates the NeoGeo priority/timer logic but drives the
+* PCM4 channels instead of a single sound-chip command.
+*
+
+    .include "vdpregs.inc"
+    .include "xevious.inc"
+
+    .global md_sound_init
+    .global osd_sound_start
+    .global osd_sound_stop
+    .global osd_sound_mute
+    .global osd_sound_unmute
+
+* Z80 driver RAM layout (offsets from Z80_RAM = 0xA00000)
+    .equ    Z80_COMMAND,    0x0100              | byte: bit ch = start play
+    .equ    Z80_STATUS,     0x0102              | byte0 play/ready, byte1 loop
+    .equ    Z80_WAVADR,     0x0104              | + ch*4 : adr8-15, adr16-23, len8-15, len16-23
+    .equ    Z80_IWAVADR,    0x0114              | + ch*4 : internal copy (stop writes here)
+    .equ    Z80_WAVVOL,     0x0124              | + ch : volume 0-15
+    .equ    Z80_NULLADR,    0x0128              | null sample adr bits8-23
+    .equ    Z80_NULLLEN,    0x012A
+
+    .text
+
+***************************************************************
+*** driver upload (Z80 already parked by startup: bus held)
+***************************************************************
+
+md_sound_init:
+    movem.l d0/a0-a1,-(a7)
+* copy the PCM4 driver to Z80 RAM 0x0000
+    lea     pcm_driver,a0
+    lea     (Z80_RAM),a1
+    move.w  #pcm_driver_end-pcm_driver-1,d0
+1:  move.b  (a0)+,(a1)+
+    dbf     d0,1b
+* copy the 4KB volume table to Z80 RAM 0x1000
+    lea     pcm_tab_vol,a0
+    lea     (Z80_RAM+0x1000),a1
+    move.w  #0x1000-1,d0
+2:  move.b  (a0)+,(a1)+
+    dbf     d0,2b
+* null-sample parameters (silence source, 256 bytes)
+    lea     (Z80_RAM),a1
+    move.l  #pcm_smp_null,d0
+    lsr.l   #8,d0
+    move.b  d0,(Z80_NULLADR,a1)
+    lsr.l   #8,d0
+    move.b  d0,(Z80_NULLADR+1,a1)
+    move.b  #1,(Z80_NULLLEN,a1)                 | 256>>8
+    move.b  #0,(Z80_NULLLEN+1,a1)
+    move.b  #0,(Z80_COMMAND,a1)
+* clear volumes
+    lea     (Z80_WAVVOL,a1),a0
+    move.b  #0,(a0)+
+    move.b  #0,(a0)+
+    move.b  #0,(a0)+
+    move.b  #0,(a0)+
+* start the Z80: assert reset, release bus, release reset
+    move.w  #0x000,(Z80_RESET)
+    moveq   #40,d0
+3:  dbf     d0,3b
+    move.w  #0x000,(Z80_BUSREQ)
+    move.w  #0x100,(Z80_RESET)
+    clr.b   (md_snd_muted)
+    movem.l (a7)+,d0/a0-a1
+    rts
+
+***************************************************************
+*** Z80 bus helpers
+***************************************************************
+
+md_z80_request:
+    move.w  #0x100,(Z80_BUSREQ)
+1:  btst    #0,(Z80_BUSREQ)
+    bne.b   1b
+    rts
+
+md_z80_release:
+    move.w  #0x000,(Z80_BUSREQ)
+    rts
+
+***************************************************************
+*** PCM channel control
+***************************************************************
+
+* d0 = sound ordinal -> start its sample on its channel
+md_pcm_play:
+    movem.l d0-d6/a0-a1,-(a7)
+    lea     md_sound_table,a0
+    move.w  d0,d6
+    lsl.w   #3,d6                               | 8 bytes/entry
+    lea     (a0,d6.w),a0
+    move.l  (a0),d1                             | sample address
+    beq     9f                                  | unused ordinal -> ignore
+    move.w  (4,a0),d2                           | length >> 8
+    moveq   #0,d3
+    move.b  (6,a0),d3                           | channel (0-3)
+    moveq   #0,d4
+    move.b  (7,a0),d4                           | vol<<4 | loop
+    bsr     md_z80_request
+    lea     (Z80_RAM),a1
+    move.w  d3,d6
+    lsl.w   #2,d6                               | ch*4
+    addi.w  #Z80_WAVADR,d6
+* WAVADR[ch] (8-bit indexed disp can't reach 0x104, so fold into the index)
+    lea     (a1,d6.w),a0
+    move.l  d1,d0
+    lsr.l   #8,d0
+    move.b  d0,(0,a0)                           | adr bits 8-15
+    lsr.l   #8,d0
+    move.b  d0,(1,a0)                           | adr bits 16-23
+    move.b  d2,(2,a0)                           | len bits 8-15
+    move.w  d2,d0
+    lsr.w   #8,d0
+    move.b  d0,(3,a0)                           | len bits 16-23
+* volume (force 0 while muted)
+    move.w  d4,d0
+    lsr.w   #4,d0                               | volume 0-15
+    tst.b   (md_snd_muted)
+    beq.b   1f
+    moveq   #0,d0
+1:  move.w  d3,d6
+    addi.w  #Z80_WAVVOL,d6
+    move.b  d0,(0,a1,d6.w)
+* loop flag in STATUS byte 1
+    move.b  (Z80_STATUS+1,a1),d0
+    bclr    d3,d0
+    btst    #0,d4                               | loop?
+    beq.b   2f
+    bset    d3,d0
+2:  move.b  d0,(Z80_STATUS+1,a1)
+* play command
+    move.b  (Z80_COMMAND,a1),d0
+    bset    d3,d0
+    move.b  d0,(Z80_COMMAND,a1)
+    bsr     md_z80_release
+9:  movem.l (a7)+,d0-d6/a0-a1
+    rts
+
+* d0 = sound ordinal -> stop its channel
+md_pcm_stop:
+    movem.l d0-d3/a0-a1,-(a7)
+    lea     md_sound_table,a0
+    move.w  d0,d1
+    lsl.w   #3,d1
+    move.b  (6,a0,d1.w),d3                      | channel
+    bsr     md_z80_request
+    lea     (Z80_RAM),a1
+    move.w  d3,d1
+    lsl.w   #2,d1                               | ch*4
+    addi.w  #Z80_IWAVADR,d1
+* point internal sample at the null sample
+    lea     (a1,d1.w),a0
+    move.b  (Z80_NULLADR,a1),(0,a0)
+    move.b  (Z80_NULLADR+1,a1),(1,a0)
+    move.b  (Z80_NULLLEN,a1),(2,a0)
+    move.b  (Z80_NULLLEN+1,a1),(3,a0)
+* clear play + loop status
+    move.b  (Z80_STATUS,a1),d0
+    bclr    d3,d0
+    move.b  d0,(Z80_STATUS,a1)
+    move.b  (Z80_STATUS+1,a1),d0
+    bclr    d3,d0
+    move.b  d0,(Z80_STATUS+1,a1)
+    bsr     md_z80_release
+    movem.l (a7)+,d0-d3/a0-a1
+    rts
+
+***************************************************************
+*** OSD sound dispatch (NeoGeo priority/timer logic)
+***************************************************************
+
+* d0 = sound ordinal
+osd_sound_start:
+    movem.l d0/a0,-(a7)
+    lea     md_snd_playing,a0
+    tst.b   (MAIN_THEME_SND,a0)                 | main theme playing?
+    beq     0f
+    cmp.b   #SOLVALOU_SND,d0                    | only solvalou ticks its timer
+    bne     9f
+    subq.w  #1,(md_main_theme_cnt)
+    bne     9f
+    clr.b   (MAIN_THEME_SND,a0)
+    moveq   #MAIN_THEME_SND,d0
+    bsr     md_pcm_stop
+    moveq   #SOLVALOU_SND,d0
+    bra     snd_flag_and_play
+0:  tst.b   (ANDOR_GENESIS_SND,a0)              | andor genesis playing?
+    beq     1f
+    cmp.b   #SOLVALOU_SND,d0
+    bne     3f
+    subq.w  #1,(md_andor_cnt)
+    bne     9f
+    clr.b   (ANDOR_GENESIS_SND,a0)
+    moveq   #SOLVALOU_SND,d0
+    bra     snd_flag_and_play
+1:  cmp.b   #MAIN_THEME_SND,d0
+    bne     2f
+    move.w  #380,(md_main_theme_cnt)
+    bra     snd_flag_and_play
+2:  cmp.b   #HIGH_SCORE_SND,d0                  | HIGHEST/HIGH_SCORE
+    ble     snd_check_playing
+3:  cmp.b   #ANDOR_GENESIS_SND,d0
+    bne     4f
+    move.w  #4,(md_andor_cnt)
+    bra     snd_check_playing
+4:  cmp.b   #SOLVALOU_SND,d0
+    bne     snd_flag_and_play
+snd_check_playing:
+    move.w  d0,a0                               | scratch index
+    lea     md_snd_playing,a0
+    tst.b   (a0,d0.w)
+    bne     9f                                  | already playing
+snd_flag_and_play:
+    lea     md_snd_playing,a0
+    move.b  #1,(a0,d0.w)
+    bsr     md_pcm_play
+9:  movem.l (a7)+,d0/a0
+    rts
+
+* d0 = sound ordinal
+osd_sound_stop:
+    cmp.b   #BOMB_SND,d0                        | bomb is one-shot, ignore stop
+    beq     9f
+    movem.l d0/a0,-(a7)
+    lea     md_snd_playing,a0
+    clr.b   (a0,d0.w)
+    bsr     md_pcm_stop
+    movem.l (a7)+,d0/a0
+9:  rts
+
+osd_sound_mute:
+    movem.l d0/a0-a1,-(a7)
+    st.b    (md_snd_muted)
+    bsr     md_z80_request
+    lea     (Z80_RAM+Z80_WAVVOL),a1
+    move.b  #0,(a1)+
+    move.b  #0,(a1)+
+    move.b  #0,(a1)+
+    move.b  #0,(a1)+
+    bsr     md_z80_release
+    movem.l (a7)+,d0/a0-a1
+    rts
+
+osd_sound_unmute:
+    clr.b   (md_snd_muted)
+    rts
+
+    .bss
+    .align 2
+md_snd_muted:       ds.b    1
+    .align 2
+md_main_theme_cnt:  ds.w    1
+md_andor_cnt:       ds.w    1
+md_snd_playing:     ds.b    0x20                | per-ordinal playing flags
+
+***************************************************************
+*** binary blobs
+***************************************************************
+
+    .section .rodata
+    .align 2
+pcm_driver:
+    .incbin "drv_pcm4.bin"
+pcm_driver_end:
+    .align 2
+pcm_tab_vol:
+    .incbin "tab_vol.bin"
+    .balign 256
+pcm_smp_null:
+    .incbin "smp_null.bin"

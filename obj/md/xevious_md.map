@@ -10,7 +10,7 @@ Linker script and memory map
 
                 0x00000000                . = 0x0
 
-.text           0x00000000    0x6b7c0
+.text           0x00000000    0xe5b00
  *(.vectors)
  .vectors       0x00000000      0x200 C:\Users\pmanr\Code\xevious-genesis\obj\md\header.o
  *(.text)
@@ -20,54 +20,59 @@ Linker script and memory map
                 0x00000300                md_error
                 0x0000031e                md_hblank
                 0x0000031e                md_ext_irq
- .text          0x00000320      0xdb4 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
+ .text          0x00000320      0xdb6 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
                 0x00000320                md_main
-                0x000004ea                md_vblank
-                0x000009b6                osd_enable_vblank_interrupt
-                0x000009bc                osd_ack_vblank_interrupt
-                0x000009c4                osd_disable_vblank_interrupt
-                0x000009ca                osd_kick_wdog
-                0x000009cc                osd_debug_hook
-                0x000009ce                osd_w_fg_videoram
-                0x000009ee                osd_w_fg_colorram
-                0x00000bf2                osd_w_bg_videoram
-                0x00000c12                osd_w_bg_colorram
-                0x00000cdc                osd_update_scroll_hw
-                0x00000ce4                osd_update_sprite_shadow
-                0x00000ed0                osd_update_32_sprite_hw
-                0x00000fe8                osd_read_dipswitches
-                0x00001022                osd_read_p1_inputs
-                0x00001030                osd_read_p2_inputs
-                0x00001068                osd_read_coin
-                0x000010ae                osd_read_start
-                0x000010d0                osd_sound_start
-                0x000010d0                osd_sound_unmute
-                0x000010d0                osd_sound_stop
-                0x000010d0                osd_sound_mute
-                0x000010d2                osd_write_high_scores
-                0x000010d2                osd_read_high_scores
- .text          0x000010d4     0x4c0a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
-                0x000010d4                xevious_reset
-                0x00001228                xevious_im1_irq
-                0x0000230c                start_area
-                0x000058a2                is_super_xevious
-                0x000058a3                invincible_flag
-                0x000058a4                infinite_lives_flag
-                0x000058a5                reveal_sol_tower_flag
-                0x000058a6                reveal_bonus_flag_flag
- *fill*         0x00005cde        0x2 4e75
- .text          0x00005ce0     0x283a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
-                0x00005ce0                xevious_sub_reset
-                0x00005d06                xevious_sub_irq
-                0x00005d48                xevious_sub_cpu
-                0x00006708                area_object_tbl_tbl_pointer
- *fill*         0x0000851a        0x2 4e75
- .text          0x0000851c        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
- *fill*         0x0000851c      0xae4 4e75
+                0x000004ee                md_vblank
+                0x000009ba                osd_enable_vblank_interrupt
+                0x000009c0                osd_ack_vblank_interrupt
+                0x000009c8                osd_disable_vblank_interrupt
+                0x000009ce                osd_kick_wdog
+                0x000009d0                osd_debug_hook
+                0x000009d2                osd_w_fg_videoram
+                0x000009f2                osd_w_fg_colorram
+                0x00000bf6                osd_w_bg_videoram
+                0x00000c16                osd_w_bg_colorram
+                0x00000ce0                osd_update_scroll_hw
+                0x00000ce8                osd_update_sprite_shadow
+                0x00000ed4                osd_update_32_sprite_hw
+                0x00000fec                osd_read_dipswitches
+                0x00001026                osd_read_p1_inputs
+                0x00001034                osd_read_p2_inputs
+                0x0000106c                osd_read_coin
+                0x000010b2                osd_read_start
+                0x000010d4                osd_read_high_scores
+                0x000010d4                osd_write_high_scores
+ *fill*         0x000010d6        0x2 4e75
+ .text          0x000010d8      0x2b2 C:\Users\pmanr\Code\xevious-genesis\obj\md\pcm4.o
+                0x000010d8                md_sound_init
+                0x0000127e                osd_sound_start
+                0x00001334                osd_sound_stop
+                0x00001354                osd_sound_mute
+                0x00001382                osd_sound_unmute
+ *fill*         0x0000138a        0x2 4e75
+ .text          0x0000138c     0x4c0a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
+                0x0000138c                xevious_reset
+                0x000014e0                xevious_im1_irq
+                0x000025c4                start_area
+                0x00005b5a                is_super_xevious
+                0x00005b5b                invincible_flag
+                0x00005b5c                infinite_lives_flag
+                0x00005b5d                reveal_sol_tower_flag
+                0x00005b5e                reveal_bonus_flag_flag
+ *fill*         0x00005f96        0x2 4e75
+ .text          0x00005f98     0x283a C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
+                0x00005f98                xevious_sub_reset
+                0x00005fbe                xevious_sub_irq
+                0x00006000                xevious_sub_cpu
+                0x000069c0                area_object_tbl_tbl_pointer
+ *fill*         0x000087d2        0x2 4e75
+ .text          0x000087d4        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
+ *fill*         0x000087d4      0x82c 4e75
  .text          0x00009000     0x4000 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
                 0x00009000                rom2a
                 0x0000a000                rom2b
                 0x0000c000                rom2c
+ .text          0x0000d000        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\sounds_md.o
  *(.text.*)
  *(.rodata)
  .rodata        0x0000d000    0x5e7c0 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
@@ -80,19 +85,26 @@ Linker script and memory map
                 0x00055400                gfx_sprite_frames
                 0x0006af80                gfx_fg_chars
                 0x0006b780                gfx_fg_color_map
+ *fill*         0x0006b7c0       0x40 4e75
+ .rodata        0x0006b800     0x1c00 C:\Users\pmanr\Code\xevious-genesis\obj\md\pcm4.o
+ .rodata        0x0006d400    0x78700 C:\Users\pmanr\Code\xevious-genesis\obj\md\sounds_md.o
+                0x0006d400                md_sound_table
+                0x0006d498                md_smp_base
  *(.rodata.*)
 
-.data           0x0006b7c0        0x0
+.data           0x000e5b00        0x0
  *(.data)
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\header.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\startup.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
- .data          0x0006b7c0        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\header.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\startup.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\pcm4.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
+ .data          0x000e5b00        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\sounds_md.o
  *(.data.*)
-                0x0006b7c0                _end_of_rom = .
+                0x000e5b00                _end_of_rom = .
                 0x00ff0000                . = 0xff0000
 
 .bss            0x00ff0000     0xa080
@@ -101,9 +113,11 @@ Linker script and memory map
  .bss           0x00ff0000        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\startup.o
  .bss           0x00ff0000     0x5012 C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
  *fill*         0x00ff5012        0x2 
- .bss           0x00ff5014        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
- .bss           0x00ff5014       0x82 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
- *fill*         0x00ff5096      0xf6a 
+ .bss           0x00ff5014       0x26 C:\Users\pmanr\Code\xevious-genesis\obj\md\pcm4.o
+ *fill*         0x00ff503a        0x2 
+ .bss           0x00ff503c        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
+ .bss           0x00ff503c       0x82 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
+ *fill*         0x00ff50be      0xf42 
  .bss           0x00ff6000     0x4080 C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
                 0x00ff6000                main_2_fn_tbl_1
                 0x00ff6090                main_30_fn_tbl
@@ -198,6 +212,7 @@ Linker script and memory map
                 0x00ff9800                bg_videoram
                 0x00ffa000                sprite_shadow_msb
  .bss           0x00ffa080        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
+ .bss           0x00ffa080        0x0 C:\Users\pmanr\Code\xevious-genesis\obj\md\sounds_md.o
  *(.bss.*)
  *(COMMON)
                 0x00ffa080                . = ALIGN (0x4)
@@ -209,8 +224,10 @@ Linker script and memory map
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\header.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\startup.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\megadrive.o
+LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\pcm4.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_main.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_sub.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_ram.o
 LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\map_rom.o
+LOAD C:\Users\pmanr\Code\xevious-genesis\obj\md\sounds_md.o
 OUTPUT(C:\Users\pmanr\Code\xevious-genesis\obj\md\xevious_md.elf elf32-m68k)
