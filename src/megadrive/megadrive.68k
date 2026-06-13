@@ -1335,7 +1335,11 @@ osd_update_sprite_shadow:
     movem.l d0-d7/a0-a6,-(a7)
     addq.w  #1,(md_frame_stamp)
     lea     sprite_shadow_msb,a2
-    lea     md_sat_shadow,a3
+    lea     md_sat_shadow+63*8,a3               | fill backwards (see obj_next): the MD draws
+*                                              | the lowest SAT entry on top, but the arcade
+*                                              | draws the highest object index on top, so map
+*                                              | obj 0 -> entry 63 ... obj 63 -> entry 0. Keeps
+*                                              | the ship/crosshair over the ground enemies.
     lea     md_sat_shadow+64*8,a4               | overflow entries for doubles
     moveq   #96,d0
     sub.w   (md_fg_vscroll),d0
@@ -1403,7 +1407,8 @@ obj_active:
 obj_inactive:
 obj_next:
     addq.l  #2,a2
-    lea     (8,a3),a3
+    lea     (-8,a3),a3                          | descend: higher obj index -> earlier SAT
+*                                              | entry -> drawn on top (arcade priority order)
     lea     (_OBJSIZE,a5),a5
     dbf     d7,obj_loop
     movem.l (a7)+,d0-d7/a0-a6
