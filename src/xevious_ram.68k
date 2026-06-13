@@ -101,6 +101,7 @@
     .global area_object_tbl_tbl_pointer
     .global flying_enemy_type_offset_tbl_pointer
     .global flying_enemy_type_tbl_pointer
+    .global invincible_flag
     .endif
 
     .bss
@@ -286,4 +287,8 @@ sprite_shadow_msb:                      ds.b  64*2
 area_object_tbl_tbl_pointer:            ds.l  1
 flying_enemy_type_offset_tbl_pointer:   ds.l  1
 flying_enemy_type_tbl_pointer:          ds.l  1
+* runtime cheat flag (read by xevious_main check_solvalou_hit); the upstream
+* keeps it in .text which is ROM on a cartridge, so the Konami "cheteiro" code
+* can't set it there -- relocate to RAM like the table pointers above.
+invincible_flag:                        ds.b  1
     .endif

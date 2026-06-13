@@ -338,6 +338,100 @@ def main():
     wbin("gfx_fg_chars.bin", fg_bits)
     wbin("gfx_fg_color_map.bin", fg_color_map)
 
+    # ---------- pixelpuro Konami easter-egg screen ----------
+    # Compose a 320x224 screen (logo top, avatar centre, catchphrase below),
+    # quantise the avatar to PAL1 and the logo/text/backdrop to PAL0, dedup the
+    # 8x8 tiles (with H/V flip) and emit a 64x28 nametable. Tile indices are
+    # pool-relative; the OSD adds GFX_POOL_BASE_TILE at runtime (the egg reuses
+    # the sprite-pool VRAM, restored afterwards). Cols 40-63 are off-screen.
+    def build_egg():
+        from PIL import ImageDraw, ImageFont, ImageChops
+        px_dir = os.path.join(this_dir, "..", "..", "pixelpuro")
+        W, H = 320, 224
+        canvas = Image.new("RGB", (W, H), (0, 0, 0))
+        logo = Image.open(os.path.join(px_dir,
+            "Gemini_Generated_Image_ny4pigny4pigny4p.png")).convert("RGB")
+        lw = 240
+        lh = max(1, round(logo.height * lw / logo.width))
+        logo = logo.resize((lw, lh), Image.LANCZOS)
+        # the PNG has no real alpha: its "transparent" area is a light-grey
+        # checker baked into RGB. Chroma-key it out (keep the yellow letters and
+        # the dark outline; drop light, low-saturation greys).
+        r, gg, bb = logo.split()
+        mx = ImageChops.lighter(ImageChops.lighter(r, gg), bb)
+        sat = ImageChops.subtract(mx, ImageChops.darker(ImageChops.darker(r, gg), bb))
+        is_light = mx.point(lambda v: 255 if v > 110 else 0)
+        is_grey = sat.point(lambda v: 255 if v < 40 else 0)
+        keep = ImageChops.invert(ImageChops.multiply(is_light, is_grey))
+        canvas.paste(logo, ((W - lw) // 2, 16), keep)
+        AV, ax, ay = 96, 112, 72                         # tile-aligned: cols 14-25, rows 9-20
+        avatar = Image.open(os.path.join(px_dir, "channels4_profile.jpg")
+            ).convert("RGB").resize((AV, AV), Image.LANCZOS)
+        canvas.paste(avatar, (ax, ay))
+        draw = ImageDraw.Draw(canvas)
+        try:
+            font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 22)
+        except Exception:
+            font = ImageFont.load_default()
+        txt = "Eu sou cheteiro!!!"
+        bb = draw.textbbox((0, 0), txt, font=font)
+        draw.text(((W - (bb[2] - bb[0])) // 2, 192), txt, fill=(255, 230, 0), font=font)
+        px = canvas.load()
+        ac0, ac1, ar0, ar1 = ax // 8, (ax + AV) // 8 - 1, ay // 8, (ay + AV) // 8 - 1
+        # per-palette colour sets
+        av_cols, bg_cols = set(), set()
+        for row in range(28):
+            for col in range(40):
+                dst = av_cols if (ac0 <= col <= ac1 and ar0 <= row <= ar1) else bg_cols
+                for py in range(8):
+                    for pxx in range(8):
+                        dst.add(md_round(px[col * 8 + pxx, row * 8 + py]))
+        m1, m0 = quantize_colors(av_cols, 14), quantize_colors(bg_cols, 14)
+        s1, p1 = build_pal(m1)
+        s0, p0 = build_pal(m0)
+        tiles, ids, nt = [], {}, []
+        def emit(slots, palbit):
+            can, hf, vf = canon(slots, 8, 8)
+            k = (palbit, can)
+            t = ids.get(k)
+            if t is None:
+                t = len(tiles); ids[k] = t; tiles.append(tile_4bpp(can))
+            return 0x8000 | (palbit << 13) | (vf << 12) | (hf << 11) | t
+        for row in range(28):
+            for col in range(64):
+                if col >= 40:
+                    nt.append(0); continue
+                avt = ac0 <= col <= ac1 and ar0 <= row <= ar1
+                cm, sl, pb = (m1, s1, 1) if avt else (m0, s0, 0)
+                slots = tuple(sl[cm[md_round(px[col * 8 + pxx, row * 8 + py])]]
+                              for py in range(8) for pxx in range(8))
+                nt.append(emit(slots, pb))
+        # preview of what the MD will show (visible cols 0-39)
+        prev = Image.new("RGB", (W, H), (0, 0, 0))
+        for row in range(28):
+            for col in range(40):
+                w = nt[row * 64 + col]
+                pat, pal = tiles[w & 0x7FF], (p1 if (w >> 13) & 1 else p0)
+                pix = []
+                for b in pat:
+                    pix += [b >> 4, b & 0xF]
+                for r in range(8):
+                    for c in range(8):
+                        sx = 7 - c if (w >> 11) & 1 else c
+                        sy = 7 - r if (w >> 12) & 1 else r
+                        prev.putpixel((col * 8 + c, row * 8 + r), pal[pix[sy * 8 + sx]])
+        prev.resize((W * 2, H * 2), Image.NEAREST).save(os.path.join(dump_dir, "egg_preview.png"))
+        return p0, p1, tiles, nt
+
+    egg_p0, egg_p1, egg_tiles, egg_nt = build_egg()
+    assert len(egg_tiles) <= pool_tiles, f"egg tiles {len(egg_tiles)} > pool {pool_tiles}"
+    report.append(f"egg: {len(egg_tiles)} tiles (pool {pool_tiles})")
+    wbin("gfx_egg_tiles.bin", b"".join(egg_tiles))
+    egg_nt_bytes = bytearray()
+    for w in egg_nt:
+        egg_nt_bytes += bytes((w >> 8, w & 0xFF))
+    wbin("gfx_egg_nt.bin", egg_nt_bytes)
+
     def pal_words(cols):
         return [md_cram(c) for c in cols]
 
@@ -354,10 +448,12 @@ def main():
         f.write(f"    .equ GFX_N_TITLE, {len(t_patterns)}\n")
         f.write(f"    .equ GFX_N_FRAMES, {len(frames)}\n")
         f.write(f"    .equ GFX_FG_CACHE_BASE, {FG_CACHE_BASE}\n")
-        f.write(f"    .equ GFX_FG_CACHE_TILES, {FG_CACHE_TILES}\n\n")
+        f.write(f"    .equ GFX_FG_CACHE_TILES, {FG_CACHE_TILES}\n")
+        f.write(f"    .equ GFX_EGG_NTILES, {len(egg_tiles)}\n\n")
         for sym in ("gfx_palettes_game", "gfx_palette_title", "gfx_bg_combo_tbl",
                     "gfx_bg_patterns", "gfx_title_patterns", "gfx_sprite_combo_tbl",
-                    "gfx_sprite_frames", "gfx_fg_chars", "gfx_fg_color_map"):
+                    "gfx_sprite_frames", "gfx_fg_chars", "gfx_fg_color_map",
+                    "gfx_egg_palette0", "gfx_egg_palette1", "gfx_egg_tiles", "gfx_egg_nt"):
             f.write(f"    .global {sym}\n")
         f.write("\n    .section .rodata\n\n    .align 2\n")
         f.write("gfx_palettes_game:\n")
@@ -375,6 +471,13 @@ def main():
         f.write("    .balign 128\ngfx_sprite_frames:\n    .incbin \"gfx_sprite_frames.bin\"\n")
         f.write("    .align 2\ngfx_fg_chars:\n    .incbin \"gfx_fg_chars.bin\"\n")
         f.write("    .align 2\ngfx_fg_color_map:\n    .incbin \"gfx_fg_color_map.bin\"\n")
+        # pixelpuro easter-egg screen
+        f.write("    .align 2\ngfx_egg_palette0:\n    .word "
+                + ",".join(f"0x{w:04X}" for w in pal_words(egg_p0)) + "\n")
+        f.write("gfx_egg_palette1:\n    .word "
+                + ",".join(f"0x{w:04X}" for w in pal_words(egg_p1)) + "\n")
+        f.write("    .balign 128\ngfx_egg_tiles:\n    .incbin \"gfx_egg_tiles.bin\"\n")
+        f.write("    .align 2\ngfx_egg_nt:\n    .incbin \"gfx_egg_nt.bin\"\n")
 
     # ---------- preview sheets ----------
     def sheet(patterns, pal_cols, w_tiles, tile_px, name, is_frame=False):

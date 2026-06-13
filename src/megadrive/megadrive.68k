@@ -345,6 +345,9 @@ md_vblank:
     bhi     md_error
     .endif
     bsr     md_read_pads
+    bsr     md_check_konami                     | title Konami code -> "modo cheteiro" egg
+    tst.b   (md_egg_state)
+    bne     md_egg_frame                        | egg up: skip the normal frame + core tick
 
 * flush plane B vscroll. The player flies UP, so terrain must scroll DOWN as
 * the core's scroll counter increases; on MD that means INCREASING vscroll.
@@ -437,6 +440,165 @@ no_diag:
 md_vb_paused:
     movem.l (a7)+,d0-d7/a0-a6
     rte
+
+* ===========================================================================
+* "modo cheteiro" easter egg. The Konami code (U U D D L R L R B A) on the
+* title screen shows the pixelpuro avatar/logo + catchphrase, plays his jingle,
+* and turns on god mode (invincible_flag). The core is frozen while it's up
+* (tick skipped, like pause); the title is rebuilt from the core's bg/fg shadows
+* on exit. Entirely in the platform layer.
+* ===========================================================================
+konami_tbl:
+    .byte   0x01,0x01,0x02,0x02,0x04,0x08,0x04,0x08,0x10,0x40   | U U D D L R L R B A
+    .align  2
+
+* detect the sequence on the title; sets md_egg_state=1 on a full match
+md_check_konami:
+    tst.b   (md_egg_state)
+    bne     kk_ret                              | egg already up: idle
+    cmpi.b  #1,(md_mode)
+    bne     kk_idle                             | only on the title screen
+    move.b  (md_pad1),d0
+    move.b  (md_konami_prev),d1
+    move.b  d0,(md_konami_prev)
+    not.b   d1
+    and.b   d0,d1                               | d1 = buttons newly pressed
+    beq     kk_ret
+    moveq   #0,d0
+    move.b  (md_konami_step),d0
+    lea     konami_tbl(pc),a0
+    cmp.b   (a0,d0.w),d1                        | exactly the expected button?
+    bne     kk_wrong
+    addq.b  #1,(md_konami_step)
+    cmpi.b  #10,(md_konami_step)
+    blo     kk_ret
+    move.b  #1,(md_egg_state)                   | full code -> trigger
+    clr.b   (md_konami_step)
+kk_ret:
+    rts
+kk_wrong:
+    clr.b   (md_konami_step)
+    cmpi.b  #0x01,d1                            | a lone Up restarts the sequence
+    bne     kk_ret
+    move.b  #1,(md_konami_step)
+    rts
+kk_idle:
+    clr.b   (md_konami_step)
+    move.b  (md_pad1),(md_konami_prev)
+    rts
+
+* per-frame egg handler (md_vblank jumps here while md_egg_state != 0)
+md_egg_frame:
+    move.b  (md_egg_state),d0
+    subq.b  #1,d0
+    beq     md_egg_enter                        | state 1: set up the screen
+    subq.b  #1,d0
+    bne     md_egg_exit                         | state 3: restore the title
+* state 2: hold until any new button press
+    move.b  (md_pad1),d0
+    move.b  (md_konami_prev),d1
+    move.b  d0,(md_konami_prev)
+    not.b   d1
+    and.b   d0,d1
+    beq     md_egg_done
+    move.b  #3,(md_egg_state)
+md_egg_done:
+    movem.l (a7)+,d0-d7/a0-a6
+    rte
+
+md_egg_enter:
+    move.w  #VDPR01_OFF,(VDP_CTRL)              | blank while we rebuild VRAM
+    move.b  #1,(invincible_flag)               | god mode ("cheteiro")
+    bsr     osd_sound_unmute                   | attract muted sound; turn it back on
+    moveq   #CHETEIRO_SND,d0
+    bsr     osd_sound_start                    | play the jingle
+    move.l  #gfx_egg_tiles,d0                  | egg tiles -> sprite pool VRAM
+    move.w  #GFX_POOL_BASE_TILE*32,d1
+    move.w  #GFX_EGG_NTILES*16,d2
+    bsr     md_dma
+    VDP_W_VRAM VRAM_PLANE_B                     | egg nametable -> plane B
+    lea     gfx_egg_nt,a0
+    move.w  #64*28-1,d7
+1:  move.w  (a0)+,d0
+    add.w   #GFX_POOL_BASE_TILE,d0              | tile field is pool-relative
+    move.w  d0,(VDP_DATA)
+    dbf     d7,1b
+    VDP_W_VRAM VRAM_PLANE_A                     | clear plane A so fg/HUD won't overlay
+    move.w  #64*32-1,d7
+2:  move.w  #0,(VDP_DATA)
+    dbf     d7,2b
+    move.w  #0x9100,(VDP_CTRL)                 | disable HUD window (VDPR17 width 0)
+    lea     gfx_egg_palette0,a0                | PAL0 = logo/text/backdrop
+    VDP_W_CRAM 0
+    moveq   #16-1,d7
+3:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,3b
+    lea     gfx_egg_palette1,a0                | PAL1 = avatar
+    VDP_W_CRAM 32
+    moveq   #16-1,d7
+4:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,4b
+    VDP_W_VSRAM 0                               | both planes' vscroll = 0
+    move.w  #0,(VDP_DATA)
+    move.w  #0,(VDP_DATA)
+    lea     md_sat_shadow,a0                   | hide all sprites
+    move.w  #80*4-1,d7
+5:  clr.w   (a0)+
+    dbf     d7,5b
+    move.l  #md_sat_shadow,d0
+    move.w  #VRAM_SAT,d1
+    move.w  #320,d2
+    bsr     md_dma
+    move.w  #VDPR01_ON,(VDP_CTRL)              | show it
+    move.b  #2,(md_egg_state)
+    bra     md_egg_done
+
+md_egg_exit:
+    move.w  #VDPR01_OFF,(VDP_CTRL)
+    bsr     osd_sound_mute                     | back to the attract's muted state
+    bsr     enter_title_mode                   | title PAL1 + title patterns + spr invalidate
+    bsr     md_panel_init                      | restore panel glyph tiles (egg clobbered them)
+    lea     gfx_palettes_game,a0               | restore PAL0 (fg/HUD)
+    VDP_W_CRAM 0
+    moveq   #16-1,d7
+1:  move.w  (a0)+,(VDP_DATA)
+    dbf     d7,1b
+    move.w  #VDPR17,(VDP_CTRL)                 | re-enable the HUD window
+    bsr     md_redraw_all                      | rebuild plane A/B from the core shadows
+    move.w  #VDPR01_ON,(VDP_CTRL)
+    clr.b   (md_egg_state)
+    clr.b   (md_konami_step)
+    bra     md_egg_done
+
+* rebuild both nametables from the (frozen, intact) core shadows
+md_redraw_all:
+    movem.l d0-d7/a0-a6,-(a7)
+    VDP_W_VRAM VRAM_PLANE_B                     | wipe the egg image first
+    move.w  #64*64-1,d7
+1:  move.w  #0,(VDP_DATA)
+    dbf     d7,1b
+    moveq   #0,d6                               | plane B from the bg shadow
+2:  lea     bg_videoram,a0
+    move.b  (a0,d6.w),d1
+    lea     bg_colorram,a0
+    move.b  (a0,d6.w),d2
+    move.w  d6,d0
+    bsr     bg_write
+    addq.w  #1,d6
+    cmpi.w  #0x800,d6
+    blo     2b
+    moveq   #0,d6                               | plane A from the fg shadow
+3:  lea     fg_videoram,a0
+    move.b  (a0,d6.w),d1
+    lea     fg_colorram,a0
+    move.b  (a0,d6.w),d2
+    move.w  d6,d0
+    bsr     fg_write
+    addq.w  #1,d6
+    cmpi.w  #0x800,d6
+    blo     3b
+    movem.l (a7)+,d0-d7/a0-a6
+    rts
 
 * title <-> game mode switch, detected via core bg shadow sentinel
 * (same trick as the Amiga port: title screen has tile 0xCD at 0x60E)
@@ -1694,6 +1856,9 @@ md_mode:            ds.b    1
 md_menu:            ds.b    1
 md_paused:          ds.b    1
 md_start_prev:      ds.b    1
+md_egg_state:       ds.b    1                   | 0 off, 1 enter, 2 show, 3 exit
+md_konami_step:     ds.b    1
+md_konami_prev:     ds.b    1
     .align 2
 md_menu_cnt:        ds.w    1
 md_fg_ring:         ds.w    1

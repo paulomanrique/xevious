@@ -8,6 +8,7 @@
 * sprites: 1030 combos -> 695 frames (88960 bytes)
 * fg: 54 distinct colors -> 14 slots
 * VRAM: bg 919 tiles @1, pool 360 tiles @920 (90 frames), fg cache @1408
+* egg: 244 tiles (pool 360)
 
     .equ GFX_BG_BASE_TILE, 1
     .equ GFX_N_BG, 919
@@ -18,6 +19,7 @@
     .equ GFX_N_FRAMES, 695
     .equ GFX_FG_CACHE_BASE, 1408
     .equ GFX_FG_CACHE_TILES, 64
+    .equ GFX_EGG_NTILES, 244
 
     .global gfx_palettes_game
     .global gfx_palette_title
@@ -28,6 +30,10 @@
     .global gfx_sprite_frames
     .global gfx_fg_chars
     .global gfx_fg_color_map
+    .global gfx_egg_palette0
+    .global gfx_egg_palette1
+    .global gfx_egg_tiles
+    .global gfx_egg_nt
 
     .section .rodata
 
@@ -61,3 +67,14 @@ gfx_fg_chars:
     .align 2
 gfx_fg_color_map:
     .incbin "gfx_fg_color_map.bin"
+    .align 2
+gfx_egg_palette0:
+    .word 0x0000,0x0002,0x0022,0x0242,0x0244,0x0046,0x0466,0x0068,0x008A,0x00AA,0x00AC,0x00CC,0x00CE,0x00EE,0x0000,0x0000
+gfx_egg_palette1:
+    .word 0x0000,0x0202,0x0422,0x0A62,0x0CA2,0x0844,0x0886,0x0AA6,0x0848,0x066A,0x060C,0x062C,0x048C,0x06AC,0x08CC,0x0000
+    .balign 128
+gfx_egg_tiles:
+    .incbin "gfx_egg_tiles.bin"
+    .align 2
+gfx_egg_nt:
+    .incbin "gfx_egg_nt.bin"

@@ -64,6 +64,9 @@ md_sound_table:
     .long smp_solvalou_explosion
     .word 113
     .byte 3, 224   | 0x12 solvalou_explosion
+    .long smp_cheteiro
+    .word 258
+    .byte 0, 240   | 0x13 cheteiro
 
 md_smp_base:
     .balign 256
@@ -117,3 +120,6 @@ smp_ground_explosion:
     .balign 256
 smp_solvalou_explosion:
     .incbin "smp_solvalou_explosion.bin"
+    .balign 256
+smp_cheteiro:
+    .incbin "smp_cheteiro.bin"

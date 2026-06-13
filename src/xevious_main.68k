@@ -6128,8 +6128,10 @@ wipe_easter_egg: | $3B7C
 
 is_super_xevious:
 	.byte	0
+	.ifndef	__megadrive__
 invincible_flag:
 	.byte	0
+	.endif
 infinite_lives_flag:
 	.byte	0
 reveal_sol_tower_flag:

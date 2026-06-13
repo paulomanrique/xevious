@@ -118,7 +118,8 @@
     .equ  COIN_SND,               0x10
     .equ  GROUND_EXPLOSION_SND,   0x11
     .equ  SOLVALOU_EXPLOSION_SND, 0x12
-    
+    .equ  CHETEIRO_SND,           0x13              | MD Konami easter-egg jingle
+
 
 
     

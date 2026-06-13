@@ -44,8 +44,9 @@ SOUNDS = {
     0x10: ("coin",              1, 13, 0),
     0x11: ("ground_explosion",  3, 12, 0),
     0x12: ("solvalou_explosion",3, 14, 0),
+    0x13: ("cheteiro",          0, 15, 0),   # Konami easter-egg jingle (one-shot)
 }
-MAX_ORD = 0x12
+MAX_ORD = 0x13
 
 def read_wav_s8_16k(path, speed=1.0):
     w = wave.open(path, "rb")
