@@ -77,6 +77,26 @@ def quantize_colors(colors, target):
     reduced = strip.quantize(colors=target, dither=0).convert("RGB")
     return {c: md_round(reduced.getpixel((i, 0))) for i, c in enumerate(colors)}
 
+def _is_gray(c):
+    r, g, b = c
+    return max(r, g, b) - min(r, g, b) <= 24 and max(r, g, b) > 40
+
+def quantize_bg_preserve_gray(colors, total, gray_slots=4):
+    """Like quantize_colors, but reserves a small neutral gray ramp so grays
+    don't get median-cut-merged into nearby browns. Plain quantization folded the
+    rocky-coastline grays (109,109,109)->(146,109,73) and (73,73,73)->(73,73,36),
+    turning the gray cliffs brown; reserving the ramp keeps them gray."""
+    colors = set(colors)
+    grays = {c for c in colors if _is_gray(c)}
+    non = colors - grays
+    gmapping = quantize_colors(grays, min(gray_slots, len(grays))) if grays else {}
+    n_gray = len(set(gmapping.values()))
+    nmapping = quantize_colors(non, max(1, total - n_gray)) if non else {}
+    out = {}
+    out.update(nmapping)
+    out.update(gmapping)                    # grays win (the sets are disjoint)
+    return out
+
 # ---------------- pattern helpers ----------------
 
 def flip_h(px, w, h):
@@ -151,7 +171,7 @@ def main():
                 game_colors.update(baked)
 
     black = (0, 0, 0)
-    gmap = quantize_colors(game_colors - {black}, 15)
+    gmap = quantize_bg_preserve_gray(game_colors - {black}, 15)
     gmap[black] = black
     tmap = quantize_colors(title_colors - {black}, 15)
     tmap[black] = black
