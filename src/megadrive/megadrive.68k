@@ -1334,36 +1334,31 @@ osd_update_scroll_hw:
 osd_update_sprite_shadow:
     movem.l d0-d7/a0-a6,-(a7)
     addq.w  #1,(md_frame_stamp)
-    lea     sprite_shadow_msb,a2
-    lea     md_sat_shadow+63*8,a3               | fill backwards (see obj_next): the MD draws
-*                                              | the lowest SAT entry on top, but the arcade
-*                                              | draws the highest object index on top, so map
-*                                              | obj 0 -> entry 63 ... obj 63 -> entry 0. Keeps
-*                                              | the ship/crosshair over the ground enemies.
-    lea     md_sat_shadow+64*8,a4               | overflow entries for doubles
     moveq   #96+16,d0                           | +16: nudge sprites down 2 tiles so ground
     sub.w   (md_fg_vscroll),d0                  | enemies sit IN the terrain clearings (they
     move.w  d0,(md_sat_bias)                    | rendered ~2 tiles too high vs the arcade)
-* hide all overflow entries; doubles re-claim them each frame
-    moveq   #16-1,d0
-    move.l  a4,a6
-0:  clr.w   (a6)
-    move.w  #1,(6,a6)                           | x=1 (avoid mask quirk)
-    addq.l  #8,a6
-    dbf     d0,0b
+* Pack the SAT densely. We walk objects from the HIGH index down to 0, emitting
+* each into the next free SAT entry (entry 0 first). The MD draws the lowest entry
+* on top, so high object index -> drawn on top (ship/crosshair over the ground).
+* Crucially, inactive objects and culled sprites consume NO entry, and every part
+* of a composite gets a real entry instead of a tiny 16-deep "overflow" pool. That
+* pool used to starve at 16 while the 9 Andor-Genesis panels (= 36 hw sprites)
+* needed far more, dropping quadrants and flickering as the set varied per frame.
+    lea     sprite_shadow_msb+63*2,a2           | hitbox shadow for obj 63 (per-object, descend)
+    lea     md_sat_shadow,a3                    | SAT write pointer: pack forward from entry 0
+    lea     md_sat_shadow+80*8,a4               | one past the last SAT entry (capacity cap)
+    lea     (63*_OBJSIZE,a5),a5                 | caller passes obj 0; start at obj 63
     moveq   #64-1,d7
 obj_loop:
     move.b  (_STATE,a5),d0
     subq.b  #1,d0
-    beq     obj_next                            | state 1 (inactive): skip
+    beq     obj_next                            | state 1 (inactive): skip, claims no entry
     addq.b  #1,d0
     bne.b   obj_active
-    * flagged inactive: zero coords, mark inactive, hide sprite
+    * flagged inactive: zero coords, mark inactive (no SAT entry; leftovers hidden below)
     clr.w   (_X,a5)
     clr.w   (_Y,a5)
     move.b  #1,(_STATE,a5)
-    clr.w   (a3)                                | SAT y=0 (hidden)
-    move.w  #1,(6,a3)
     bra     obj_next
 
 obj_active:
@@ -1398,19 +1393,29 @@ obj_active:
     andi.w  #3,d0
     bne     obj_double
     * single 16x16 sprite
+    cmpa.l  a4,a3                               | SAT full? (rare; total < 80 in practice)
+    bcc     obj_next
     move.l  a3,a6
     moveq   #0,d0                               | dlong = 0
     moveq   #0,d1                               | dshort = 0
     bsr     spr_emit
+    move.l  a1,a3                               | a1 = next free entry (== a3 if culled)
     bra     obj_next
 
-obj_inactive:
 obj_next:
-    addq.l  #2,a2
-    lea     (-8,a3),a3                          | descend: higher obj index -> earlier SAT
-*                                              | entry -> drawn on top (arcade priority order)
-    lea     (_OBJSIZE,a5),a5
+    subq.l  #2,a2                               | hitbox: previous object
+    lea     (-_OBJSIZE,a5),a5                   | previous object (we descend from obj 63)
     dbf     d7,obj_loop
+* hide the SAT entries left unused this frame; clear only Y/X so the static
+* per-entry size (2x2) and link-chain bytes survive (zeroing them breaks the chain)
+os_hide_rest:
+    cmpa.l  a4,a3
+    bcc.b   os_hide_done
+    clr.w   (a3)                                | Y = 0 (off the top -> invisible)
+    move.w  #1,(6,a3)                           | X = 1 (avoid mask quirk)
+    lea     (8,a3),a3
+    bra.b   os_hide_rest
+os_hide_done:
     movem.l (a7)+,d0-d7/a0-a6
     rts
 
@@ -1451,17 +1456,10 @@ dpart_loop:
     not.w   d1
     and.w   d0,d1                               | part & ~size
     bne.b   dpart_next
-    * pick SAT entry: part 0 uses the object's own; others from overflow
-    move.l  a3,a6
-    tst.w   d0
-    beq.b   1f
-    move.l  a4,a6
-    lea     (8,a4),a4
-    cmpa.l  #md_sat_shadow+80*8,a4
-    bls.b   1f
-    lea     (-8,a4),a4                          | overflow full: drop part
-    bra.b   dpart_next
-1:  move.w  d4,-(a7)                            | save base code
+    * emit this part into the next free packed SAT entry (a4 = capacity cap)
+    cmpa.l  a4,a3
+    bcc.b   dpart_full                          | SAT full -> drop the remaining parts
+    move.w  d4,-(a7)                            | save base code
     move.w  (2,a7),d1                           | part (stack moved by 2)
     move.w  (4,a7),d0                           | swap
     eor.w   d0,d1
@@ -1472,12 +1470,15 @@ dpart_loop:
     lsl.w   #4,d0                               | dlong  = (part&1)*16  (vertical)
     andi.w  #2,d1
     lsl.w   #3,d1                               | dshort = (part&2)*8   (horizontal)
+    move.l  a3,a6                               | the next free SAT entry
     bsr     spr_emit
+    move.l  a1,a3                               | advance (== a3 if the part was culled)
     move.w  (a7)+,d4
 dpart_next:
     addq.w  #1,(a7)
     cmpi.w  #4,(a7)
     blt.b   dpart_loop
+dpart_full:
     addq.l  #6,a7
     bra     obj_next
 
@@ -1550,6 +1551,7 @@ spr_emit:
     move.w  d0,(a6)                             | Y
     move.w  d4,(4,a6)                           | attr/tile
     move.w  d1,(6,a6)                           | X
+    lea     (8,a6),a1                           | emitted -> caller advances to the next entry
     movem.l (a7)+,d0-d4/a0
     rts
 emit_hide_pop:
@@ -1557,6 +1559,7 @@ emit_hide_pop:
 emit_hide:
     clr.w   (a6)
     move.w  #1,(6,a6)
+    move.l  a6,a1                               | culled -> entry reusable, caller keeps a3
     movem.l (a7)+,d0-d4/a0
     rts
 
