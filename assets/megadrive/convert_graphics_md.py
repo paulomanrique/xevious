@@ -366,11 +366,10 @@ def main():
     # the sprite-pool VRAM, restored afterwards). Cols 40-63 are off-screen.
     def build_egg():
         from PIL import ImageDraw, ImageFont, ImageChops
-        px_dir = os.path.join(this_dir, "..", "..", "pixelpuro")
+        px_dir = os.path.join(this_dir, "easteregg")
         W, H = 320, 224
         canvas = Image.new("RGB", (W, H), (0, 0, 0))
-        logo = Image.open(os.path.join(px_dir,
-            "Gemini_Generated_Image_ny4pigny4pigny4p.png")).convert("RGB")
+        logo = Image.open(os.path.join(px_dir, "logo.png")).convert("RGB")
         lw = 240
         lh = max(1, round(logo.height * lw / logo.width))
         logo = logo.resize((lw, lh), Image.LANCZOS)
@@ -385,7 +384,7 @@ def main():
         keep = ImageChops.invert(ImageChops.multiply(is_light, is_grey))
         canvas.paste(logo, ((W - lw) // 2, 16), keep)
         AV, ax, ay = 96, 112, 72                         # tile-aligned: cols 14-25, rows 9-20
-        avatar = Image.open(os.path.join(px_dir, "channels4_profile.jpg")
+        avatar = Image.open(os.path.join(px_dir, "avatar.jpg")
             ).convert("RGB").resize((AV, AV), Image.LANCZOS)
         canvas.paste(avatar, (ax, ay))
         draw = ImageDraw.Draw(canvas)

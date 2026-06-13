@@ -15,3 +15,6 @@ bin/
 *.map
 *.elf
 address.log
+
+# easter-egg logo is a real source asset (override the blanket *.png ignore)
+!assets/megadrive/easteregg/logo.png
