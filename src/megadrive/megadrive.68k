@@ -1237,13 +1237,19 @@ obj_next:
     rts
 
 * composite sprites: 2 or 4 parts of 16x16
-* code offsets (per OSD spec): short-axis halves differ by +1 (double width),
-* long-axis halves differ by +2 (double height); per-object flips swap the
-* halves by xoring the offset (NeoGeo model), masked to the doubled axes
-* part index: bit0 = short-axis half, bit1 = long-axis half (== code offset)
+* dw (size b0) doubles the MD-vertical extent, dh (size b1) the MD-horizontal.
+* part index: bit0 = MD-vertical half (dlong), bit1 = MD-horizontal half (dshort).
 obj_double:
     move.w  d0,-(a7)                            | (4,a7) after next pushes: size
-    move.w  d0,d1
+    * SAT X is negated (SAT X = bias - Y), so a horizontally-doubled composite
+    * would extend LEFT of the anchor while the single 16x16 frame and the
+    * vertical (non-negated SAT Y) extend right/down. Re-anchor to the left edge
+    * (Y_px -= 16 -> SAT X += 16) so big frames line up with the small ones
+    * instead of jumping 16px left.
+    btst    #1,d5                               | dh (horizontal doubling)?
+    beq.b   0f
+    subq.w  #16,d6                              | Y_px -= 16 -> shift composite +16 X
+0:  move.w  d0,d1
     not.w   d1
     and.w   d1,d4                               | code &= ~size
     * part bit0 = MD-vertical half (dlong, doubled by dw=size b0); bit1 =
