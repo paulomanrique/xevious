@@ -1,97 +1,95 @@
-Xevious (68K)
+# Xevious — Sega Mega Drive / Genesis
 
-This is a transcode from the original arcade game (multiple Z80s) to 68K assembly.
+<p align="center">
+  <img src="media/cover.jpg" alt="Xevious — Mega Drive / Genesis cover" width="520">
+</p>
 
-The original GAME and SUB CPU ROMs were disassembled and reverse-engineered. Then the code was transcoded line-by-line to 68K assembly. The 'core' code is platform-agnostic and calls out to an operating system dependent (OSD) layer written for each target platform.
+A faithful **Sega Mega Drive / Genesis** port of Namco's arcade **Xevious** (1982).
 
-The original target is the Neo Geo (AES/MVS/CD). It runs in 'tate' mode.
+It is a third target for the [jotd666/xevious](https://github.com/jotd666/xevious)
+line-by-line 68000 transcode of the arcade game, alongside the existing **Neo Geo**
+and **Amiga** ports. The platform-agnostic game core is reused essentially
+unmodified; everything Mega Drive–specific lives in `src/megadrive/` and
+`assets/megadrive/`.
 
-Subsequent targets include the AGA Amiga.
+### ▶ Download / play: **https://sirvh.itch.io/xevious-genesis**
 
-In theory the core can be ported easily to any 68K target that can support the resolution, number of sprites (performance) and palette.
+## Screenshots
 
-PROGRESS:
+|  |  |
+|---|---|
+| ![Title screen](media/title.jpg) | ![Gameplay — area 1](media/play1.jpg) |
+| ![Coastline](media/play2.jpg) | ![Bombing a ground target](media/play3.jpg) |
 
-The core transcode is 100% complete. One "last" gameplay bug to be confirmed.
+## About this port
 
-The Neo Geo target is playable with sound on an emulator and also on real hardware (tested on an AES with NeoSD cartridge and NGCD). Beta1 has been released (https://tcdev.itch.io/xevious).
+- Same gameplay as the arcade — the code *is* the reverse-engineered original
+  logic (including the pseudo-random number generation), running on real
+  Mega Drive features: VDP planes A/B, hardware sprites, a Window-plane HUD,
+  CRAM palettes and DMA.
+- **4-channel PCM** sound (music + SFX) through the SGDK PCM4 Z80 driver.
+- 1P / 2P, attract mode, hi-score table, and high scores saved to battery SRAM.
+- Runs on **BlastEm, Genesis Plus GX, Kega Fusion and PicoDrive** (NTSC, 60 Hz),
+  and should run on real hardware.
 
-The Amiga target is playable. A1200 with fast memory is recommended.
+Technical write-up (display mapping, the OSD layer, the sprite cache, sound):
+see **[readme_megadrive.md](readme_megadrive.md)**.
 
-FEATURES:
+### Controls (3-button pad)
 
-- game play is identical to the original arcade game, including the pseudo-random
-  number generation
-- original dipswitch options supported (except cocktail cabinet mode)
-- all original graphics and colours reproduced perfectly on Neo Geo target
-- 1 or 2 players supported
-- high score load/save
+| Input | Action |
+|-------|--------|
+| D-pad | move |
+| B | zapper (air targets) |
+| A | blaster (bomb, ground targets) |
+| C | insert coin |
+| Start | start game / pause |
 
-CREDITS:
+### Known limitation
 
-- Mark McDougall (aka tcdev): reverse-engineering, core and Neo Geo code and assets
-- Jean-Francois Fabre (aka jotd): Amiga code and assets
-- Andrzej Dobrowolski (aka no9): Amiga music
-- DanyPPC: Amiga icon
-- phx: ptplayer sound/music replay Amiga code
-- Namco: original game :)
+The arcade hardware had far more sprite budget than the Mega Drive (80 sprites
+total, 20 per scanline, 320 sprite-pixels per line). Very busy scenes — notably
+the large **Andor Genesis** fortress surrounded by enemies — can flicker, exactly
+as many commercial Mega Drive games do. This is a hardware limit, not an emulation
+bug: the Amiga port sidesteps it by drawing objects as blitter "BOBs" into a
+framebuffer, which the Mega Drive's VDP has no equivalent for.
 
-CONTROLS (Amiga: 2-button joystick recommended):
+## Credits
 
-- red/fire: fire/start game (from menu)
-- blue/2nd button/space/left shift: bomb/insert coin (from menu)
-- green/5 key: insert coin
-- yellow/1 key: start game
-- 2 key: start game (2P game)
-- play/P key: pause
+- **Namco** — original *Xevious* (1982).
+- **Mark McDougall (tcdev)** — reverse-engineering, the platform-agnostic 68000
+  core, and the Neo Geo target.
+- **Jean-François Fabre (jotd)** — Amiga target; the repository this is forked from.
+- **Andrzej Dobrowolski (no9)** — Amiga music · **phx** — ptplayer replay code ·
+  **DanyPPC** — Amiga icon.
+- **sirvh** — this Sega Mega Drive / Genesis port.
 
-REBUILDING FROM SOURCES:
+The upstream README (Neo Geo / Amiga details and build instructions) is preserved
+as **[readme_upstream.md](readme_upstream.md)**.
 
-NEO GEO:
+## AI disclosure
 
-Prerequesites:
+The Mega Drive–specific layer of this port (`src/megadrive/`, `assets/megadrive/`
+and the build scripts) was developed with the assistance of an AI coding assistant
+(Anthropic's Claude). The platform-agnostic game core, the original
+reverse-engineering, and the Amiga / Neo Geo work are by the upstream authors
+listed above.
 
-- Windows
-- NeoDev kit (Fabrice Martinez, Jeff Kurtz, et al)  
-  https://wiki.neogeodev.org/index.php?title=Development_tools
+## Building
 
-Build process:
+Requires the SGDK m68k-elf toolchain and Python 3 with Pillow. Short version:
 
-- install NeoDev and set path accordingly
-- clone repository
-- make -f makefile.ng OUTPUT={cart|cd}
-  - (OUTPUT defaults to cart)
-  
-Install process (MAME):
+```sh
+py assets/megadrive/convert_graphics_md.py   # arcade gfx -> MD tiles / palettes
+py assets/megadrive/convert_sounds_md.py     # WAVs -> 16 kHz PCM samples
+py build_md.py                               # assemble + link -> bin/xevious_md.bin
+```
 
-- make -f makefile.ng OUTPUT={cart|cd} MAMEDIR={mamedir} install
-  - (mamedir defaults to '.')
-- paste xevious.xml into MAME's hash/neogeo.xml file
+Full details (and the original Neo Geo / Amiga build steps) are in
+[readme_megadrive.md](readme_megadrive.md) and [readme_upstream.md](readme_upstream.md).
 
-To run in MAME:
+## Legal
 
-- cart : 'mame neogeo xevious'
-- cd : 'mame neocdz -cdrom roms/neocdz/xevious.iso'
-  
-AMIGA:
-
-Prerequesites:
-
-- Bebbo's amiga gcc compiler
-- Windows
-- python
-- sox
-- "bitplanelib.py" (asset conversion tool needs it) at https://github.com/jotd666/amiga68ktools.git
-
-Build process:
-
-- install above tools & adjust python paths
-- make -f makefile.am
-
-When changing asset-related data (since dependencies aren't good):
-
-- To update the "graphics.68k" & "palette*.68k" files from "assets/amiga" subdir, 
-  just run the "convert_graphics.py" python script, 
-- To update sounds, use "convert_sounds.py"
-  python script (audio) to create sound*.68k files.
-
+A non-commercial, fan-made port and a fork of
+[jotd666/xevious](https://github.com/jotd666/xevious). *Xevious* and all of its
+original graphics, sound and trademarks are property of Namco / Bandai Namco.
