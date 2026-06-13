@@ -17,5 +17,8 @@ bin/
 *.log
 ym_channel_*.wav
 
+# local itch.io page description, kept out of the repo
+itch.html
+
 # easter-egg logo is a real source asset (override the blanket *.png ignore)
 !assets/megadrive/easteregg/logo.png
