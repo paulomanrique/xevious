@@ -1341,9 +1341,9 @@ osd_update_sprite_shadow:
 *                                              | obj 0 -> entry 63 ... obj 63 -> entry 0. Keeps
 *                                              | the ship/crosshair over the ground enemies.
     lea     md_sat_shadow+64*8,a4               | overflow entries for doubles
-    moveq   #96,d0
-    sub.w   (md_fg_vscroll),d0
-    move.w  d0,(md_sat_bias)
+    moveq   #96+8,d0                            | +8: nudge sprites down ~1 tile so ground
+    sub.w   (md_fg_vscroll),d0                  | enemies sit IN the terrain clearings (they
+    move.w  d0,(md_sat_bias)                    | rendered ~a tile too high vs the arcade)
 * hide all overflow entries; doubles re-claim them each frame
     moveq   #16-1,d0
     move.l  a4,a6
@@ -1662,10 +1662,18 @@ md_check_pause:
     btst    #7,(md_start_prev)                  | was it down last frame?
     bne.b   2f                                  | held -> not an edge
     eori.b  #1,(md_paused)                      | rising edge -> toggle pause
+    tst.b   (md_paused)
+    beq.b   3f
+    bsr     md_pause_mute                       | now paused -> silence the audio
+    bra.b   2f
+3:  bsr     md_pause_unmute                     | now resumed -> restore the audio
 2:  move.b  d0,(md_start_prev)
     rts
-1:  clr.b   (md_paused)                         | leaving gameplay clears pause
-    move.b  (md_pad1),(md_start_prev)           | keep tracking Start so the held
+1:  tst.b   (md_paused)                         | leaving gameplay while paused?
+    beq.b   4f
+    clr.b   (md_paused)
+    bsr     md_pause_unmute                     | un-silence before returning to attract
+4:  move.b  (md_pad1),(md_start_prev)           | keep tracking Start so the held
     rts                                         | start-game press won't auto-pause
 
 md_read_one_pad:
