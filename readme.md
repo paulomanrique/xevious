@@ -62,7 +62,7 @@ framebuffer, which the Mega Drive's VDP has no equivalent for.
 - **Jean-François Fabre (jotd)** — Amiga target; the repository this is forked from.
 - **Andrzej Dobrowolski (no9)** — Amiga music · **phx** — ptplayer replay code ·
   **DanyPPC** — Amiga icon.
-- **sirvh** — this Sega Mega Drive / Genesis port.
+- **Paulo Manrique** — this Sega Mega Drive / Genesis port.
 
 The upstream README (Neo Geo / Amiga details and build instructions) is preserved
 as **[readme_upstream.md](readme_upstream.md)**.
