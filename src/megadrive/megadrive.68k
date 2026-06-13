@@ -494,14 +494,20 @@ md_egg_frame:
     beq     md_egg_enter                        | state 1: set up the screen
     subq.b  #1,d0
     bne     md_egg_exit                         | state 3: restore the title
-* state 2: hold until any new button press
+* state 2: hold until any new button press. Start also begins a 1P game (as if
+* a credit was inserted) so "modo cheteiro" leads straight into playing.
     move.b  (md_pad1),d0
     move.b  (md_konami_prev),d1
     move.b  d0,(md_konami_prev)
     not.b   d1
-    and.b   d0,d1
+    and.b   d0,d1                              | newly-pressed buttons
     beq     md_egg_done
-    move.b  #3,(md_egg_state)
+    btst    #7,d1                              | Start?
+    beq.b   1f
+    move.b  #1,(num_credits)                   | auto-credit + start a 1P game
+    move.b  #1,(start_pressed)
+    clr.b   (two_player_game)
+1:  move.b  #3,(md_egg_state)
 md_egg_done:
     movem.l (a7)+,d0-d7/a0-a6
     rte
@@ -541,10 +547,11 @@ md_egg_enter:
     VDP_W_VSRAM 0                               | both planes' vscroll = 0
     move.w  #0,(VDP_DATA)
     move.w  #0,(VDP_DATA)
-    lea     md_sat_shadow,a0                   | hide all sprites
-    move.w  #80*4-1,d7
-5:  clr.w   (a0)+
-    dbf     d7,5b
+    lea     md_sat_shadow,a0                   | hide sprites: zero only the Y of each
+    move.w  #80-1,d7                           | entry, NOT the static size/link fields
+5:  clr.w   (a0)                               | (zeroing those breaks the SAT link
+    lea     (8,a0),a0                          | chain -> every sprite vanishes in the
+    dbf     d7,5b                              | next game)
     move.l  #md_sat_shadow,d0
     move.w  #VRAM_SAT,d1
     move.w  #320,d2
