@@ -426,11 +426,15 @@ no_diag:
     .endif
 
 * one game tick per vblank (60Hz); the core copies this into its
-* main-loop semaphore (the platform layer owns this counter, see amiga.68k)
+* main-loop semaphore (the platform layer owns this counter, see amiga.68k).
+* When paused, skip the tick so the whole game freezes (the SAT/scroll flushed
+* above just re-emit the unchanged shadows).
+    bsr     md_check_pause
+    tst.b   (md_paused)
+    bne.b   md_vb_paused
     move.b  #1,(vb_ticks_count)
-
     jsr     xevious_im1_irq
-
+md_vb_paused:
     movem.l (a7)+,d0-d7/a0-a6
     rte
 
@@ -1248,7 +1252,7 @@ obj_double:
     * instead of jumping 16px left.
     btst    #1,d5                               | dh (horizontal doubling)?
     beq.b   0f
-    subq.w  #16,d6                              | Y_px -= 16 -> shift composite +16 X
+    subi.w  #16,d6                              | Y_px -= 16 -> shift composite +16 X
 0:  move.w  d0,d1
     not.w   d1
     and.w   d1,d4                               | code &= ~size
@@ -1470,6 +1474,26 @@ md_read_pads:
     move.b  d0,(md_pad2)
     rts
 
+* Toggle md_paused on a Start-button rising edge, but only during an actual
+* game (md_mode 0 = playfield, is_real_game set). Start is unused by the core
+* mid-game - it only coins/starts in attract/menu, which the gate excludes.
+md_check_pause:
+    tst.b   (md_mode)                           | 0 = game playfield mode
+    bne.b   1f
+    tst.b   (is_real_game)                      | a real game (not attract demo)?
+    beq.b   1f
+    move.b  (md_pad1),d0
+    btst    #7,d0                               | Start pressed now?
+    beq.b   2f
+    btst    #7,(md_start_prev)                  | was it down last frame?
+    bne.b   2f                                  | held -> not an edge
+    eori.b  #1,(md_paused)                      | rising edge -> toggle pause
+2:  move.b  d0,(md_start_prev)
+    rts
+1:  clr.b   (md_paused)                         | leaving gameplay clears pause
+    move.b  (md_pad1),(md_start_prev)           | keep tracking Start so the held
+    rts                                         | start-game press won't auto-pause
+
 md_read_one_pad:
     move.b  #0x40,(a0)                          | TH=1
     nop
@@ -1668,6 +1692,8 @@ md_vbias:           ds.w    1
 md_fg_vscroll:      ds.w    1
 md_mode:            ds.b    1
 md_menu:            ds.b    1
+md_paused:          ds.b    1
+md_start_prev:      ds.b    1
     .align 2
 md_menu_cnt:        ds.w    1
 md_fg_ring:         ds.w    1
