@@ -14,7 +14,8 @@ bin/
 *.lst
 *.map
 *.elf
-address.log
+*.log
+ym_channel_*.wav
 
 # easter-egg logo is a real source asset (override the blanket *.png ignore)
 !assets/megadrive/easteregg/logo.png
