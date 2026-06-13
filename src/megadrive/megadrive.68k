@@ -1341,9 +1341,9 @@ osd_update_sprite_shadow:
 *                                              | obj 0 -> entry 63 ... obj 63 -> entry 0. Keeps
 *                                              | the ship/crosshair over the ground enemies.
     lea     md_sat_shadow+64*8,a4               | overflow entries for doubles
-    moveq   #96+8,d0                            | +8: nudge sprites down ~1 tile so ground
+    moveq   #96+16,d0                           | +16: nudge sprites down 2 tiles so ground
     sub.w   (md_fg_vscroll),d0                  | enemies sit IN the terrain clearings (they
-    move.w  d0,(md_sat_bias)                    | rendered ~a tile too high vs the arcade)
+    move.w  d0,(md_sat_bias)                    | rendered ~2 tiles too high vs the arcade)
 * hide all overflow entries; doubles re-claim them each frame
     moveq   #16-1,d0
     move.l  a4,a6

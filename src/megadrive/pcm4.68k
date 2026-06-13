@@ -251,37 +251,17 @@ osd_sound_unmute:
     clr.b   (md_snd_muted)
     rts
 
-* pause mute: save the 4 channel volumes and zero them (the samples keep looping
-* silently on the Z80). md_pause_unmute restores them, so the music resumes where
-* it was. (osd_sound_mute can't be reused: it discards the volumes.)
+* pause mute: hold the Z80 bus for the whole pause. The PCM4 driver stops
+* generating samples, so the YM DAC just holds its level = full silence on every
+* channel. Unpausing releases the bus and the driver resumes mid-loop. (Zeroing
+* the per-channel volumes left one channel audible; freezing the Z80 is total.)
 md_pause_mute:
-    movem.l d0/a0-a1,-(a7)
-    bsr     md_z80_request
-    lea     (Z80_RAM+Z80_WAVVOL),a1
-    lea     md_pause_vol,a0
-    moveq   #4-1,d0
-1:  move.b  (a1),(a0)+                          | save channel volume
-    move.b  #0,(a1)+                            | mute it
-    dbf     d0,1b
-    bsr     md_z80_release
-    movem.l (a7)+,d0/a0-a1
-    rts
-
+    bra     md_z80_request                      | assert BUSREQ and keep it held
 md_pause_unmute:
-    movem.l d0/a0-a1,-(a7)
-    bsr     md_z80_request
-    lea     (Z80_RAM+Z80_WAVVOL),a1
-    lea     md_pause_vol,a0
-    moveq   #4-1,d0
-1:  move.b  (a0)+,(a1)+                         | restore saved volume
-    dbf     d0,1b
-    bsr     md_z80_release
-    movem.l (a7)+,d0/a0-a1
-    rts
+    bra     md_z80_release                      | release -> Z80/PCM resumes
 
     .bss
     .align 2
-md_pause_vol:       ds.b    4                   | saved channel volumes while paused
 md_snd_muted:       ds.b    1
     .align 2
 md_main_theme_cnt:  ds.w    1
