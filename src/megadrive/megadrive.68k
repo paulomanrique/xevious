@@ -69,6 +69,11 @@
 * placed just below the overflow region at the pool tail
     .equ    PANEL_GLYPHS,   19
     .equ    PANEL_TILE,     FG_OVF_TILE-PANEL_GLYPHS
+* the title logo's bg patterns are uploaded over the bottom of the sprite pool
+* (enter_title_mode); reserve that many slots so the title sparkle sprite cannot
+* allocate them and overwrite the logo tiles (the "logo breaks when the sparkle
+* starts" bug). 4 tiles per slot, rounded up.
+    .equ    GFX_TITLE_SLOTS, (GFX_N_TITLE+3)/4
 * glyph ids: 0-9 digits, 10..16 = U,P,H,I,A,C,R, 17 ship icon, 18 solid black
     .equ    PG_U,           10
     .equ    PG_P,           11
@@ -635,6 +640,10 @@ enter_title_mode:
 2:  move.w  (a0)+,(VDP_DATA)
     dbf     d7,2b
     bsr     md_spr_invalidate
+* reserve the slots now holding the logo: the title sparkle is a real sprite, so
+* without this its frame upload would clobber the logo tiles when it appears
+    move.w  #GFX_TITLE_SLOTS,(md_spr_floor)
+    move.w  #GFX_TITLE_SLOTS,(md_spr_ring)
     rts
 
 * drop all cached sprite frames
@@ -663,6 +672,7 @@ enter_game_mode:
     moveq   #16-1,d7
 1:  move.w  (a0)+,(VDP_DATA)
     dbf     d7,1b
+    clr.w   (md_spr_floor)                      | whole sprite pool available again
 mode_done:
     rts
 
@@ -1584,11 +1594,12 @@ spr_resolve_frame:
     lea     md_slot_stamp,a1
     move.w  (md_spr_ring),d1
     move.w  #SPR_SLOTS-1,d2
+    sub.w   (md_spr_floor),d2                   | scan only the unreserved slots
 rf_scan:
     addq.w  #1,d1
     cmpi.w  #SPR_SLOTS,d1
     blt.b   1f
-    moveq   #0,d1
+    move.w  (md_spr_floor),d1                   | wrap above the reserved title slots
 1:  move.w  d1,d0
     add.w   d0,d0
     cmp.w   (a1,d0.w),d3
@@ -1912,6 +1923,7 @@ md_sat_shadow:      ds.b    80*8                | full SAT image, DMA'd per fram
 md_sat_bias:        ds.w    1
 md_frame_stamp:     ds.w    1
 md_spr_ring:        ds.w    1
+md_spr_floor:       ds.w    1                   | lowest sprite-pool slot the cache may use
 md_q_count:         ds.w    1
 md_q:               ds.w    2*8                 | upload queue {slot, frame}
 md_dma_low:         ds.w    1                   | DMA trigger low word (from RAM)
