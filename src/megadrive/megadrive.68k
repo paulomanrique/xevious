@@ -351,6 +351,13 @@ md_vblank:
     .endif
     bsr     md_read_pads
     bsr     md_check_konami                     | title Konami code -> "modo cheteiro" egg
+    .ifdef __sega32x__
+    moveq   #0,d0
+    tst.b   (md_egg_state)
+    beq.b   8f
+    moveq   #1,d0
+8:  move.w  d0,(0xA15122)                       | COMM2 = egg mode (SH-2 shows the 32X egg)
+    .endif
     tst.b   (md_egg_state)
     bne     md_egg_frame                        | egg up: skip the normal frame + core tick
 
@@ -366,6 +373,14 @@ md_vblank:
     move.w  (md_fg_vscroll),d0
     move.w  d0,(VDP_DATA)
 
+    .ifdef __sega32x__
+* 32X: no MD hardware sprites. Turn the SAT shadow into a sprite display list
+* and hand it to the SH-2, which blits every sprite into its framebuffer (no
+* per-scanline limit). The MD VRAM SAT stays cleared, so no MD sprites show.
+    clr.w   (md_q_count)                        | drop the VRAM-streaming queue
+    bsr     md_build_dl
+    jsr     md_flush_32x
+    .else
 * upload freshly requested sprite frames, then the sprite table
     move.w  (md_q_count),d7
     beq.b   sat_dma
@@ -389,6 +404,7 @@ sat_dma:
     move.w  #VRAM_SAT,d1
     move.w  #320,d2
     bsr     md_dma
+    .endif
 
     bsr     md_check_mode
     bsr     md_check_menu
@@ -1529,12 +1545,16 @@ spr_emit:
     move.w  (a0),d3                             | descriptor
     cmpi.w  #0xFFFF,d3
     beq.b   emit_hide_pop
-    * resolve frame -> VRAM tile index (0 = upload pending, hide this frame)
+    * resolve frame -> VRAM tile index (0 = upload pending, hide this frame).
+    * On the 32X every frame is already resident on the SH-2, so keep the frame
+    * id directly in the tile field (no VRAM streaming, no 1-frame upload delay).
     move.w  d3,d4
     andi.w  #0x0FFF,d4
+    .ifndef __sega32x__
     bsr     spr_resolve_frame
     tst.w   d4
     beq.b   emit_hide_pop
+    .endif
     * attr: palette (desc b13: 0->PAL2, 1->PAL3), flips (desc b15/b14 xor obj)
     move.w  d3,d2                               | d2 free (X_px saved in movem)
     andi.w  #0xC000,d2
@@ -1577,6 +1597,48 @@ emit_hide:
 * osd_update_sprite_shadow and DMA'd at vblank, so nothing to do here.
 osd_update_32_sprite_hw:
     rts
+
+    .ifdef __sega32x__
+* Build the 32X sprite display list from the MD SAT shadow (md_build_dl).
+* Each active SAT entry (Y != 0) becomes {fb_x, fb_y, frame_id, flip} in md_dl:
+*   fb coord = SAT coord - 128 (the MD SAT 128px offset)
+*   frame_id = md_slot_frame[(tile - GFX_POOL_BASE_TILE)/4]  (the 8bpp 32X frame
+*              shares the MD frame id - see convert_graphics_md.py)
+*   flip     = SAT attr b11 (Hflip) -> bit0, b12 (Vflip) -> bit1
+md_build_dl:
+    movem.l d0-d4/a0-a1,-(a7)
+    lea     md_sat_shadow,a0
+    lea     md_dl,a1
+    moveq   #0,d3                               | entry count
+    moveq   #80-1,d4
+bdl_loop:
+    move.w  (a0),d0                             | SAT Y (0 once we hit the unused tail)
+    beq.b   bdl_done
+    move.w  (4,a0),d1                           | attr (frame id | pal | flip)
+    move.w  (6,a0),d2                           | SAT X
+    subi.w  #128,d0                             | fb_y
+    subi.w  #128,d2                             | fb_x
+    move.w  d2,(a1)+                            | fb_x
+    move.w  d0,(a1)+                            | fb_y
+    move.w  d1,d2
+    andi.w  #0x07FF,d2                          | frame id (stored in the tile field)
+    move.w  d2,(a1)+                            | frame id
+    moveq   #0,d2
+    btst    #11,d1
+    beq.b   1f
+    bset    #0,d2                               | Hflip
+1:  btst    #12,d1
+    beq.b   2f
+    bset    #1,d2                               | Vflip
+2:  move.w  d2,(a1)+
+    addq.w  #1,d3
+    lea     (8,a0),a0
+    dbf     d4,bdl_loop
+bdl_done:
+    move.w  d3,(md_dl_count)
+    movem.l (a7)+,d0-d4/a0-a1
+    rts
+    .endif
 
 * d4 = frame id -> d4 = VRAM tile index (0 = not resident, upload queued)
 spr_resolve_frame:

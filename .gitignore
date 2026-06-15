@@ -22,3 +22,8 @@ itch.html
 
 # easter-egg logo is a real source asset (override the blanket *.png ignore)
 !assets/megadrive/easteregg/logo.png
+
+# Sega 32X build artifacts
+src/sega32x/m68k_crt*.bin
+src/sega32x/*.32x
+src/sega32x/symbol.txt

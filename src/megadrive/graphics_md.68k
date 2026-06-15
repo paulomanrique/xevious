@@ -6,8 +6,10 @@
 * bg title: 232 combos -> 131 patterns (4192 bytes)
 * sprites: 50 colors -> 21 quantized, split 15/11
 * sprites: 1030 combos -> 695 frames (88960 bytes)
+* 32X: 695 frames (177920 bytes), 128-colour palette
 * fg: 54 distinct colors -> 14 slots
 * VRAM: bg 925 tiles @1, pool 354 tiles @926 (88 frames), fg cache @1408
+* 32X egg: 320x224 image, 255-colour palette
 * egg: 244 tiles (pool 354)
 
     .equ GFX_BG_BASE_TILE, 1

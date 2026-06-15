@@ -1,0 +1,58 @@
+*
+* Sega 32X - sprite display-list flush (68000 side)
+*
+* md_build_dl (in megadrive.68k) fills md_dl with md_dl_count entries of
+* {fb_x, fb_y, frame, flip} (4 words each). md_flush_32x copies that list into
+* the back frame-buffer bank for the SH-2 to blit. The only bulk channel
+* between the CPUs is the frame buffer (gated by the FM bit), plus COMM0 for
+* the handshake:
+*   COMM0 = 0 : SH-2 idle (ready for a new list)
+*   COMM0 = 1 : list ready in the frame buffer at FB + DL_OFF
+*               (word0 = count, then count * {x, y, frame, flip})
+*
+
+    .equ    MARS_ADAPTER,   0xA15100            | bit15 = FM (1: SH-2 owns FB)
+    .equ    MARS_COMM0,     0xA15120
+    .equ    MARS_FB_68K,    0x840000            | 32X frame buffer (68000 view)
+    .equ    DL_OFF,         0x18000             | list offset (spare, non-displayed)
+
+    .global md_flush_32x
+    .global md_dl
+    .global md_dl_count
+
+    .text
+
+md_flush_32x:
+    movem.l d0-d1/a0-a1,-(a7)
+    move.w  (MARS_COMM0),d0
+    bne     mf_ret                              | SH-2 still rendering: skip this frame
+
+    move.w  (MARS_ADAPTER),d0
+    andi.w  #0x7FFF,d0
+    move.w  d0,(MARS_ADAPTER)                   | FM = 0 (68000 takes the frame buffer)
+
+    lea     (MARS_FB_68K+DL_OFF),a0
+    move.w  (md_dl_count),d0
+    move.w  d0,(a0)+                            | count
+    lsl.w   #2,d0                               | count * 4 words
+    beq.b   mf_done
+    subq.w  #1,d0
+    lea     md_dl,a1
+mf_copy:
+    move.w  (a1)+,(a0)+
+    dbf     d0,mf_copy
+mf_done:
+    move.w  (MARS_ADAPTER),d0
+    ori.w   #0x8000,d0
+    move.w  d0,(MARS_ADAPTER)                   | FM = 1 (give it back to the SH-2)
+    move.w  #1,(MARS_COMM0)                     | list ready
+mf_ret:
+    movem.l (a7)+,d0-d1/a0-a1
+    rts
+
+    .bss
+    .even
+md_dl:
+    ds.b    8*80                                | {fb_x, fb_y, frame, flip} * 80
+md_dl_count:
+    ds.w    1

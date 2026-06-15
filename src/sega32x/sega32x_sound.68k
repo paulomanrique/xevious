@@ -1,0 +1,145 @@
+*
+* Sega 32X OSD sound (68000 side).
+*
+* The arcade/NeoGeo sound priority logic (ported from pcm4.68k): the main theme
+* and the Solvalou engine are mutually exclusive on channel 0 (the core fires
+* SOLVALOU_SND every frame; while the theme plays it only ticks a 380-frame
+* timer, then the engine takes over). Without this, the engine stomps the music
+* every frame. Here md_pcm_play/stop just forward to the slave SH-2 (the PWM
+* mixer) over COMM4 instead of driving the Z80:
+*   command word = opcode<<8 | ordinal:  1 = play, 2 = stop, 3 = mute, 4 = unmute
+*
+
+    .include "xevious.inc"
+
+    .equ    COMM4, 0xA15124
+
+    .global osd_sound_start
+    .global osd_sound_stop
+    .global osd_sound_mute
+    .global osd_sound_unmute
+    .global md_sound_init
+    .global md_pause_mute
+    .global md_pause_unmute
+
+    .text
+
+* d0 = sound ordinal
+osd_sound_start:
+    movem.l d0/a0,-(a7)
+    lea     md_snd_playing,a0
+    tst.b   (MAIN_THEME_SND,a0)                 | main theme playing?
+    beq     0f
+    cmp.b   #SOLVALOU_SND,d0                    | only solvalou ticks its timer
+    bne     9f
+    subq.w  #1,(md_main_theme_cnt)
+    bne     9f
+    clr.b   (MAIN_THEME_SND,a0)
+    moveq   #MAIN_THEME_SND,d0
+    bsr     md_pcm_stop
+    moveq   #SOLVALOU_SND,d0
+    bra     snd_flag_and_play
+0:  tst.b   (ANDOR_GENESIS_SND,a0)              | andor genesis playing?
+    beq     1f
+    cmp.b   #SOLVALOU_SND,d0
+    bne     3f
+    subq.w  #1,(md_andor_cnt)
+    bne     9f
+    clr.b   (ANDOR_GENESIS_SND,a0)
+    moveq   #SOLVALOU_SND,d0
+    bra     snd_flag_and_play
+1:  cmp.b   #MAIN_THEME_SND,d0
+    bne     2f
+    move.w  #380,(md_main_theme_cnt)
+    bra     snd_flag_and_play
+2:  cmp.b   #HIGH_SCORE_SND,d0                  | HIGHEST/HIGH_SCORE
+    ble     snd_check_playing
+3:  cmp.b   #ANDOR_GENESIS_SND,d0
+    bne     4f
+    move.w  #4,(md_andor_cnt)
+    bra     snd_check_playing
+4:  cmp.b   #SOLVALOU_SND,d0
+    bne     snd_flag_and_play
+snd_check_playing:
+    lea     md_snd_playing,a0
+    tst.b   (a0,d0.w)
+    bne     9f                                  | already playing
+snd_flag_and_play:
+    lea     md_snd_playing,a0
+    move.b  #1,(a0,d0.w)
+    bsr     md_pcm_play
+9:  movem.l (a7)+,d0/a0
+    rts
+
+* d0 = sound ordinal
+osd_sound_stop:
+    cmp.b   #BOMB_SND,d0                        | bomb is one-shot, ignore stop
+    beq     9f
+    movem.l d0/a0,-(a7)
+    lea     md_snd_playing,a0
+    clr.b   (a0,d0.w)
+    bsr     md_pcm_stop
+    movem.l (a7)+,d0/a0
+9:  rts
+
+osd_sound_mute:
+    st.b    (md_snd_muted)
+    moveq   #3,d0
+    bra     snd_op
+osd_sound_unmute:
+    clr.b   (md_snd_muted)
+    moveq   #4,d0
+    bra     snd_op
+md_pause_mute:
+    moveq   #3,d0
+    bra     snd_op
+md_pause_unmute:
+    moveq   #4,d0
+snd_op:
+    movem.l d0-d1,-(a7)
+    lsl.w   #8,d0
+    bsr     snd_send
+    movem.l (a7)+,d0-d1
+    rts
+
+md_sound_init:
+    rts
+
+* d0.b = ordinal -> "play" command
+md_pcm_play:
+    movem.l d0-d1,-(a7)
+    andi.w  #0xFF,d0
+    ori.w   #0x0100,d0
+    bsr     snd_send
+    movem.l (a7)+,d0-d1
+    rts
+
+* d0.b = ordinal -> "stop" command
+md_pcm_stop:
+    movem.l d0-d1,-(a7)
+    andi.w  #0xFF,d0
+    ori.w   #0x0200,d0
+    bsr     snd_send
+    movem.l (a7)+,d0-d1
+    rts
+
+* d0.w = command word; wait (bounded) for the slave to ack, then post it
+snd_send:
+    move.w  #2000,d1
+1:  tst.w   (COMM4)
+    beq.b   2f
+    dbf     d1,1b
+2:  move.w  d0,(COMM4)
+    rts
+
+    .bss
+    .align  2
+md_snd_playing:
+    ds.b    32
+md_main_theme_cnt:
+    ds.w    1
+md_andor_cnt:
+    ds.w    1
+md_snd_muted:
+    ds.b    1
+    .align  2
