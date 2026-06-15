@@ -1587,7 +1587,7 @@ spr_resolve_frame:
     move.w  (a0,d0.w),d1                        | slot+1
     bne     rf_hit
     * miss: need a free queue entry
-    cmpi.w  #8,(md_q_count)
+    cmpi.w  #48,(md_q_count)
     bge     rf_fail
     * allocate a slot not used this frame
     move.w  (md_frame_stamp),d3
@@ -1925,7 +1925,10 @@ md_frame_stamp:     ds.w    1
 md_spr_ring:        ds.w    1
 md_spr_floor:       ds.w    1                   | lowest sprite-pool slot the cache may use
 md_q_count:         ds.w    1
-md_q:               ds.w    2*8                 | upload queue {slot, frame}
+md_q:               ds.w    2*48                | upload queue {slot, frame} - deep enough for
+                                                | the Andor-Genesis colour cycle, which requests
+                                                | ~40 new frames at once; a small cap dropped the
+                                                | overflow each frame, hiding sprites -> flicker
 md_dma_low:         ds.w    1                   | DMA trigger low word (from RAM)
 md_frame_slot:      ds.w    GFX_N_FRAMES        | frame id -> pool slot+1
 md_slot_frame:      ds.w    SPR_SLOTS           | pool slot -> frame id
