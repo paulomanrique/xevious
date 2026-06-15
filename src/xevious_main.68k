@@ -2159,6 +2159,19 @@ set_solvalou_dXdY:
     lea       obj_tbl+_OBJSIZE*0x23,a5
     move.w    (0,a1,d0.w),(_dX,a5)
     move.w    (2,a1,d0.w),(_dY,a5)
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro" mode: 1.5x Solvalou speed
+    jeq       sxy_done
+    move.w    (_dX,a5),d0
+    muls      #3,d0
+    asr.l     #1,d0
+    move.w    d0,(_dX,a5)
+    move.w    (_dY,a5),d0
+    muls      #3,d0
+    asr.l     #1,d0
+    move.w    d0,(_dY,a5)
+sxy_done:
+    .endif
     rts
 
 gen_rnd_dir: | $1622
@@ -2314,7 +2327,13 @@ main_fn_30__handle_shooting: | $1727
     move.l    a0,(main_30_fn_tbl)               | insert 1st slot
     lea       main_30_fn_tbl,a0                 | get table address
     lea       (4,a0),a1                         | 2nd slot address
-    moveq     #2-1,d7                           | 2 copies to make
+    moveq     #2-1,d7                           | 2 copies to make (3 slots)
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro": 6 shot slots (5 copies)
+    jeq       sh_ncopy
+    moveq     #5-1,d7
+sh_ncopy:
+    .endif
 1:  move.l    (a0)+,(a1)+                       | copy slot to next
     dbf       d7,1b                             | loop thru all slots
     jbsr       save_PC_to_fn_tbl_and_ret
@@ -2327,6 +2346,12 @@ main_fn_30__handle_shooting: | $1727
     lea       obj_tbl+_OBJSIZE*0x24,a5          | 1st bullet object
     lea       sprite_shadow_msb+2*0x24,a3
     moveq     #3-1,d7                           | 3 bullet objects
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro": 6 shots on screen
+    jeq       sh_nloop
+    moveq     #6-1,d7
+sh_nloop:
+    .endif
 3:  movea.l   (a6),a0
     movem.l   d7/a3/a4/a6,-(a7)
     jsr       (a0)                              | call handler
@@ -2353,6 +2378,12 @@ process_button_1:
     subq.b    #1,(a0)                           | shot timer expired?
     jne     9f                                | no, return
     move.b    (shot_timer_init_value),(a0)      | re-init shot timer
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro" mode: machine-gun fire rate
+    jeq       pb1_rate_done
+    move.b    #4,(a0)                           | ~5x faster than the default 0x14
+pb1_rate_done:
+    .endif
     move.b    #1,(shot_flag)                    | flag shooting
 9:  rts
 
@@ -2496,6 +2527,12 @@ init_bombing: | $188C
     subq.w    #2,(_dX,a1)
     move.w    (_dX,a1),d0
     add.w     d0,d0                             | x2
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro" mode: 2x bomb-to-ground speed
+    jeq       bomb_norm_spd
+    add.w     d0,d0                             | x4
+bomb_norm_spd:
+    .endif
     add.w     d0,(_X,a1)                        | add new dX
     lea       obj_tbl+_OBJSIZE*0x20,a0          | bomb target
     move.w    (scroll_delta),d0
@@ -4794,6 +4831,14 @@ main_fn_2__handle_objects: | $3000
     lea       (_OBJSIZE*7,a5),a5                | skip solvalou, shots
     lea       main_2_fn_tbl_2,a6
     move.q    #25-1,d7                          | 25 objects/functions
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro": 0x27-0x29 are extra player shots
+    jeq       mf2_norm
+    lea       (_OBJSIZE*3,a5),a5                | also skip those 3 (a5 -> 0x2A)
+    lea       (12,a6),a6                        | a6 -> 0x2A fn slot
+    moveq     #22-1,d7                          | dispatch only 0x2A-0x3F (22)
+mf2_norm:
+    .endif
 6:  move.l    (a6),a0
     movem.l   d7/a5-a6,-(a7)
     jsr       (a0)                              | call handler fn
@@ -5020,6 +5065,13 @@ chk_timer_fire_bullet_reinit_timer: | $3271
 init_new_bullet: | $3287
     lea       obj_tbl+_OBJSIZE*0x27,a0          | 1st bullet
     moveq     #19-1,d7                          | 19 bullets
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro": player shots own 0x27-0x29
+    jeq       inb_norm
+    lea       obj_tbl+_OBJSIZE*0x2A,a0          | enemy bullets -> 0x2A-0x39 (16)
+    moveq     #16-1,d7
+inb_norm:
+    .endif
 1:  cmp.b     #1,(_STATE,a0)                    | idle?
     jeq     found_idle_bullet_slot            | yes, go
     lea       (_OBJSIZE,a0),a0                  | next slot
@@ -5029,6 +5081,13 @@ init_new_bullet: | $3287
 find_idle_and_init_radiating_bullet: | $3297
     lea       obj_tbl+_OBJSIZE*0x27,a0          | bullet table
     moveq     #19-1,d7                          | 19 bullets
+    .ifdef __megadrive__
+    tst.b     invincible_flag                  | "cheteiro": player shots own 0x27-0x29
+    jeq       fir_norm
+    lea       obj_tbl+_OBJSIZE*0x2A,a0          | enemy bullets -> 0x2A-0x39 (16)
+    moveq     #16-1,d7
+fir_norm:
+    .endif
 1:  move.b    (_STATE,a0),d0
     subq.b    #1,d0
     jeq     init_radiating_bullet
