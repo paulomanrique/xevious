@@ -8,10 +8,13 @@ PY = py
 
 all: bin/xevious_md.bin
 
-assets: src/megadrive/graphics_md.68k src/megadrive/sounds_md.68k src/megadrive/tab_vol.bin
+assets: src/megadrive/graphics_md.68k src/megadrive/sounds_md.68k src/megadrive/tab_vol.bin src/megadrive/gfx_namco_md.68k
 
 src/megadrive/graphics_md.68k: assets/amiga/xevious_gfx.c assets/megadrive/convert_graphics_md.py
 	$(PY) assets/megadrive/convert_graphics_md.py
+
+src/megadrive/gfx_namco_md.68k: src/sega32x/src/gfx_namco_32x.bin assets/megadrive/make_namco_logo_md.py
+	$(PY) assets/megadrive/make_namco_logo_md.py
 
 src/megadrive/sounds_md.68k: assets/megadrive/convert_sounds_md.py
 	$(PY) assets/megadrive/convert_sounds_md.py
