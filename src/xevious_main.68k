@@ -347,6 +347,9 @@ main_fn_0__main_thread: | $049B
     
 main_thread_main_loop: | $04BB
     clr.b     (is_real_game)
+	.ifne	OPT_FREE_PLAY
+	clr.b	(start_pressed)
+	.endif
     .ifne OPT_SKIP_ATTRACT
     jra       coined_up
     .endif
@@ -370,6 +373,10 @@ attract_mode_main_loop: | $04D6
     .endif
 
 flash_insert_coin_and_check_credits: | $04E3
+	.ifne	OPT_FREE_PLAY
+	tst.b	(start_pressed)
+	jne	coined_up
+	.endif
     jbsr       display_insert_coin_flashing
 check_credits: | $04E6
     tst.b     (num_credits)                     | zero?
@@ -855,6 +862,9 @@ display_game_over_player_1_2: | $086A
     jra       display_string
         
 display_insert_coin_flashing: | $0881
+	.ifne	OPT_FREE_PLAY
+	rts				| free play: no "INSERT COIN"
+	.endif
     move.b    (countup_timer_1),d0
     move.b    d0,d1                             | copy
     and.b     #0x0f,d0                          | timer expired?

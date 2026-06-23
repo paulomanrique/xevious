@@ -190,20 +190,27 @@ sub_fn_4__handle_credits_and_start: | $0227
     jeq     9f
     btst.b    #0,d0                             | P1START?
     jeq     2f                                | no, skip
+	.ifeq	OPT_FREE_PLAY
     cmp.b     #1,(num_credits)                  | enough for 1P?
     jcs     9f                                | no, exit
+	.endif
     moveq     #1,d2                             | 1 credit/player
     jra     8f
 2:  btst.b    #1,d0                             | P2START?
     jeq     9f                                | no, return
+	.ifeq	OPT_FREE_PLAY
     cmp.b     #2,(num_credits)                  | enough for 2P?
     jcs     9f                                | no, exit
+	.endif
     moveq     #2,d2                             | 2 credits/players
     * can start a game here
-8:  andi      #0x0f,ccr                         | clear X
+8:
+	.ifeq	OPT_FREE_PLAY
+	andi      #0x0f,ccr                         | clear X
     move.b    (num_credits),d1
     sbcd      d2,d1                             | calc new credits
     move.b    d1,(num_credits)
+	.endif
     subq.b    #1,d2                             | 0=1P/1=2P
     move.b    d2,(two_player_game)
     move.b    #1,(start_pressed)

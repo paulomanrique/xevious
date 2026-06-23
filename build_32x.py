@@ -66,6 +66,8 @@ M68K_SOURCES = [
 SH_CFILES = ["src/main.c", "src/hw_32x.c", "src/string.c", "src/font.c",
              "src/shared_objects.c", "src/slave.c"]
 SH_SFILES = ["src/gfx_32x_data.s",    # incbins gfx_32x_palette/sprites
+             "src/gfx_32x_font.s",    # incbins the 1bpp fg font for the arcade HUD
+             "src/gfx_namco_32x.s",   # incbins the Namco boot-splash logo
              "src/gfx_egg_32x.s",     # incbins the 255-colour "cheteiro" egg image
              "src/snd_32x.s"]         # incbins the PCM sample blob + table
 SHCC_FLAGS = ("-m2 -mb -std=c99 -ffreestanding -Wall -O2 -fomit-frame-pointer "
@@ -122,10 +124,10 @@ def main():
 
     # ---- pack the ROM ----
     run("objcopy", "%s -O binary '%s/xevious_32x.elf' '%s/temp.bin'" % (SHOBJC, OBJ, OBJ))
-    run("pad", "dd if='%s/temp.bin' of='%s/bin/xevious_32x-alpha-0.01.32x' bs=8192 conv=sync 2>/dev/null"
+    run("pad", "dd if='%s/temp.bin' of='%s/bin/xevious_32x-alpha-0.02.32x' bs=8192 conv=sync 2>/dev/null"
         % (OBJ, PROJ))
-    sz = wsl("stat -c%%s '%s/bin/xevious_32x-alpha-0.01.32x'" % PROJ, capture=True).stdout.strip()
-    print("[32x] -> bin/xevious_32x-alpha-0.01.32x  (%s bytes)" % sz)
+    sz = wsl("stat -c%%s '%s/bin/xevious_32x-alpha-0.02.32x'" % PROJ, capture=True).stdout.strip()
+    print("[32x] -> bin/xevious_32x-alpha-0.02.32x  (%s bytes)" % sz)
 
 
 if __name__ == "__main__":

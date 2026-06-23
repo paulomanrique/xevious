@@ -14,7 +14,8 @@
     .equ    MARS_ADAPTER,   0xA15100            | bit15 = FM (1: SH-2 owns FB)
     .equ    MARS_COMM0,     0xA15120
     .equ    MARS_FB_68K,    0x840000            | 32X frame buffer (68000 view)
-    .equ    DL_OFF,         0x18000             | list offset (spare, non-displayed)
+    .equ    DL_OFF,         0x18000             | sprite list offset (spare)
+    .equ    HUD_OFF,        0x19000             | HUD list offset (spare)
 
     .global md_flush_32x
     .global md_dl
@@ -42,6 +43,18 @@ mf_copy:
     move.w  (a1)+,(a0)+
     dbf     d0,mf_copy
 mf_done:
+* HUD list: word0 = count, then count * {fb_x, fb_y, char} (3 words each)
+    lea     (MARS_FB_68K+HUD_OFF),a0
+    move.w  (md_hud_count),d0
+    move.w  d0,(a0)+
+    mulu    #3,d0
+    beq.b   mf_hud_done
+    subq.w  #1,d0
+    lea     md_hud,a1
+mf_hud_copy:
+    move.w  (a1)+,(a0)+
+    dbf     d0,mf_hud_copy
+mf_hud_done:
     move.w  (MARS_ADAPTER),d0
     ori.w   #0x8000,d0
     move.w  d0,(MARS_ADAPTER)                   | FM = 1 (give it back to the SH-2)
@@ -53,6 +66,6 @@ mf_ret:
     .bss
     .even
 md_dl:
-    ds.b    8*80                                | {fb_x, fb_y, frame, flip} * 80
+    ds.b    8*256                               | {fb_x, fb_y, frame, flip} * 256
 md_dl_count:
     ds.w    1

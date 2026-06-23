@@ -27,6 +27,7 @@
     OPT_DISPLAY_AREA=0                  | don't change values here!
     OPT_SKIP_SPLASH=0                   | don't change values here!
     OPT_SKIP_ATTRACT=0                  | don't change values here!
+    OPT_FREE_PLAY=0                     | console edition: free play
 	.else
 	* dev/debug mode: changes here won't reflect on release version!
     * hardware options
@@ -51,6 +52,7 @@
     OPT_DISPLAY_AREA=0
     OPT_SKIP_SPLASH=0
     OPT_SKIP_ATTRACT=0
+    OPT_FREE_PLAY=0                     | console edition: free play
 	.endif
 
 * Mega Drive debug autoplay: start a real game immediately, no death,
@@ -63,6 +65,9 @@
 	.endif
 	.ifdef	MD_START_AREA
 	.set	OPT_START_AREA, MD_START_AREA
+	.endif
+	.ifdef	__megadrive__
+	.set	OPT_FREE_PLAY, 1                | console: no coins, infinite
 	.endif
 
 ***

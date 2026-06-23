@@ -21,9 +21,9 @@
 * Standard MegaDrive ROM header at 0x100
 
         .ascii	"SEGA 32X        "		/* First 4 bytes must be "SEGA" */
-		.ascii	"rld (C)2014     "		/* Copyright and date */
-		.ascii	"Example Project                                 " /* JP Name */
-		.ascii	"Example Project                                 " /* EN Name */
+		.ascii	"(C)NAMCO 1982   "		/* Copyright and date */
+		.ascii	"É[ÉrÉEÉX                                        " /* JP Name: Shift-JIS ZEBIUSU */
+		.ascii	"XEVIOUS                                         " /* EN Name */
 		.ascii	"GM CHANGEME-XX"		/* Serial No. */
 		dc.w	0
 		.ascii	"J               "		/* Controller support */

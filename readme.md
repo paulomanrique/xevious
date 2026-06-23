@@ -48,11 +48,13 @@ see **[readme_megadrive.md](readme_megadrive.md)**.
 ### Known limitation
 
 The arcade hardware had far more sprite budget than the Mega Drive (80 sprites
-total, 20 per scanline, 320 sprite-pixels per line). Very busy scenes — notably
-the large **Andor Genesis** fortress surrounded by enemies — can flicker, exactly
-as many commercial Mega Drive games do. This is a hardware limit, not an emulation
-bug: the Amiga port sidesteps it by drawing objects as blitter "BOBs" into a
-framebuffer, which the Mega Drive's VDP has no equivalent for.
+total, 20 per scanline, 320 sprite-pixels per line, and sprites at most 32px
+wide). Very busy scenes — notably the large **Andor Genesis** fortress surrounded
+by enemies — can flicker, like many commercial Mega Drive games. This is a
+hardware limit, not an emulation bug. The Amiga (AGA) port handles the same scene
+with wide hardware sprites (the Andor Genesis is a few 64px-wide sprites, plus the
+player ship) and draws the smaller enemies as blitter "BOBs"; the Mega Drive's
+narrower sprites make the same scene tighter.
 
 ## Credits
 

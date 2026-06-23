@@ -42,8 +42,8 @@
 * Sega header (0x100)
     .ascii  "SEGA MEGA DRIVE "                  | console name
     .ascii  "(C)JOTD 2026.JUN"                  | copyright/date
-    .ascii  "XEVIOUS                                         "  | domestic name (48)
-    .ascii  "XEVIOUS                                         "  | overseas name (48)
+    .ascii  "XEVIOUS B260620B                                "  | domestic name (48)
+    .ascii  "XEVIOUS B260620B                                "  | overseas name (48)
     .ascii  "GM 00004200-00"                    | serial
     .word   0x0000                              | checksum (fixed by tools/fix_header.py)
     .ascii  "J               "                  | device support: 3-button pad

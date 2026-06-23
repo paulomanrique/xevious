@@ -19,6 +19,8 @@
     .global osd_w_fg_videoram
     .global osd_w_bg_videoram
     .global osd_update_scroll_hw
+    .global md_hud
+    .global md_hud_count
     .global osd_update_sprite_shadow
     .global osd_update_32_sprite_hw
     .global osd_read_dipswitches
@@ -67,7 +69,7 @@
     .equ    FG_OVF_TILE,    GFX_POOL_BASE_TILE+GFX_POOL_TILES-FG_OVF_SLOTS
 * panel glyphs: pre-rendered opaque tiles, independent of the fg cache;
 * placed just below the overflow region at the pool tail
-    .equ    PANEL_GLYPHS,   19
+    .equ    PANEL_GLYPHS,   23
     .equ    PANEL_TILE,     FG_OVF_TILE-PANEL_GLYPHS
 * the title logo's bg patterns are uploaded over the bottom of the sprite pool
 * (enter_title_mode); reserve that many slots so the title sparkle sprite cannot
@@ -84,6 +86,10 @@
     .equ    PG_R,           16
     .equ    PG_SHIP,        17
     .equ    PG_SOLID,       18
+    .equ    PG_G,           19
+    .equ    PG_S,           20
+    .equ    PG_O,           21
+    .equ    PG_E,           22
 * panel text colours (arcade fg colour codes 0-63)
     .equ    PCOL_TEXT,      61                  | white
     .equ    PCOL_LABEL,     38                  | red
@@ -379,6 +385,7 @@ md_vblank:
 * per-scanline limit). The MD VRAM SAT stays cleared, so no MD sprites show.
     clr.w   (md_q_count)                        | drop the VRAM-streaming queue
     bsr     md_build_dl
+    bsr     md_build_hud
     jsr     md_flush_32x
     .else
 * upload freshly requested sprite frames, then the sprite table
@@ -404,11 +411,23 @@ sat_dma:
     move.w  #VRAM_SAT,d1
     move.w  #320,d2
     bsr     md_dma
+    bsr     md_build_hud                        | arcade HUD: build the display list
+    bsr     md_hud_render                       | scores -> window (top), lives -> plane A
+* place the HUD window: top 2 rows during a real game, off otherwise. No
+* horizontal window (the side panel is gone). The window plane does not scroll,
+* so the score bar stays put while plane A/B scroll underneath.
+    move.w  #0x9100,(VDP_CTRL)                  | reg17: no left/right window
+    tst.b   (is_real_game)
+    beq.b   md_hudwin_off
+    move.w  #0x9202,(VDP_CTRL)                  | reg18: window = top 2 rows
+    bra.b   md_hudwin_done
+md_hudwin_off:
+    move.w  #0x9200,(VDP_CTRL)                  | reg18: no top/bottom window
+md_hudwin_done:
     .endif
 
     bsr     md_check_mode
     bsr     md_check_menu
-    bsr     md_update_panel
 
     .ifdef DIAG_STATE
 * encode flags in the backdrop colour (left border):
@@ -771,6 +790,7 @@ panel_glyph_tbl:
     .byte   0x0A,PCOL_LABEL, 0x0C,PCOL_LABEL, 0x1B,PCOL_LABEL
     .byte   CH_SHIP,PCOL_ICON
     .byte   CH_SPACE,PCOL_TEXT                  | solid black
+    .byte   0x10,PCOL_LABEL, 0x1C,PCOL_LABEL, 0x18,PCOL_LABEL, 0x0E,PCOL_LABEL  | 19-22: G,S,O,E
     .align 2
 
 md_panel_init:
@@ -787,29 +807,8 @@ md_panel_init:
     addq.w  #1,d7
     cmpi.w  #PANEL_GLYPHS,d7
     blt.b   1b
-* fill all cells with the opaque black tile
-    moveq   #0,d0
-2:  moveq   #PG_SOLID,d1
-    bsr     md_panel_putg
-    addq.w  #1,d0
-    cmpi.w  #PANEL_W*PANEL_ROWS,d0
-    blt.b   2b
-* labels
-    lea     panel_str_1up(pc),a2
-    moveq   #0*PANEL_W,d0
-    bsr.b   md_panel_puts
-    lea     panel_str_hi(pc),a2
-    moveq   #3*PANEL_W,d0
-    bsr.b   md_panel_puts
-    lea     panel_str_2up(pc),a2
-    moveq   #6*PANEL_W,d0
-    bsr.b   md_panel_puts
-    lea     panel_str_a(pc),a2
-    moveq   #20*PANEL_W,d0
-    bsr.b   md_panel_puts
-    lea     panel_str_cr(pc),a2
-    move.w  #24*PANEL_W,d0
-    bsr.b   md_panel_puts
+* (no panel fill: the side panel is gone; the window NT defaults to tile 0,
+*  which is blank/transparent, so the top HUD strip shows terrain through it)
     movem.l (a7)+,d0-d7/a0-a2
     rts
 
@@ -844,6 +843,12 @@ md_panel_render_glyph:
     lsl.w   #3,d1
     lea     gfx_fg_chars,a0
     lea     (a0,d1.w),a0
+    * clear-pixel slot: PG_SOLID (window fill) = opaque black, glyphs transparent
+    moveq   #0,d1
+    cmpi.w  #PG_SOLID,d0
+    bne.b   3f
+    moveq   #15,d1
+3:
     * dest tile
     move.w  d0,d3
     addi.w  #PANEL_TILE,d3
@@ -864,8 +869,8 @@ md_panel_render_glyph:
     add.b   d3,d3
     bcc.b   .+6
     or.w    d6,d0                               | set pixel: colour slot
-    bra.b   .+6                                 | (ori #imm below is 4 bytes)
-    ori.w   #15,d0                              | clear pixel: opaque black
+    bra.b   .+4                                 | (clear or.w below is 2 bytes)
+    or.w    d1,d0                               | clear pixel: slot d1 (0=transparent)
     .endr
     move.w  d0,(VDP_DATA)
     dbf     d5,2b
@@ -988,6 +993,286 @@ md_update_panel:
     blt.b   3b
     movem.l (a7)+,d0-d7/a0-a2
     rts
+
+***************************************************************
+*** 32X arcade HUD - built as a display list of {fb_x, fb_y, char},
+*** rendered by the SH-2 ON TOP of the sprites (the 32X layer covers
+*** even high-priority MD, so the HUD cannot live on the MD planes).
+*** Framebuffer pixels: the playfield is fb_x 48..271 (28 cols of 8px),
+*** column c at fb_x = 48 + c*8, row r at fb_y = r*8. Char codes index
+*** gfx_fg_chars (digits 0x00-0x09; A=0x0A.. ; CH_SHIP). Reuses the
+*** panel's score BCD logic.
+***************************************************************
+    .equ    HUD_X0, 48                          | playfield left edge (fb px)
+    .equ    HCOL_TEXT, 200                      | CRAM slot: white (scores/digits)
+    .equ    HCOL_LABEL, 201                     | CRAM slot: red (arcade labels)
+
+md_build_hud:
+    movem.l d0-d7/a0-a2,-(a7)
+    clr.w   (md_hud_count)
+    tst.b   (is_real_game)
+    beq     mbh_done                            | HUD only during a real game (not title/attract)
+* top labels (row 0) - arcade red
+    move.w  #HCOL_LABEL,d4
+    lea     hud_str_1up(pc),a2
+    move.w  #HUD_X0+2*8,d0
+    moveq   #0,d2
+    bsr     md_hud_puts
+    lea     hud_str_high(pc),a2
+    move.w  #HUD_X0+8*8,d0
+    moveq   #0,d2
+    bsr     md_hud_puts
+    lea     hud_str_score(pc),a2
+    move.w  #HUD_X0+13*8,d0
+    moveq   #0,d2
+    bsr     md_hud_puts
+    lea     hud_str_2up(pc),a2
+    move.w  #HUD_X0+22*8,d0
+    moveq   #0,d2
+    bsr     md_hud_puts
+* scores (row 1): P1 / high / P2 - white (stays white for lives/area/credits)
+    move.w  #HCOL_TEXT,d4
+    lea     curr_player_score_msb,a2
+    lea     other_player_score_msb,a1
+    tst.b   (curr_player)
+    beq.b   1f
+    exg     a1,a2
+1:  move.w  #HUD_X0+1*8,d0
+    moveq   #8,d2
+    bsr     md_hud_bcd
+    move.l  a1,a2
+    move.w  #HUD_X0+21*8,d0
+    moveq   #8,d2
+    bsr     md_hud_bcd
+    lea     RAM_high_score,a2
+    move.w  #HUD_X0+11*8,d0
+    moveq   #8,d2
+    bsr     md_hud_bcd
+* bottom row (27, fb_y 216): lives icons, area, credits
+    moveq   #0,d5
+    move.b  (curr_player_solvalou_left),d5
+    cmpi.w  #6,d5
+    bls.b   2f
+    moveq   #6,d5
+2:  move.w  #HUD_X0+4*8,d0                       | lives icons start at col 4
+    moveq   #0,d7
+3:  cmp.w   d5,d7
+    bge.b   4f
+    move.w  #CH_SHIP,d1
+    move.w  #216,d2
+    bsr     md_hud_putc
+4:  addq.w  #8,d0
+    addq.w  #1,d7
+    cmpi.w  #6,d7
+    blt.b   3b
+mbh_done:
+    movem.l (a7)+,d0-d7/a0-a2
+    rts
+
+* a2 = length-prefixed char-code string; d0 = fb_x, d2 = fb_y
+md_hud_puts:
+    movem.l d0-d2/d7/a2,-(a7)
+    moveq   #0,d7
+    move.b  (a2)+,d7
+    subq.w  #1,d7
+    bmi.b   9f
+1:  moveq   #0,d1
+    move.b  (a2)+,d1
+    bsr     md_hud_putc
+    addq.w  #8,d0
+    dbf     d7,1b
+9:  movem.l (a7)+,d0-d2/d7/a2
+    rts
+
+* d0 = fb_x, d1 = char code, d2 = fb_y; appends {fb_x, fb_y, char}; keeps d0-d2
+md_hud_putc:
+    movem.l d1/d3/a0,-(a7)
+    move.w  (md_hud_count),d3
+    cmpi.w  #80,d3
+    bge.b   9f
+    addq.w  #1,(md_hud_count)
+    mulu    #6,d3
+    lea     md_hud,a0
+    lea     (a0,d3.w),a0
+    move.w  d0,(a0)+
+    move.w  d2,(a0)+
+    andi.w  #0x00FF,d1                          | char in low byte
+    move.w  d4,d3
+    lsl.w   #8,d3
+    or.w    d3,d1                               | high byte = colour slot
+    move.w  d1,(a0)+
+9:  movem.l (a7)+,d1/d3/a0
+    rts
+
+* render a score (3 BCD bytes at (a2), value = score/10) as 6 digits from fb_x d0
+md_hud_bcd:
+    movem.l d0-d7/a2,-(a7)
+    moveq   #0,d5
+    move.b  (a2)+,d5
+    lsl.l   #8,d5
+    move.b  (a2)+,d5
+    lsl.l   #8,d5
+    move.b  (a2)+,d5
+    lsl.l   #4,d5
+    andi.l  #0x00FFFFFF,d5
+    moveq   #0,d6
+    moveq   #6-1,d7
+1:  move.l  d5,d1
+    swap    d1
+    lsr.w   #4,d1
+    andi.w  #0x000F,d1
+    lsl.l   #4,d5
+    andi.l  #0x00FFFFFF,d5
+    bsr     md_hud_digit
+    addq.w  #8,d0
+    dbf     d7,1b
+    movem.l (a7)+,d0-d7/a2
+    rts
+
+md_hud_digit:
+    tst.w   d6
+    bne.b   1f
+    tst.w   d1
+    bne.b   0f
+    cmpi.w  #1,d7
+    bgt.b   2f
+0:  moveq   #1,d6
+1:  bra     md_hud_putc                          | digit char code = digit value
+2:  rts                                          | leading zero: emit nothing
+
+hud_str_1up:    .byte 3, 0x01,0x1E,0x19          | "1UP"
+hud_str_2up:    .byte 3, 0x02,0x1E,0x19          | "2UP"
+hud_str_high:   .byte 4, 0x11,0x12,0x10,0x11     | "HIGH"
+hud_str_score:  .byte 5, 0x1C,0x0C,0x18,0x1B,0x0E | "SCORE"
+    .align 2
+    .ifndef __sega32x__
+* === Mega Drive arcade HUD: paint md_hud onto plane A ===
+* md_build_hud (shared) builds the DL; the MD game sprites are low priority, so
+* high-priority plane-A glyph tiles (the panel pool) draw over them. Plane A row
+* = 4 + (fb_y>>3) (the game fg window top -> plane A row 4). Last frame's cells
+* are cleared first so changing scores leave no residue.
+* char code -> panel glyph id (0xFF = skip)
+md_hud_glyph_map:
+	.byte	0,1,2,3,4,5,6,7,8,9
+	.byte	14,0xFF,15,0xFF,22,0xFF
+	.byte	19,12,13,0xFF,0xFF,0xFF,0xFF,0xFF
+	.byte	21,11,0xFF,16,20,0xFF,10,0xFF
+	.byte	0xFF,0xFF,0xFF,0xFF,0xFF,17
+	.align	2
+md_hud_render:
+	movem.l	d0-d7/a0-a3,-(a7)
+* DIAG: solid black bar across the top 2 window rows. If this bar shows at the
+* top of the screen, the window plane is displaying and the problem is the text;
+* if it does NOT show, the window config/position is wrong.
+	move.w	#PANEL_TILE+PG_SOLID+0x8000,d5
+	move.w	#VRAM_WINDOW_NT,d3
+	bsr	md_vram_cmd
+	move.w	sr,-(a7)
+	move	#0x2700,sr
+	move.l	d4,(VDP_CTRL)
+	moveq	#40-1,d6
+0:	move.w	d5,(VDP_DATA)
+	dbf	d6,0b
+	move.w	(a7)+,sr
+	move.w	#VRAM_WINDOW_NT+64*2,d3
+	bsr	md_vram_cmd
+	move.w	sr,-(a7)
+	move	#0x2700,sr
+	move.l	d4,(VDP_CTRL)
+	moveq	#40-1,d6
+0:	move.w	d5,(VDP_DATA)
+	dbf	d6,0b
+	move.w	(a7)+,sr
+* DIAG: fixed digits 0-9 written DIRECTLY to window row 1, col 4+ (bypass the
+* HUD list and the is_real_game gate). If these white digits show on the bar,
+* the glyph->window write path works and the bug is in md_build_hud / routing.
+	move.w	#VRAM_WINDOW_NT+64*2+4*2,d3
+	bsr	md_vram_cmd
+	move.w	sr,-(a7)
+	move	#0x2700,sr
+	move.l	d4,(VDP_CTRL)
+	moveq	#0,d5
+0:	move.w	d5,d6
+	addi.w	#PANEL_TILE+0x8000,d6
+	move.w	d6,(VDP_DATA)
+	addq.w	#1,d5
+	cmpi.w	#10,d5
+	blt.b	0b
+	move.w	(a7)+,sr
+	move.w	(md_hud_prev_count),d7
+	beq.b	2f
+	subq.w	#1,d7
+	lea	md_hud_prev,a3
+1:	move.w	(a3)+,d3
+	bsr	md_vram_cmd
+	move.w	sr,-(a7)
+	move	#0x2700,sr
+	move.l	d4,(VDP_CTRL)
+	move.w	#0,(VDP_DATA)
+	move.w	(a7)+,sr
+	dbf	d7,1b
+2:	clr.w	(md_hud_prev_count)
+	move.w	(md_hud_count),d7
+	beq	9f
+	subq.w	#1,d7
+	lea	md_hud,a0
+	lea	md_hud_prev,a3
+	lea	md_hud_glyph_map(pc),a2
+	moveq	#0,d6
+3:	move.w	(a0)+,d1
+	move.w	(a0)+,d2
+	move.w	(a0)+,d0
+	andi.w	#0x00FF,d0
+	cmpi.w	#0x26,d0
+	bcc.b	8f
+	move.b	(a2,d0.w),d0
+	cmpi.b	#0xFF,d0
+	beq.b	8f
+	andi.w	#0x00FF,d0
+	addi.w	#PANEL_TILE,d0
+	ori.w	#0x8000,d0
+	move.w	d0,d5
+	lsr.w	#3,d2	| row = fb_y>>3
+	lsr.w	#3,d1	| col = fb_x>>3
+	cmpi.w	#2,d2	| rows 0,1 -> fixed window (top score HUD)
+	bcc.b	4f	| everything below -> plane A (lives)
+	lsl.w	#6,d2
+	add.w	d1,d2
+	add.w	d2,d2
+	addi.w	#VRAM_WINDOW_NT,d2
+	bra.b	5f
+4:	addq.w	#4,d2	| plane A row = 4 + fb_y>>3
+	lsl.w	#6,d2
+	add.w	d1,d2
+	add.w	d2,d2
+	addi.w	#VRAM_PLANE_A,d2
+5:
+	move.w	d2,(a3)+
+	addq.w	#1,d6
+	move.w	d2,d3
+	bsr	md_vram_cmd
+	move.w	sr,-(a7)
+	move	#0x2700,sr
+	move.l	d4,(VDP_CTRL)
+	move.w	d5,(VDP_DATA)
+	move.w	(a7)+,sr
+8:	dbf	d7,3b
+	move.w	d6,(md_hud_prev_count)
+9:	movem.l	(a7)+,d0-d7/a0-a3
+	rts
+	.endif
+
+	.bss
+	.even
+md_hud:
+	ds.b	6*80
+md_hud_count:
+	ds.w	1
+md_hud_prev:
+	ds.w	80
+md_hud_prev_count:
+	ds.w	1
+	.text
 
 ***************************************************************
 *** interrupt control
@@ -1355,6 +1640,11 @@ osd_update_scroll_hw:
 *   screen x(left) = 272 - Y_px               (SAT X = +128 -> 400 - Y_px)
     .equ    SPR_X_BIAS,     400
     .equ    SPR_SLOTS,      (PANEL_TILE-GFX_POOL_BASE_TILE)/4
+    .ifdef  __sega32x__
+    .equ    SPR_CAP,        256                 | SH-2 blits the whole list (framebuffer has no
+    .else                                       | per-line/SAT limit); cost ~ live count, not cap
+    .equ    SPR_CAP,        80                  | MD hardware SAT maximum
+    .endif
 
 * a5 = obj_tbl: build the full SAT shadow + the core's hitbox shadow
 osd_update_sprite_shadow:
@@ -1372,7 +1662,7 @@ osd_update_sprite_shadow:
 * needed far more, dropping quadrants and flickering as the set varied per frame.
     lea     sprite_shadow_msb+63*2,a2           | hitbox shadow for obj 63 (per-object, descend)
     lea     md_sat_shadow,a3                    | SAT write pointer: pack forward from entry 0
-    lea     md_sat_shadow+80*8,a4               | one past the last SAT entry (capacity cap)
+    lea     md_sat_shadow+SPR_CAP*8,a4          | one past the last SAT entry (capacity cap)
     lea     (63*_OBJSIZE,a5),a5                 | caller passes obj 0; start at obj 63
     moveq   #64-1,d7
 obj_loop:
@@ -1401,6 +1691,33 @@ obj_active:
     addq.w  #8,d1
     lsr.w   #1,d1
     move.b  d1,(1,a2)
+* Terrain-anchored ground objects (obj 1..15: Sol, towers, Grobda, ...) ride the
+* terrain scroll. The bg plane scrolls by scroll_cntr>>5, but X_px = _X>>5
+* truncates _X (= base + scroll_cntr) at a different sub-pixel phase, so the
+* borrow toggles and the target shimmers +-1px against the terrain. Re-split the
+* truncation as (base>>5)+(scroll_cntr>>5) so the sprite steps exactly with the
+* bg. (Long axis only; the hitbox above keeps the raw _X so collisions stay put.)
+* The Andor Genesis fortress also lives in obj 1..15 but HOVERS - it is NOT
+* terrain-anchored - so its panels (TYPE 0x41..0x52) are skipped: aligning them
+* would add a phantom +-1px shimmer to a sprite that should move on its own.
+    cmpi.w  #1,d7
+    blt.b   gnd_done
+    cmpi.w  #15,d7
+    bgt.b   gnd_done
+    move.b  (_TYPE,a5),d0
+    cmpi.b  #0x41,d0
+    blt.b   gnd_apply                           | < 0x41: real ground target -> align it
+    cmpi.b  #0x52,d0
+    bls.b   gnd_done                            | 0x41..0x52: Andor Genesis panel (hovers) -> skip
+gnd_apply:
+    move.w  (scroll_cntr),d0
+    move.w  (_X,a5),d2
+    sub.w   d0,d2                               | base = _X - scroll_cntr (fixed per target)
+    lsr.w   #5,d2                               | base >> 5
+    lsr.w   #5,d0                               | scroll_cntr >> 5 (bg scroll phase)
+    add.w   d0,d2
+    andi.w  #0x1FF,d2                           | bg-aligned long-axis pixel
+gnd_done:
     * gather object fields
     moveq   #0,d3
     move.b  (_COLOUR,a5),d3
@@ -1610,7 +1927,7 @@ md_build_dl:
     lea     md_sat_shadow,a0
     lea     md_dl,a1
     moveq   #0,d3                               | entry count
-    moveq   #80-1,d4
+    move.w  #SPR_CAP-1,d4                        | (move.w: SPR_CAP-1 may exceed moveq's 127)
 bdl_loop:
     move.w  (a0),d0                             | SAT Y (0 once we hit the unused tail)
     beq.b   bdl_done
@@ -1774,11 +2091,11 @@ osd_read_dipswitches:
     move.w  #0x7F,d0                            | lives 3, bonus 20K/60K e60K
     move.w  #0x7F,d1                            | difficulty normal, flags=yes
     move.b  (md_pad1),d2
-    andi.b  #0x40,d2                            | A = bomb
+    andi.b	#0x10,d2			| B = bomb (arcade: B = bomb)
     beq.b   1f
     bclr    #0,d1                               | P1 bomb (active low)
 1:  move.b  (md_pad2),d2
-    andi.b  #0x40,d2
+    andi.b	#0x10,d2			| B = bomb (arcade: B = bomb)
     beq.b   2f
     bclr    #4,d1                               | P2 bomb (active low)
 2:  rts
@@ -1816,10 +2133,10 @@ read_inputs_common:
     lea     md_dir_tbl(pc),a1
     move.b  (a1,d0.w),d0
     ori.b   #0xF0,d0                            | bits 4/5 inactive (high)
-    btst    #4,d1                               | B = zap
+    btst	#6,d1				| A = zap (arcade: A = shot)
     beq.b   1f
     bclr    #5,d0                               | fire held (active low)
-    btst    #4,(a0)
+    btst	#6,(a0)
     bne.b   1f
     bclr    #4,d0                               | fire edge (one-shot)
 1:  move.b  d1,(a0)
@@ -1829,6 +2146,10 @@ read_inputs_common:
 * Start edge also inserts while there are no credits (so a bare Start
 * press coins up and the next one starts the game)
 osd_read_coin:
+	.ifne	OPT_FREE_PLAY
+	moveq	#0,d0		| free play: no coins (C unmapped)
+	rts
+	.endif
     moveq   #0,d0
     move.b  (md_pad1),d1
     or.b    (md_pad2),d1
@@ -1981,7 +2302,7 @@ md_coin_prev:       ds.b    1
 
 * sprite machinery
     .align 2
-md_sat_shadow:      ds.b    80*8                | full SAT image, DMA'd per frame
+md_sat_shadow:      ds.b    SPR_CAP*8           | full SAT image, DMA'd per frame
 md_sat_bias:        ds.w    1
 md_frame_stamp:     ds.w    1
 md_spr_ring:        ds.w    1
